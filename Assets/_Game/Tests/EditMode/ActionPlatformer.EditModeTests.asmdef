@@ -1,0 +1,6 @@
+{
+  "name": "ActionPlatformer.EditModeTests",
+  "references": ["ActionPlatformer.Runtime"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

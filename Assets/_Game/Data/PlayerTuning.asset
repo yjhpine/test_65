@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91f5de5dbef2b614fbf69519a3f00e98, type: 3}
+  m_Name: PlayerTuning
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerTuning
+  runSpeed: 10.5
+  groundAcceleration: 125
+  groundBraking: 110
+  airAcceleration: 45
+  jumpHeight: 3.2
+  riseGravity: 32
+  fallGravity: 55
+  maxFallSpeed: 28
+  jumpCutMultiplier: 0.45
+  coyoteTime: 0.1
+  inputBufferTime: 0.13

@@ -1,0 +1,6 @@
+{
+  "name": "ActionPlatformer.Editor",
+  "rootNamespace": "ActionPlatformer.Editor",
+  "references": ["UnityEditor.TestRunner", "UnityEngine.TestRunner"],
+  "includePlatforms": ["Editor"]
+}

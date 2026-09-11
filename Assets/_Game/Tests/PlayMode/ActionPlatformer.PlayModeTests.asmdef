@@ -1,0 +1,5 @@
+{
+  "name": "ActionPlatformer.PlayModeTests",
+  "references": ["ActionPlatformer.Runtime", "Unity.InputSystem"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

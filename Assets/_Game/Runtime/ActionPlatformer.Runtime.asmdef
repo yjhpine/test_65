@@ -1,0 +1,5 @@
+{
+  "name": "ActionPlatformer.Runtime",
+  "rootNamespace": "ActionPlatformer",
+  "references": ["Unity.InputSystem"]
+}
