@@ -11,11 +11,34 @@ namespace ActionPlatformer.Tests
 {
     public sealed class PlayerCourseTests
     {
-        private PlayerController player;
+        private PlayerUnit player;
         private Driver input;
         private Keyboard testKeyboard;
         private Gamepad testGamepad;
         private static readonly WaitForFixedUpdate FixedStep = new WaitForFixedUpdate();
+
+        private sealed class InputFocusScope : System.IDisposable
+        {
+#if UNITY_EDITOR
+            private readonly InputSettings.BackgroundBehavior background = InputSystem.settings.backgroundBehavior;
+            private readonly InputSettings.EditorInputBehaviorInPlayMode editor = InputSystem.settings.editorInputBehaviorInPlayMode;
+#endif
+            public InputFocusScope()
+            {
+#if UNITY_EDITOR
+                // Synthetic input must not depend on which Editor window currently has focus.
+                InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+                InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+#endif
+            }
+            public void Dispose()
+            {
+#if UNITY_EDITOR
+                InputSystem.settings.editorInputBehaviorInPlayMode = editor;
+                InputSystem.settings.backgroundBehavior = background;
+#endif
+            }
+        }
 
         private sealed class Driver : IPlayerInputSource
         {
@@ -32,7 +55,7 @@ namespace ActionPlatformer.Tests
         {
             yield return SceneManager.LoadSceneAsync("MovementLab");
             yield return null;
-            player = Object.FindFirstObjectByType<PlayerController>();
+            player = Object.FindFirstObjectByType<PlayerUnit>();
             input = new Driver();
             player.SetInputSource(input);
             yield return Steps(12);
@@ -175,38 +198,80 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator KeyboardAndGamepadBindingsProduceMovementAndJump()
         {
-#if UNITY_EDITOR
-            var previousInputBehavior = InputSystem.settings.editorInputBehaviorInPlayMode;
-            var previousBackgroundBehavior = InputSystem.settings.backgroundBehavior;
-            // Synthetic input must not depend on which Editor window currently has focus.
-            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
-            InputSystem.settings.editorInputBehaviorInPlayMode =
-                InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
-#endif
-            try
+            using (new InputFocusScope())
             {
-                var reader = player.GetComponent<PlayerInputReader>();
+                var playerInput = player.GetComponent<PlayerInput>();
+                Assert.That(playerInput, Is.Not.Null);
+                var reader = new PlayerInputReader(playerInput);
+                Assert.That(playerInput.currentActionMap.name, Is.EqualTo("Player"));
                 testKeyboard = InputSystem.AddDevice<Keyboard>();
                 InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.D, Key.Space));
                 InputSystem.Update();
                 PlayerCommand keyboard = reader.Sample();
+                Assert.That(playerInput.currentControlScheme, Is.EqualTo("Keyboard&Mouse"));
                 Assert.That(keyboard.Move.x, Is.GreaterThan(0.9f));
                 Assert.That(keyboard.JumpPressed, Is.True);
+                Assert.That(keyboard.JumpHeld, Is.True);
                 InputSystem.QueueStateEvent(testKeyboard, new KeyboardState()); InputSystem.Update();
+                Assert.That(reader.Sample().JumpReleased, Is.True);
                 testGamepad = InputSystem.AddDevice<Gamepad>();
                 InputSystem.QueueStateEvent(testGamepad, new GamepadState { leftStick = Vector2.right }.WithButton(GamepadButton.South));
                 InputSystem.Update();
                 PlayerCommand gamepad = reader.Sample();
+                Assert.That(playerInput.currentControlScheme, Is.EqualTo("Gamepad"));
                 Assert.That(gamepad.Move.x, Is.GreaterThan(0.9f));
                 Assert.That(gamepad.JumpPressed, Is.True);
+                Assert.That(gamepad.JumpHeld, Is.True);
+                InputSystem.QueueStateEvent(testGamepad, new GamepadState()); InputSystem.Update();
+                Assert.That(reader.Sample().JumpReleased, Is.True);
                 yield return null;
             }
-            finally
+        }
+
+        [UnityTest] public IEnumerator PlayerInputDrivesMovementAndResumesAfterDisable()
+        {
+            using (new InputFocusScope())
             {
-#if UNITY_EDITOR
-                InputSystem.settings.editorInputBehaviorInPlayMode = previousInputBehavior;
-                InputSystem.settings.backgroundBehavior = previousBackgroundBehavior;
-#endif
+                var playerInput = player.GetComponent<PlayerInput>();
+                var reader = new PlayerInputReader(playerInput);
+                testGamepad = InputSystem.AddDevice<Gamepad>();
+                playerInput.SwitchCurrentControlScheme("Gamepad", testGamepad);
+                player.SetInputSource(null);
+
+                InputSystem.QueueStateEvent(testGamepad, new GamepadState { leftStick = Vector2.right }.WithButton(GamepadButton.South));
+                yield return Steps(5);
+                Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+                Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
+                Assert.That(reader.Sample().JumpHeld, Is.True);
+
+                playerInput.DeactivateInput();
+                Assert.That(reader.Sample(), Is.EqualTo(default(PlayerCommand)));
+                InputSystem.QueueStateEvent(testGamepad, new GamepadState()); InputSystem.Update();
+                playerInput.ActivateInput();
+                Assert.That(reader.Sample().JumpPressed, Is.False);
+                InputSystem.QueueStateEvent(testGamepad, new GamepadState { leftStick = Vector2.left }.WithButton(GamepadButton.South));
+                InputSystem.Update();
+                Assert.That(reader.Sample().Move.x, Is.LessThan(-0.9f));
+                Assert.That(reader.Sample().JumpPressed, Is.True);
+
+                playerInput.actions.FindActionMap("Player", true).Disable();
+                Assert.That(reader.Sample(), Is.EqualTo(default(PlayerCommand)));
+                playerInput.actions.FindActionMap("Player", true).Enable();
+
+                for (int i = 0; i < 2; i++)
+                {
+                    playerInput.enabled = false;
+                    Assert.That(reader.Sample(), Is.EqualTo(default(PlayerCommand)));
+                    InputSystem.QueueStateEvent(testGamepad, new GamepadState()); InputSystem.Update();
+                    playerInput.enabled = true;
+                    playerInput.SwitchCurrentControlScheme("Gamepad", testGamepad);
+                    InputSystem.Update();
+                    Assert.That(reader.Sample(), Is.EqualTo(default(PlayerCommand)));
+                    InputSystem.QueueStateEvent(testGamepad, new GamepadState { leftStick = Vector2.right }.WithButton(GamepadButton.South));
+                    InputSystem.Update();
+                    Assert.That(reader.Sample().Move.x, Is.GreaterThan(0.9f));
+                    Assert.That(reader.Sample().JumpPressed, Is.True);
+                }
             }
         }
     }

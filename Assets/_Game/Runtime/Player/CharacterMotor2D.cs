@@ -2,27 +2,35 @@ using UnityEngine;
 
 namespace ActionPlatformer.Player
 {
-    [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
-    public sealed class CharacterMotor2D : MonoBehaviour
+    public interface ICharacterMotionState
     {
-        [SerializeField] private PlayerTuning tuning;
-        [SerializeField] private LayerMask groundMask = 1;
-        private Rigidbody2D body;
-        private CapsuleCollider2D bodyCollider;
-        private ContactFilter2D groundFilter;
+        Vector2 Velocity { get; }
+        bool IsGrounded { get; }
+    }
+
+    public sealed class CharacterMotor2D : ICharacterMotionState
+    {
+        private readonly PlayerTuning tuning;
+        private readonly Rigidbody2D body;
+        private readonly Collider2D bodyCollider;
+        private readonly ContactFilter2D groundFilter;
         private readonly RaycastHit2D[] groundHits = new RaycastHit2D[8];
 
-        public PlayerTuning Tuning => tuning;
-        public Vector2 Velocity => body == null ? Vector2.zero : body.linearVelocity;
-        public Vector2 Position => body == null ? (Vector2)transform.position : body.position;
+        public Vector2 Velocity => body.linearVelocity;
+        public Vector2 Position => body.position;
         public bool IsGrounded { get; private set; }
 
-        private void Awake()
+        public CharacterMotor2D(Rigidbody2D body, Collider2D bodyCollider, PlayerTuning tuning, LayerMask groundMask)
         {
-            body = GetComponent<Rigidbody2D>();
-            bodyCollider = GetComponent<CapsuleCollider2D>();
+            if (body == null) throw new System.ArgumentNullException(nameof(body));
+            if (bodyCollider == null) throw new System.ArgumentNullException(nameof(bodyCollider));
+            if (tuning == null) throw new System.ArgumentNullException(nameof(tuning));
+            if (bodyCollider.attachedRigidbody != body)
+                throw new System.ArgumentException("The collider must belong to the supplied Rigidbody2D.", nameof(bodyCollider));
+            this.body = body;
+            this.bodyCollider = bodyCollider;
+            this.tuning = tuning;
             groundFilter = new ContactFilter2D { useLayerMask = true, layerMask = groundMask, useTriggers = false };
-            if (tuning == null) { Debug.LogError("Player tuning is missing.", this); enabled = false; }
         }
 
         public void RefreshContacts()

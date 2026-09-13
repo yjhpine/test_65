@@ -6,6 +6,39 @@ namespace ActionPlatformer.Tests
 {
     public sealed class MovementRulesTests
     {
+        [Test] public void MotorsOnlyModifyTheirInjectedPhysicsBodies()
+        {
+            var firstObject = new GameObject("First motor body");
+            var secondObject = new GameObject("Second motor body");
+            var tuning = ScriptableObject.CreateInstance<PlayerTuning>();
+            try
+            {
+                var firstBody = firstObject.AddComponent<Rigidbody2D>();
+                var secondBody = secondObject.AddComponent<Rigidbody2D>();
+                var first = new CharacterMotor2D(firstBody, firstObject.AddComponent<CapsuleCollider2D>(), tuning, 1);
+                var second = new CharacterMotor2D(secondBody, secondObject.AddComponent<BoxCollider2D>(), tuning, 1);
+
+                first.Teleport(new Vector2(3f, 2f));
+                first.Jump();
+                Assert.That(firstBody.position, Is.EqualTo(new Vector2(3f, 2f)));
+                Assert.That(firstBody.linearVelocity.y, Is.GreaterThan(0f));
+                Assert.That(secondBody.position, Is.EqualTo(Vector2.zero));
+                Assert.That(secondBody.linearVelocity, Is.EqualTo(Vector2.zero));
+
+                second.Simulate(-1f, false, 0.02f);
+                Assert.That(secondBody.linearVelocity.x, Is.LessThan(0f));
+                Assert.That(firstBody.linearVelocity.x, Is.Zero);
+                ICharacterMotionState motion = first;
+                Assert.That(motion.Velocity, Is.EqualTo(firstBody.linearVelocity));
+            }
+            finally
+            {
+                Object.DestroyImmediate(firstObject);
+                Object.DestroyImmediate(secondObject);
+                Object.DestroyImmediate(tuning);
+            }
+        }
+
         [Test] public void BufferedPressSurvivesUntilPhysicsAndIsConsumedOnce()
         {
             var buffer = new InputBuffer(); buffer.Push(1.0);
