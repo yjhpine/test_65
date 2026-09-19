@@ -1,10 +1,12 @@
 #if UNITY_EDITOR
 using System.Collections;
 using System.Collections.Generic;
+using ActionPlatformer.Player;
 using ActionPlatformer.Units;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
 
 namespace ActionPlatformer.Tests
@@ -117,6 +119,46 @@ namespace ActionPlatformer.Tests
             yield return null;
             Assert.That(unit.enabled, Is.False);
             Assert.That(unit.Fsm, Is.Null);
+        }
+
+        [UnityTest] public IEnumerator FailedPlayerInitializationCannotBeReenabledOrStartAnFsm()
+        {
+            var fsmDefinition = ScriptableObject.CreateInstance<TestFsmDefinition>();
+            created.Add(fsmDefinition);
+            var definition = CreateDefinition(UnitKind.Player, fsmDefinition);
+            var instance = new GameObject("Player with missing tuning");
+            instance.SetActive(false);
+            created.Add(instance);
+            var playerInput = instance.AddComponent<PlayerInput>();
+            playerInput.actions = AssetDatabase.LoadAssetAtPath<InputActionAsset>(
+                "Assets/_Game/Data/PrototypeControls.inputactions");
+            playerInput.defaultActionMap = "Player";
+            var player = instance.AddComponent<PlayerUnit>();
+            instance.GetComponent<Rigidbody2D>().simulated = false;
+            var serialized = new SerializedObject(player);
+            serialized.FindProperty("definition").objectReferenceValue = definition;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            LogAssert.Expect(LogType.Error, "Player tuning is missing.");
+            instance.SetActive(true);
+            Assert.That(player.enabled, Is.False);
+            Assert.That(player.Motor, Is.Null);
+
+            player.enabled = true;
+            Assert.That(player.enabled, Is.False, "Failed initialization must block component reactivation.");
+            yield return null;
+            yield return null;
+            Assert.That(player.Fsm, Is.Null);
+
+            instance.SetActive(false);
+            player.enabled = true;
+            instance.SetActive(true);
+            Assert.That(player.enabled, Is.False, "Failed initialization must also block GameObject reactivation.");
+            yield return null;
+            yield return null;
+            Assert.That(player.Motor, Is.Null);
+            Assert.That(player.Fsm, Is.Null);
+            LogAssert.NoUnexpectedReceived();
         }
 
         [TestCase(UnitKind.Player)]

@@ -30,11 +30,14 @@ Unity animation clips and controller in `Assets/_Game/Animations/Player` are pro
 - Original archive: `Kings and Pigs.zip`, 285,652 bytes.
 - Archive SHA-256: `4D61A9C48D5EB1EC5EF5585359D3800205349AF813AF67030A719BFD6371D373`.
 
-Only the Pig's idle and run PNG sheets were imported. Image pixels are unchanged; filenames were shortened and Unity slicing/import metadata was added.
+The Pig's idle, run, attack, hit and death PNG sheets were imported. Attack, Hit and Dead were added on 2026-09-16 from the same locally retained archive. Image pixels are unchanged; filenames were shortened and Unity slicing/import metadata was added.
 
 | Source path inside archive | Project path |
 |---|---|
 | `Sprites/03-Pig/Idle (34x28).png` | `Assets/_Game/Art/Characters/Pig/Idle.png` |
 | `Sprites/03-Pig/Run (34x28).png` | `Assets/_Game/Art/Characters/Pig/Run.png` |
+| `Sprites/03-Pig/Attack (34x28).png` | `Assets/_Game/Art/Characters/Pig/Attack.png` |
+| `Sprites/03-Pig/Hit (34x28).png` | `Assets/_Game/Art/Characters/Pig/Hit.png` |
+| `Sprites/03-Pig/Dead (34x28).png` | `Assets/_Game/Art/Characters/Pig/Dead.png` |
 
-Each frame is 34×28 pixels. Idle has 11 frames and Run has 6. Animation clips and controller in `Assets/_Game/Animations/Enemies/PatrolEnemy` are project-authored integration data and use the creator's stated **10 FPS**. Other pack content is not imported.
+Each frame is 34×28 pixels. Idle has 11 frames, Run 6, Attack 5, Hit 2 and Dead 4. Animation clips and controller in `Assets/_Game/Animations/Enemies/PatrolEnemy` are project-authored integration data authored at **10 FPS**. Combat clips are sampled according to the FSM's configured timings; Idle/Run retain native timing. Other pack content is not imported.

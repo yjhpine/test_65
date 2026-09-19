@@ -16,8 +16,8 @@ MonoBehaviour:
   groundAcceleration: 125
   groundBraking: 110
   airAcceleration: 45
-  jumpHeight: 3.2
-  riseGravity: 32
+  jumpHeight: 4
+  riseGravity: 48
   fallGravity: 55
   maxFallSpeed: 28
   jumpCutMultiplier: 0.45

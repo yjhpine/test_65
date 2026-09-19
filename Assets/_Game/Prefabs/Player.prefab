@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 9155731289412314395}
   - component: {fileID: 7217237534331741109}
   - component: {fileID: 7290577179776929193}
+  - component: {fileID: 7893143814522968852}
   m_Layer: 2
   m_Name: Player
   m_TagString: Untagged
@@ -148,6 +149,19 @@ MonoBehaviour:
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
+--- !u!114 &7893143814522968852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4230064853450673027}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 019b6dc34cd2c8f42b28945ec31d005f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitHealth
+  deactivateOnDeath: 1
 --- !u!1 &8617979365921098960
 GameObject:
   m_ObjectHideFlags: 0

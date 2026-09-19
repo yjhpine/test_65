@@ -21,13 +21,14 @@ namespace ActionPlatformer.Player
 
         public CharacterMotor2D Motor { get; private set; }
 
-        protected override void OnUnitAwake()
+        protected override bool TryInitializeUnit()
         {
-            if (tuning == null) { Debug.LogError("Player tuning is missing.", this); enabled = false; return; }
+            if (tuning == null) { Debug.LogError("Player tuning is missing.", this); return false; }
             Motor = new CharacterMotor2D(GetComponent<Rigidbody2D>(), GetComponent<CapsuleCollider2D>(), tuning, groundMask);
             inputReader = new PlayerInputReader(GetComponent<PlayerInput>());
             input = inputReader;
             if (visual != null) visual.Initialize(Motor);
+            return true;
         }
 
         public void SetInputSource(IPlayerInputSource source) => input = source ?? inputReader;

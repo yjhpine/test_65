@@ -1,5 +1,48 @@
 # Movement Lab 검증 기록
 
+## FSM 상태 애니메이션 연결
+
+2026-09-16, Unity 6000.3.23f1 / Windows Editor.
+
+- Pig 원본 ZIP의 Attack 5프레임·Hit 2프레임·Dead 4프레임을 추가. 보관된 ZIP SHA-256이 ThirdPartyNotices의 기존 값과 일치함을 확인. 34×28, 16 PPU, Point, 무압축, 기존 피벗 유지.
+- 선택적 IUnitAnimationState 계약으로 FSM의 동작·반복 번호·시간·방향을 UnitVisual2D가 읽게 연결. 실제 매 공격·재피격 때 재시작, 공격 타격 프레임은 선딜레이와 동기화, Hit/Death는 경직/사망 시간에 맞춰 샘플링. 피해·전환 판단은 기존 FSM이 유지.
+- PatrolEnemy.controller에 ActionTime Float과 비반복 Attack/Hit/Death를 추가. 기존 Moving, Idle/Run 및 참조 GUID 유지. 프리팹 Visual의 State Source를 루트 Unit에 연결.
+- Unity 컴파일 성공(errors=[]). 첫 신규 애니메이션 검사 포함 실행은 11/12 통과. 피격 검사에서 FSM Update·Visual LateUpdate·Animator 평가 전에 결과를 읽는 타이밍을 수정해, 고정 두 프레임 대신 제한 시간 내 실제 표시 상태를 확인하도록 보완.
+- 최종 전체 Play Mode **37/37 통과**, 40.61초, 14:59:07 KST 종료. 연속 Attack 재생·대기 중 Idle·정지 공격 방향, Hit 중단/재피격/비활성화 복귀, 사망 4프레임 후 비활성화와 기존 이동·점프·입력·순찰·NPC 외형 검사를 확인.
+- 프리팹 Missing Script 0개, State Source 연결 정상, Root Motion 꺼짐. 새 클립 길이 Attack 0.5초 / Hit 0.2초 / Death 0.4초이며 모두 비반복·Sprite 전용 바인딩. 실제 재생 시간은 FSM 수치와 Visual 후속 동작 설정을 따름. 신규 meta 누락 0개.
+- 테스트 도구 요청 지연과 재시도 중 테스트 실행 충돌로 중단 로그가 발생했음. 최종 단일 전체 실행에서는 모두 통과했으며 새 오류는 의도된 PlayerTuning·UnitDefinition 누락 검사 각 1건뿐. 과거 중단 로그를 최종 런타임 오류와 구별한다.
+- 최종 Play Mode 정지, MovementLab 미저장 변경 없음. 씬·입력·플레이어 외형·프로젝트 설정 변경 없음. 적 프리팹을 선택해 둠.
+- 결과: `Library/PrototypeValidation/PlayMode.xml`, 복사본 `AnimationPlayMode.xml`. 이번 애니메이션 변경에서 Edit Mode 재실행·실행 파일 빌드·성능 벤치마크는 수행하지 않음. 사용 가이드·출처 문서·Git 제외 AGENTS.md 갱신.
+
+## 지상 유닛 FSM 전투 상태 추가
+
+2026-09-16, Unity 6000.3.23f1 / Windows Editor.
+
+- GroundUnitFsmDefinition에 순찰·추적·공격·피격·사망과 Inspector 전환 수치 추가. 이전 PatrolFsmDefinition의 스크립트 GUID와 PatrolEnemyFsm 에셋 연결을 유지.
+- UnitHealth·UnitCombat2D를 기능 컴포넌트로 추가. 적 프리팹에는 두 기능, 플레이어에는 UnitHealth를 연결. 기존 Unit/FsmRuntime과 입력·모터·이동 수치는 이번 작업에서 변경하지 않음.
+- Unity MCP 최종 컴파일 성공(errors=[]). Editor 어셈블리의 Runtime 참조 누락으로 발생했던 초기 컴파일 오류는 asmdef 참조 추가로 해결.
+- 신규 검사 첫 실행은 테스트의 Rigidbody 위치 변경 직후 Transform을 읽는 시점 문제로 3/9 통과. 테스트 위치를 Transform으로 지정하고 Physics2D.SyncTransforms를 호출하도록 수정한 뒤 **9/9 통과**. 해당 수정은 테스트에만 적용.
+- 전체 Play Mode **34/34 통과**, 14:39:12~14:39:50 KST, 37.41초. 새 검사 9개와 기존 이동·점프·입력·순찰·애니메이션·Unit 초기화 검사 25개 포함.
+- Edit Mode **16/16 통과**, 14:40:07 KST, 0.014초. 기존 FSM 실행기와 이동 계산 검사 포함.
+- 새 검사는 실제 물리 추적·타깃 유지/해제, 공격 선딜레이/재사용 대기시간, 사거리 이탈·벽 차단, 피격 시 공격 취소·추가 피해의 경직 초기화, 사망 우선순위·지연·0초 비활성화, 개체별 체력과 재활성화 시 부활 방지, 잘못된 전환 수치를 확인.
+- 플레이어·적 프리팹 Missing Script 0개. 정의·체력·충돌체·Sprite·Animator 연결 정상, Root Motion 꺼짐. 적은 사망 지연 사용, 플레이어는 체력 0에서 즉시 비활성화 설정 확인. _Game 신규 파일의 meta 누락 0개.
+- 최종 Console의 이번 전체 실행 오류는 의도적으로 검사하는 PlayerTuning·UnitDefinition 누락 각 1건뿐. 초기 컴파일 오류와 이전 도구 경고는 기록에 남아 있으나 최종 검사에서 새로운 예외는 없음.
+- 최종 Editor ready, Play Mode 정지, 컴파일/도메인 리로드 없음. MovementLab 미저장 변경 없음. FSM 설정 에셋을 Inspector에 선택해 둠.
+- MCP 요청 1회가 응답 대기하여 상태 확인 후 재시도. 최종 실행 결과 XML을 `Library/PrototypeValidation/CombatPlayMode.xml`, `CombatEditMode.xml`에 복사 보관. MCP 직접 실행의 `Tests.xml`은 마지막 실행 결과로 덮어써지므로 파일별 결과를 구별한다.
+- 새 공격·피격·사망 애니메이션, 플레이어 공격 입력, 회복/부활, 실행 파일 빌드·성능 벤치마크는 포함하지 않음. 사용 가이드와 Git 제외된 AGENTS.md 갱신.
+
+## Unit 초기화 실패 후 재활성화 차단 수정
+
+2026-09-16, Unity 6000.3.23f1 / Windows Editor.
+
+- 기존 코드에서 PlayerTuning 누락으로 파생 초기화가 중단돼도 Unit이 initialized=true로 기록하는 문제를 회귀 테스트로 재현. 컴포넌트를 다시 활성화했을 때 enabled=false 기대와 달리 true가 되어 신규 검사 1개 실패 확인.
+- 초기화 훅을 bool TryInitializeUnit으로 변경. 성공했을 때만 초기화 완료로 표시하며 false면 Unit이 비활성화. PlayerUnit은 설정 누락 시 오류를 남기고 false 반환, 모터·입력·외형 연결 완료 시 true 반환.
+- 같은 개체에서 초기화 재시도 없이 컴포넌트·GameObject 재활성화를 모두 차단. 신규 테스트에서 Motor·FSM 미생성 유지와 예상 밖 로그 없음 확인.
+- Unity MCP 컴파일 성공(errors=[]). Play Mode **25/25 통과**, MCP 보고 실행 시간 37.01초. 기존 입력·이동·점프·순찰·애니메이션·정상 Unit 재활성화 검사 포함.
+- 최종 에디터 ready, Play Mode 정지, 컴파일·도메인 리로드 없음. Console에서 재현 실행의 예상 Tuning 누락 1건, 수정 후 전체 실행의 예상 Tuning·Definition 누락 각 1건 확인. 예상 밖 오류 없음.
+- 결과는 이번 MCP 직접 실행의 `Library/PrototypeValidation/Tests.xml`에 기록. 과거 PlayMode.xml 결과와 구별한다. Edit Mode 재실행·빌드는 포함하지 않음.
+- 사용 가이드와 로컬 AGENTS.md의 초기화 계약 갱신. Inspector 의존성 검증·유닛 전체 정지 규약 등 나머지 구조 보완점은 이번 범위에 포함하지 않음.
+
 ## 적·NPC 공용 이동·외형 컴포넌트로 정리한 후 결과
 
 2026-09-13, Unity 6000.3.23f1 / Windows Editor.

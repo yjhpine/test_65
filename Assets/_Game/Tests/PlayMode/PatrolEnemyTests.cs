@@ -52,7 +52,7 @@ namespace ActionPlatformer.Tests
             Assert.That(first.Kind, Is.EqualTo(UnitKind.Monster));
             Assert.That(first.Definition.UnitId, Is.EqualTo("enemy.patrol"));
             Assert.That(first.Definition, Is.SameAs(second.Definition));
-            Assert.That(first.Definition.Fsm, Is.TypeOf<PatrolFsmDefinition>());
+            Assert.That(first.Definition.Fsm, Is.TypeOf<GroundUnitFsmDefinition>());
             Assert.That(first.Fsm, Is.Not.SameAs(second.Fsm));
             Assert.That(first.Fsm.CurrentState, Is.Not.SameAs(second.Fsm.CurrentState));
             var initial = first.Fsm.CurrentState;

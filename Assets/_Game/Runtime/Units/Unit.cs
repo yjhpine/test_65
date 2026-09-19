@@ -28,8 +28,8 @@ namespace ActionPlatformer.Units
                 enabled = false;
                 return;
             }
-            OnUnitAwake();
-            initialized = true;
+            initialized = TryInitializeUnit();
+            if (!initialized) enabled = false;
         }
 
         private void Start()
@@ -65,7 +65,8 @@ namespace ActionPlatformer.Units
         }
 
         // Override these hooks instead of hiding the Unit lifecycle messages.
-        protected virtual void OnUnitAwake() { }
+        // A failed initialization remains disabled, including later reactivation attempts.
+        protected virtual bool TryInitializeUnit() => true;
         protected virtual void OnUnitUpdate() { }
         protected virtual void OnUnitDisabled() { }
     }

@@ -47,6 +47,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitVisual2D
   body: {fileID: 7255586165507574811}
+  stateSource: {fileID: 2757364254907347069}
+  attackImpactNormalizedTime: 0.4
+  attackRecoveryDuration: 0.3
   spriteFacesRight: 0
 --- !u!212 &5310154408156685181
 SpriteRenderer:
@@ -142,6 +145,8 @@ GameObject:
   - component: {fileID: 7255586165507574811}
   - component: {fileID: 545878313666318008}
   - component: {fileID: 5539286723753985017}
+  - component: {fileID: 6693532166446117632}
+  - component: {fileID: 7589714538130753928}
   m_Layer: 2
   m_Name: PatrolEnemy
   m_TagString: Untagged
@@ -270,3 +275,34 @@ MonoBehaviour:
   stopAtLedges: 1
   arrivalTolerance: 0.02
   groundProbeDistance: 0.3
+--- !u!114 &6693532166446117632
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8077634514357657763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 019b6dc34cd2c8f42b28945ec31d005f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitHealth
+  deactivateOnDeath: 0
+--- !u!114 &7589714538130753928
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8077634514357657763}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0cb47eb27b42cd0498b29436de66ff4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitCombat2D
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 1

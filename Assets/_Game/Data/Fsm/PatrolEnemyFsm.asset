@@ -11,7 +11,17 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 83ae2da28481fe547896970bfe0705c6, type: 3}
   m_Name: PatrolEnemyFsm
-  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Fsm.PatrolFsmDefinition
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Fsm.GroundUnitFsmDefinition
   moveSpeed: 2
   patrolDistance: 3
   waitDuration: 0.6
+  targetKind: 1
+  detectionRange: 6
+  loseTargetRange: 8
+  chaseSpeed: 3
+  targetRefreshInterval: 0.15
+  attackRange: 1.2
+  attackWindup: 0.2
+  attackInterval: 1
+  hitStunDuration: 0.25
+  deathDelay: 0.8
