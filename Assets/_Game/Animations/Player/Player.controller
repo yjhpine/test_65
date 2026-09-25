@@ -106,6 +106,12 @@ AnimatorStateMachine:
   - serializedVersion: 1
     m_State: {fileID: -7937051740102601910}
     m_Position: {x: 685, y: 955, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 5421393083954609200}
+    m_Position: {x: 720, y: 1020, z: 0}
+  - serializedVersion: 1
+    m_State: {fileID: 4515253556439663308}
+    m_Position: {x: 755, y: 1085, z: 0}
   m_ChildStateMachines: []
   m_AnyStateTransitions:
   - {fileID: -95595694808712680}
@@ -473,6 +479,58 @@ AnimatorState:
   m_MirrorParameter:
   m_CycleOffsetParameter:
   m_TimeParameter:
+--- !u!1102 &4515253556439663308
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Die
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 1
+  m_Motion: {fileID: 7400000, guid: 98b6f66a542178745828f95f77999395, type: 2}
+  m_Tag:
+  m_SpeedParameter:
+  m_MirrorParameter:
+  m_CycleOffsetParameter:
+  m_TimeParameter: ActionTime
+--- !u!1102 &5421393083954609200
+AnimatorState:
+  serializedVersion: 6
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Hit
+  m_Speed: 1
+  m_CycleOffset: 0
+  m_Transitions: []
+  m_StateMachineBehaviours: []
+  m_Position: {x: 50, y: 50, z: 0}
+  m_IKOnFeet: 0
+  m_WriteDefaultValues: 0
+  m_Mirror: 0
+  m_SpeedParameterActive: 0
+  m_MirrorParameterActive: 0
+  m_CycleOffsetParameterActive: 0
+  m_TimeParameterActive: 1
+  m_Motion: {fileID: 7400000, guid: 507933d5f01368d448ddfc16acfe3f61, type: 2}
+  m_Tag:
+  m_SpeedParameter:
+  m_MirrorParameter:
+  m_CycleOffsetParameter:
+  m_TimeParameter: ActionTime
 --- !u!1102 &5528172825872637897
 AnimatorState:
   serializedVersion: 6

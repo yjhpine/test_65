@@ -15,8 +15,8 @@ MonoBehaviour:
   unitId: enemy.patrol
   displayName: "\uC21C\uCC30\uBCD1"
   kind: 2
-  maxHealth: 30
+  maxHealth: 1000
   attackPower: 5
+  fsm: {fileID: 11400000, guid: 0884d07fa748e01458040b3450f2c0b8, type: 2}
   allowGlitchTarget: 1
   allowForcedMovement: 1
-  fsm: {fileID: 11400000, guid: 0884d07fa748e01458040b3450f2c0b8, type: 2}

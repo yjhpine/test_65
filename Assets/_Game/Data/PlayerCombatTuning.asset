@@ -17,15 +17,18 @@ MonoBehaviour:
   enableHitReactions: 1
   comboLength: 3
   retainComboOnTargetChange: 1
-  windup: 0.12
-  activeDuration: 0.06
-  recovery: 0.18
+  windup: 0.006
+  activeDuration: 0.1
+  recovery: 0.08
   comboWindow: 1
   reach: 1.2
   width: 1.6
-  knockbackSpeed: 6
+  lightKnockbackSpeed: 3
+  lightKnockbackDeceleration: 30
+  knockbackSpeed: 12
+  knockbackDeceleration: 18
   launchSpeed: 20
-  slamHoverDuration: 0.5
+  slamHoverDuration: 0
   slamSpeed: 28
   slamKnockdownSpeed: 36
   shockwaveRadius: 2
@@ -34,6 +37,15 @@ MonoBehaviour:
   emergenceSpeed: 25
   forcedDuration: 0.35
   hitStun: 0.25
+  attackBufferTime: 0.1
+  hitStopDuration: 0.035
+  heavyHitStopDuration: 0.055
+  slamHitStopDuration: 0.08
+  shakeAmplitude: 0.025
+  heavyShakeAmplitude: 0.075
+  slamShakeAmplitude: 0.14
+  shakeDuration: 0.14
+  shakeFrequency: 22
   targetMask:
     serializedVersion: 2
     m_Bits: 4

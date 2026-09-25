@@ -118,5 +118,61 @@ namespace ActionPlatformer.Player
             destination = candidate;
             return true;
         }
+
+        // Only used on an emergence request. The per-step marker check stays a single space query.
+        // Sample equally outwards, then refine the first free boundary below 0.001 world units.
+        public static bool TryNearestEmergence(CapsuleCollider2D player, Vector2 root, BoxCollider2D floor,
+            Vector2 logical, float preferredDirection, GlitchTuning tuning, List<Collider2D> overlaps, out Vector2 destination)
+        {
+            if (TryEmergence(player, root, floor, logical, tuning, overlaps, out destination)) return true;
+            if (floor == null || !floor.enabled || !floor.gameObject.activeInHierarchy) return false;
+            float minX = floor.bounds.min.x + player.bounds.extents.x;
+            float maxX = floor.bounds.max.x - player.bounds.extents.x;
+            if (minX > maxX) return false;
+            float origin = Mathf.Clamp(logical.x, minX, maxX);
+            logical.x = origin;
+            if (TryEmergence(player, root, floor, logical, tuning, overlaps, out destination)) return true;
+            const float step = 0.05f;
+            float range = Mathf.Max(origin - minX, maxX - origin);
+            float previousLeft = origin, previousRight = origin;
+            int count = Mathf.CeilToInt(range / step);
+            for (int i = 1; i <= count; i++)
+            {
+                float left = Mathf.Max(minX, origin - i * step);
+                float right = Mathf.Min(maxX, origin + i * step);
+                Vector2 leftPoint = default, rightPoint = default;
+                bool leftFree = left < previousLeft && TryEmergence(player, root, floor,
+                    new Vector2(left, logical.y), tuning, overlaps, out leftPoint);
+                bool rightFree = right > previousRight && TryEmergence(player, root, floor,
+                    new Vector2(right, logical.y), tuning, overlaps, out rightPoint);
+                if (leftFree || rightFree)
+                {
+                    if (leftFree) leftPoint = RefineEmergence(player, root, floor, logical.y, previousLeft, left, tuning, overlaps, leftPoint);
+                    if (rightFree) rightPoint = RefineEmergence(player, root, floor, logical.y, previousRight, right, tuning, overlaps, rightPoint);
+                    float offsetX = player.bounds.center.x - root.x;
+                    float leftDistance = Mathf.Abs(leftPoint.x + offsetX - origin);
+                    float rightDistance = Mathf.Abs(rightPoint.x + offsetX - origin);
+                    bool chooseLeft = leftFree && (!rightFree ||
+                        (Mathf.Abs(leftDistance - rightDistance) <= 0.001f ? preferredDirection < 0f : leftDistance < rightDistance));
+                    destination = chooseLeft ? leftPoint : rightPoint;
+                    return true;
+                }
+                previousLeft = left; previousRight = right;
+            }
+            return false;
+        }
+
+        private static Vector2 RefineEmergence(CapsuleCollider2D player, Vector2 root, BoxCollider2D floor,
+            float y, float blocked, float free, GlitchTuning tuning, List<Collider2D> overlaps, Vector2 result)
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                float middle = (blocked + free) * 0.5f;
+                if (TryEmergence(player, root, floor, new Vector2(middle, y), tuning, overlaps, out var candidate))
+                { free = middle; result = candidate; }
+                else blocked = middle;
+            }
+            return result;
+        }
     }
 }

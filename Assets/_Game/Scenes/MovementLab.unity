@@ -271,7 +271,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8077634514357657763, guid: 6c6c86206e32d784a9f56dcf4255321e, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8537169188346644833, guid: 6c6c86206e32d784a9f56dcf4255321e, type: 3}
       propertyPath: m_LocalPosition.x
@@ -329,6 +329,10 @@ PrefabInstance:
     - target: {fileID: 3747543018492594619, guid: fb13278c9f6462b4aae240b402736343, type: 3}
       propertyPath: m_Name
       value: TrainingDummy
+      objectReference: {fileID: 0}
+    - target: {fileID: 3747543018492594619, guid: fb13278c9f6462b4aae240b402736343, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5464728857871284480, guid: fb13278c9f6462b4aae240b402736343, type: 3}
       propertyPath: m_LocalPosition.x

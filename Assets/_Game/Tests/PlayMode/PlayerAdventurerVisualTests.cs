@@ -18,11 +18,13 @@ namespace ActionPlatformer.Tests
             public bool IsGrounded { get; set; } = true;
             public GlitchPreview GlitchPreview => default;
             public bool IsUnderground { get; set; }
+            public bool CanEmerge { get; set; } = true;
             public Vector2 UndergroundPosition => Vector2.down;
             public Vector2 GroundMarkerPosition => Vector2.zero;
             public float Facing { get; set; } = 1f;
             public PlayerAttackPhase AttackPhase { get; set; }
             public PlayerAttackPresentation AttackPresentation { get; set; }
+            public PlayerReactionPresentation ReactionPresentation { get; set; }
             public Bounds AttackBounds => new Bounds(Vector3.right, Vector3.one);
             public PlayerShockwave Shockwave => default;
         }
@@ -115,6 +117,57 @@ namespace ActionPlatformer.Tests
             Assert.That(animator.GetBool("ActionOverride"), Is.False);
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Idle"), Is.True);
             Assert.That(visual.GetComponent<SpriteRenderer>().enabled, Is.True);
+        }
+
+        [UnityTest] public IEnumerator HitAndDieFramesOverrideAttacksAndResetCleanly()
+        {
+            var state = new State(); var visual = Visual(state);
+            Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Active);
+            foreach (var kind in new[] { PlayerReaction.Hit, PlayerReaction.Die })
+            {
+                int count = kind == PlayerReaction.Hit ? 3 : 7;
+                string prefix = kind == PlayerReaction.Hit ? "hurt" : "die";
+                for (int i = 0; i < count; i++)
+                {
+                    state.ReactionPresentation = new PlayerReactionPresentation { Kind = kind, Version = 1,
+                        Progress = (i + .1f) / count };
+                    yield return RenderFrame();
+                    AssertFrame(visual, kind.ToString(), prefix + "-" + i.ToString("00"));
+                }
+            }
+            visual.gameObject.SetActive(false);
+            state.ReactionPresentation = default; state.AttackPhase = PlayerAttackPhase.Ready;
+            visual.gameObject.SetActive(true); yield return RenderFrame();
+            Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Idle"), Is.True);
+            Assert.That(visual.GetComponent<Animator>().GetBool("ActionOverride"), Is.False);
+        }
+
+        [UnityTest] public IEnumerator CapturePlayerHitAndDieFrames()
+        {
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) Assert.Ignore("Graphics device required.");
+            for (int i=0; i<10; i++)
+            {
+                bool hit = i < 3; int frame = hit ? i : i-3;
+                var state = new State { ReactionPresentation = new PlayerReactionPresentation {
+                    Kind = hit ? PlayerReaction.Hit : PlayerReaction.Die, Version = 1,
+                    Progress = (frame + .1f) / (hit ? 3f : 7f) } };
+                Visual(state,new Vector3(frame*2.1f-6.3f,hit?103f:100f,0f));
+            }
+            yield return RenderFrame();
+            var go = new GameObject("Reaction capture camera"); created.Add(go);
+            var camera = go.AddComponent<Camera>(); camera.enabled=false; camera.orthographic=true;
+            camera.orthographicSize=3.7f; camera.transform.position=new Vector3(0f,102f,-10f);
+            camera.clearFlags=CameraClearFlags.SolidColor; camera.backgroundColor=new Color(.08f,.1f,.15f);
+            var target=new RenderTexture(1400,640,24); var texture=new Texture2D(1400,640,TextureFormat.RGB24,false);
+            created.Add(target); created.Add(texture); var previous=RenderTexture.active;
+            try
+            {
+                camera.targetTexture=target; camera.Render(); RenderTexture.active=target;
+                texture.ReadPixels(new Rect(0,0,1400,640),0,0); texture.Apply();
+                System.IO.Directory.CreateDirectory("Library/PrototypeValidation");
+                System.IO.File.WriteAllBytes("Library/PrototypeValidation/PlayerReactions.png",texture.EncodeToPNG());
+            }
+            finally { RenderTexture.active=previous; camera.targetTexture=null; target.Release(); }
         }
 
         [UnityTest] public IEnumerator CaptureAdventurerAttackPresentation()

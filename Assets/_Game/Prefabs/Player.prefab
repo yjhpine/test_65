@@ -121,6 +121,7 @@ MonoBehaviour:
   visual: {fileID: 4686364939294004042}
   glitchTuning: {fileID: 11400000, guid: 02b1c065fba76494e9afafc4082aec86, type: 2}
   combatTuning: {fileID: 11400000, guid: 61f6a7c237e4f4f4ca4b50e440146d1a, type: 2}
+  deathDuration: 0.7
   aimCamera: {fileID: 0}
 --- !u!114 &7290577179776929193
 MonoBehaviour:
@@ -164,7 +165,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 019b6dc34cd2c8f42b28945ec31d005f, type: 3}
   m_Name:
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitHealth
-  deactivateOnDeath: 1
+  deactivateOnDeath: 0
   preserveHealthOnDamage: 0
 --- !u!1 &8617979365921098960
 GameObject:

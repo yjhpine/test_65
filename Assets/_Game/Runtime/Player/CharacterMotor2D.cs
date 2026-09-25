@@ -79,6 +79,11 @@ namespace ActionPlatformer.Player
             IsGrounded = false;
         }
 
+        public void StopHorizontal()
+        {
+            body.linearVelocity = new Vector2(0f, Velocity.y);
+        }
+
         public void SetVerticalVelocity(float velocity)
         {
             body.linearVelocity = new Vector2(Velocity.x, velocity);

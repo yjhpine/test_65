@@ -18,7 +18,9 @@ namespace ActionPlatformer.Player
         private bool previousDamageEnabled;
         private double nextUseAt;
         private double undergroundEndsAt;
+        private float emergenceSearchDirection;
         public bool IsUnderground { get; private set; }
+        public bool CanEmerge { get; private set; }
         public UnitHealth ArrivalTarget { get; private set; }
         public Vector2 UndergroundPosition { get; private set; }
         public Vector2 GroundMarkerPosition { get; private set; }
@@ -74,10 +76,12 @@ namespace ActionPlatformer.Player
                 floor = support;
                 GroundMarkerPosition = preview.Bounds.center;
                 UndergroundPosition = preview.Destination;
+                emergenceSearchDirection = body.bounds.center.x < GroundMarkerPosition.x ? -1f : 1f;
                 previousDamageEnabled = health.DamageEnabled;
                 health.SetDamageEnabled(false);
                 motor.Hold();
                 IsUnderground = true;
+                CanEmerge = true;
                 undergroundEndsAt = now + tuning.UndergroundDuration;
             }
             ArrivalTarget = request.Target;
@@ -93,16 +97,44 @@ namespace ActionPlatformer.Player
                 CancelUnderground();
         }
 
+        public void MoveUnderground(float horizontal, float deltaTime)
+        {
+            if (!IsUnderground || floor == null) return;
+            float minX = floor.bounds.min.x + body.bounds.extents.x;
+            float maxX = floor.bounds.max.x - body.bounds.extents.x;
+            if (minX <= maxX && deltaTime > 0f && !float.IsInfinity(deltaTime) &&
+                !float.IsNaN(horizontal) && !float.IsInfinity(horizontal))
+            {
+                float x = Mathf.Clamp(GroundMarkerPosition.x + Mathf.Clamp(horizontal, -1f, 1f) *
+                    tuning.UndergroundMoveSpeed * deltaTime, minX, maxX);
+                if (Mathf.Abs(x - GroundMarkerPosition.x) > 0.0001f)
+                    emergenceSearchDirection = Mathf.Sign(x - GroundMarkerPosition.x);
+                GroundMarkerPosition = new Vector2(x, GroundMarkerPosition.y);
+                UndergroundPosition = new Vector2(x, UndergroundPosition.y);
+            }
+            CanEmerge = TryGetEmergencePoint(out _);
+        }
+
+        private bool TryGetEmergencePoint(out Vector2 destination, bool searchNearby = false)
+        {
+            destination = default;
+            if (!IsUnderground || !GlitchUtility.ValidTarget(owner, ArrivalTarget, motor.Position, tuning, hits)) return false;
+            var target = UnitPhysics2D.Body(ArrivalTarget).bounds;
+            if (!GlitchUtility.TryFloor(target, tuning.ObstacleMask, hits, out var currentFloor) || currentFloor != floor) return false;
+            return searchNearby
+                ? GlitchUtility.TryNearestEmergence(body, motor.Position, floor, UndergroundPosition, emergenceSearchDirection, tuning, overlaps, out destination)
+                : GlitchUtility.TryEmergence(body, motor.Position, floor, UndergroundPosition, tuning, overlaps, out destination);
+        }
+
         public bool TryEmerge()
         {
             if (!IsUnderground) return false;
-            bool valid = GlitchUtility.ValidTarget(owner, ArrivalTarget, motor.Position, tuning, hits);
-            Vector2 destination = default;
+            bool valid = TryGetEmergencePoint(out var destination, true);
             if (valid)
             {
-                var target = UnitPhysics2D.Body(ArrivalTarget).bounds;
-                valid = GlitchUtility.TryFloor(target, tuning.ObstacleMask, hits, out var currentFloor) && currentFloor == floor &&
-                    GlitchUtility.TryEmergence(body, motor.Position, floor, UndergroundPosition, tuning, overlaps, out destination);
+                float x = destination.x + body.bounds.center.x - motor.Position.x;
+                GroundMarkerPosition = new Vector2(x, GroundMarkerPosition.y);
+                UndergroundPosition = new Vector2(x, UndergroundPosition.y);
             }
             EndUnderground();
             if (!valid) { ArrivalTarget = null; return false; }
@@ -116,6 +148,7 @@ namespace ActionPlatformer.Player
         {
             if (!IsUnderground) return;
             IsUnderground = false;
+            CanEmerge = false;
             floor = null;
             motor.Release();
             health.SetDamageEnabled(previousDamageEnabled);

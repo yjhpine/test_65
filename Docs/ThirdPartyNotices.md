@@ -49,7 +49,7 @@ Each frame is 34×28 pixels. Idle has 11 frames, Run 6, Attack 5, Hit 2 and Dead
 - Original archive: `Adventurer-1.5.zip`, **204,405 bytes**.
 - Archive SHA-256: `0BF3F9253FCF77F6BF23AF2EBB83C7776490414223B3E37AE798D6135E134A7C`.
 - The creator permits personal/commercial use and modification; credit is optional. The asset may not be resold or redistributed as a standalone asset. This is the creator's custom license, not CC0.
-- Imported from `Individual Sprites/` into `Assets/_Game/Art/Characters/Adventurer/`, retaining filenames and original PNG bytes: `adventurer-idle-2-*`, `adventurer-run-*`, `adventurer-jump-*`, `adventurer-fall-*`, `adventurer-attack*`, `adventurer-air-attack*`.
+- Imported from `Individual Sprites/` into `Assets/_Game/Art/Characters/Adventurer/`, retaining filenames and original PNG bytes: `adventurer-idle-2-*`, `adventurer-run-*`, `adventurer-jump-*`, `adventurer-fall-*`, `adventurer-attack*`, `adventurer-air-attack*`, `adventurer-hurt-*`, `adventurer-die-*`.
 - Unity import: 50×37 pixels, Single Sprite, 18 PPU, Point filtering, uncompressed, no mipmaps, pivot `(25/50, 1/37)`. Physics dimensions and the Visual's existing foot position are preserved.
 - Project-authored clips and Animator integration are in `Assets/_Game/Animations/Player`. Ground attack 1/2/3 use their corresponding source frames. Ordinary air combo uses air-attack1, air-attack2, then air-attack1 again; air-attack3 is reserved for the slam's ready/loop/end sequence. Lift and emergence reuse the upward ground attack1 swing.
 - Attack clips sample preparation, impact and recovery according to combat's phase progress. This retiming is integration metadata; original image pixels are unchanged. The original archive and unused art are not included in Assets.

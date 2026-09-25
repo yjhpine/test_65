@@ -30,6 +30,10 @@ namespace ActionPlatformer.Tests
             var definition = Object.Instantiate(AssetDatabase.LoadAssetAtPath<UnitDefinition>(
                 "Assets/_Game/Data/Units/PatrolEnemyDefinition.asset"));
             created.Add(definition);
+            // Health assertions in this fixture use a 30 HP enemy, independently of live balancing.
+            var definitionData = new SerializedObject(definition);
+            definitionData.FindProperty("maxHealth").intValue = 30;
+            definitionData.ApplyModifiedPropertiesWithoutUndo();
             Assign(definition, "fsm", settings);
             var parent = new GameObject("Inactive combat test setup");
             parent.SetActive(false);

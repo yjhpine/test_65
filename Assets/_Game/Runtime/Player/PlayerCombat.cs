@@ -5,6 +5,16 @@ using UnityEngine;
 
 namespace ActionPlatformer.Player
 {
+    public enum PlayerImpactStrength { Normal, Heavy, Slam }
+
+    public readonly struct PlayerImpact
+    {
+        public readonly Vector2 Direction;
+        public readonly PlayerImpactStrength Strength;
+        public PlayerImpact(Vector2 direction, PlayerImpactStrength strength)
+        { Direction = direction; Strength = strength; }
+    }
+
     public sealed class PlayerCombat
     {
         private readonly Unit owner;
@@ -29,6 +39,11 @@ namespace ActionPlatformer.Player
         private Vector2 shockwaveCenter;
         private double shockwaveStartedAt = double.NegativeInfinity;
         private bool slamReady;
+        private bool bufferedAttack;
+        private bool hasImpact;
+        private int emittedImpactStages;
+        private PlayerImpact pendingImpact;
+        public bool HasBufferedAttack => bufferedAttack;
         public int Strike => combo.Strike;
         public PlayerAttack Attack => selection.Kind;
         public PlayerAttackPhase Phase { get; private set; }
@@ -41,6 +56,29 @@ namespace ActionPlatformer.Player
         public bool CanReposition(double now) => now >= stunnedUntil &&
             (Phase == PlayerAttackPhase.Ready || Phase == PlayerAttackPhase.Recovery);
         public bool CanAttack(double now) => now >= stunnedUntil && Phase == PlayerAttackPhase.Ready;
+
+        public bool BufferAttack(double pressedAt)
+        {
+            if (Phase != PlayerAttackPhase.Recovery || tuning.AttackBufferTime <= 0f ||
+                pressedAt < phaseEndsAt - tuning.AttackBufferTime || pressedAt < phaseStartedAt) return false;
+            bufferedAttack = true;
+            return true;
+        }
+
+        public bool ConsumeBufferedAttack(double now)
+        {
+            if (!bufferedAttack || !CanAttack(now)) return false;
+            bufferedAttack = false;
+            return true;
+        }
+
+        public bool ConsumeImpact(out PlayerImpact impact)
+        {
+            impact = pendingImpact;
+            if (!hasImpact) return false;
+            hasImpact = false;
+            return true;
+        }
 
         // The coordinator supplies arrival facts; combat owns the one-use follow-up state.
         public void ObserveArrival(bool aboveTarget) => slamReady = aboveTarget;
@@ -65,6 +103,8 @@ namespace ActionPlatformer.Player
             else selection = attackSelector?.Select(body.bounds, target, facing, emergence) ?? forward;
             if (Attack == PlayerAttack.Slam) slamReady = false;
             hit.Clear();
+            bufferedAttack = false;
+            emittedImpactStages = 0;
             attackVersion++;
             airborneAttack = !grounded;
             Phase = PlayerAttackPhase.Windup;
@@ -139,6 +179,7 @@ namespace ActionPlatformer.Player
         private void HitTargets(bool shockwave)
         {
             var area = AttackBounds;
+            bool dealtDamage = false;
             if (shockwave)
                 Physics2D.OverlapCircle(shockwaveCenter, tuning.ShockwaveRadius, UnitPhysics2D.Filter(tuning.TargetMask), candidates);
             else Physics2D.OverlapBox(area.center, area.size, 0f, UnitPhysics2D.Filter(tuning.TargetMask), candidates);
@@ -150,15 +191,29 @@ namespace ActionPlatformer.Player
                     !UnitPhysics2D.HasSight(shockwave ? shockwaveCenter : (Vector2)body.bounds.center,
                         candidates[i].bounds.center, tuning.ObstacleMask, obstacles)) continue;
                 hit.Add(target);
-                if (target.ApplyDamage(owner.Definition.AttackPower) > 0 && target.IsAlive)
+                if (target.ApplyDamage(owner.Definition.AttackPower) <= 0) continue;
+                dealtDamage = true; // Lethal hits also produce feedback.
+                if (target.IsAlive)
                     hitReaction?.Apply(target, shockwave ? new PlayerAttackSelection(PlayerAttack.Shockwave,
                         Facing, Vector2.zero, Vector2.one * tuning.ShockwaveRadius * 2f) : selection, combo);
             }
+            // One request per swing; the slam's descending hit and landing are separate impact stages.
+            int stage = shockwave ? 2 : 1;
+            if (!dealtDamage || (emittedImpactStages & stage) != 0) return;
+            emittedImpactStages |= stage;
+            var strength = Attack == PlayerAttack.Slam ? PlayerImpactStrength.Slam :
+                combo.IsFinisher || Attack == PlayerAttack.Lift || Attack == PlayerAttack.Emergence
+                    ? PlayerImpactStrength.Heavy : PlayerImpactStrength.Normal;
+            Vector2 direction = Attack == PlayerAttack.Slam ? Vector2.down :
+                Attack == PlayerAttack.Side ? Vector2.right * Facing : Vector2.up;
+            if (!hasImpact || strength > pendingImpact.Strength) pendingImpact = new PlayerImpact(direction, strength);
+            hasImpact = true;
         }
 
         public void CancelRecovery()
         {
             if (Phase == PlayerAttackPhase.Recovery) Phase = PlayerAttackPhase.Ready;
+            bufferedAttack = false;
         }
 
         public void Interrupt(double now)
@@ -176,6 +231,9 @@ namespace ActionPlatformer.Player
             comboExpiresAt = stunnedUntil = 0;
             shockwaveStartedAt = double.NegativeInfinity;
             slamReady = false;
+            bufferedAttack = hasImpact = false;
+            emittedImpactStages = 0;
+            pendingImpact = default;
             hit.Clear();
         }
     }

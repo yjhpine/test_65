@@ -32,6 +32,9 @@ namespace ActionPlatformer.Player
         private static readonly int SlamHover = Animator.StringToHash("Base Layer.SlamHover");
         private static readonly int SlamFall = Animator.StringToHash("Base Layer.SlamFall");
         private static readonly int SlamLand = Animator.StringToHash("Base Layer.SlamLand");
+        private static readonly int Hit = Animator.StringToHash("Base Layer.Hit");
+        private static readonly int Die = Animator.StringToHash("Base Layer.Die");
+        private uint previousReactionVersion;
         private int currentAction;
         private uint previousAttackVersion;
         private bool hasActionAnimations;
@@ -109,6 +112,7 @@ namespace ActionPlatformer.Player
                 groundMarker.enabled = underground;
                 if (underground)
                 {
+                    groundMarker.color = actions.CanEmerge ? new Color(0.15f, 1f, 1f, 0.9f) : new Color(1f, 0.25f, 0.2f, 0.9f);
                     Vector2 point = actions.GroundMarkerPosition;
                     groundMarker.transform.position = new Vector3(point.x, point.y + 0.04f, transform.position.z);
                     groundMarker.transform.localScale = new Vector3(0.8f, 0.08f, 1f);
@@ -121,6 +125,18 @@ namespace ActionPlatformer.Player
         private void UpdateAttackAnimation(bool underground, bool moving, bool rising)
         {
             if (!hasActionAnimations) return;
+            var reaction = actions?.ReactionPresentation ?? default;
+            if (reaction.Kind != PlayerReaction.None)
+            {
+                int reactionState = reaction.Kind == PlayerReaction.Die ? Die : Hit;
+                animator.SetBool(ActionOverride, true);
+                animator.SetFloat(ActionTime, Mathf.Min(reaction.Progress, 0.999f));
+                if (currentAction != reactionState || reaction.Version != previousReactionVersion)
+                    animator.Play(reactionState, 0, 0f);
+                currentAction = reactionState;
+                previousReactionVersion = reaction.Version;
+                return;
+            }
             var phase = actions?.AttackPhase ?? PlayerAttackPhase.Ready;
             var attack = actions?.AttackPresentation ?? default;
             // A timed-out descent has no ground impact to display.
@@ -226,6 +242,7 @@ namespace ActionPlatformer.Player
             spriteRenderer.color = originalColor;
             currentAction = 0;
             previousAttackVersion = 0;
+            previousReactionVersion = 0;
             if (hasActionAnimations)
             {
                 animator.SetBool(ActionOverride, false);

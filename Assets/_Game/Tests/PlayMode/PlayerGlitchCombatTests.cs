@@ -32,8 +32,10 @@ namespace ActionPlatformer.Tests
         private sealed class Driver : IPlayerInputSource
         {
             public PlayerCommand Command;
+            public int Samples;
             public PlayerCommand Sample()
             {
+                Samples++;
                 var result = Command;
                 Command.GlitchPressed = Command.AttackPressed = Command.JumpPressed = Command.JumpReleased = false;
                 return result;
@@ -46,6 +48,10 @@ namespace ActionPlatformer.Tests
             glitchSettings = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GlitchTuning>("Assets/_Game/Data/GlitchTuning.asset"));
             combatSettings = Object.Instantiate(AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset"));
             created.Add(glitchSettings); created.Add(combatSettings);
+            // These deterministic timing/geometry tests own their cloned fixture values, not the live tuning asset.
+            Set(combatSettings, "windup", .12f); Set(combatSettings, "activeDuration", .06f);
+            Set(combatSettings, "recovery", .18f); Set(combatSettings, "slamHoverDuration", .5f);
+            Set(glitchSettings, "undergroundMoveSpeed", 3f);
             var parent = new GameObject("Glitch test setup"); parent.SetActive(false); created.Add(parent);
             var go = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab"),
                 new Vector3(-3f, 61.32f), Quaternion.identity, parent.transform);
@@ -199,7 +205,7 @@ namespace ActionPlatformer.Tests
                 Combat.Tick(now + 0.13); Combat.Tick(now + 0.2); Combat.Tick(now + 0.4);
             }
             Assert.That(enemy.CurrentHealth, Is.EqualTo(170));
-            Assert.That(Movement.IsForcedMoving, Is.EqualTo(comboEnabled && reactionsEnabled));
+            Assert.That(Movement.IsForcedMoving, Is.EqualTo(reactionsEnabled));
         }
 
         private sealed class FixedBoxSelector : IPlayerAttackSelector
@@ -256,7 +262,8 @@ namespace ActionPlatformer.Tests
             RebuildPlayer(true, true); PlacePlayer(new Vector2(-0.975f, 61.32f));
             var other = CreateEnemy(4);
             Combat.TryAttack(enemy, 1, false, 0); Combat.Tick(0.13); Combat.Tick(0.2); Combat.Tick(0.4);
-            Assert.That(Movement.IsForcedMoving, Is.False);
+            Assert.That(Movement.IsForcedMoving, Is.True);
+            Assert.That(Movement.Velocity.x, Is.EqualTo(combatSettings.LightKnockbackSpeed));
             Combat.TryAttack(other, 1, false, 0.4);
             Assert.That(Combat.Strike, Is.EqualTo(1), "Replacement retention rule resets on target change.");
             Combat.Interrupt(0.4);
@@ -264,6 +271,7 @@ namespace ActionPlatformer.Tests
             Combat.TryAttack(enemy, 1, false, 1.4); Combat.Tick(1.53);
             Assert.That(Combat.Strike, Is.EqualTo(2));
             Assert.That(Movement.IsForcedMoving, Is.True, "Reaction follows the finisher data, not Strike == 3.");
+            Assert.That(Movement.Velocity.x, Is.EqualTo(combatSettings.KnockbackSpeed));
         }
 
         [Test] public void AboveArrivalEnablesOneAirSlamAndThenReturnsToBasicAttack()
@@ -296,6 +304,70 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Side));
         }
 
+        [UnityTest] public IEnumerator AttackStopsRunningBlocksJumpThroughRecoveryAndResumesHeldMovement()
+        {
+            // Basic combat must enforce the same movement lock without a glitch object.
+            RebuildPlayer(false, true);
+            Set(combatSettings, "activeDuration", 0.12f);
+            input.Command = new PlayerCommand { Move = Vector2.right };
+            yield return null;
+            for (int i = 0; i < 5; i++) yield return Step;
+            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+            float startX = player.Motor.Position.x;
+            input.Command = new PlayerCommand { AttackPressed = true, JumpPressed = true,
+                JumpHeld = true, Move = Vector2.right };
+            float deadline = Time.realtimeSinceStartup + 2f;
+            while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Windup));
+            var phases = new HashSet<PlayerAttackPhase>();
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
+            {
+                phases.Add(Combat.Phase);
+                Assert.That(player.Motor.Velocity.x, Is.Zero, "Stop existing momentum immediately, not by deceleration.");
+                Assert.That(player.Motor.Position.x, Is.EqualTo(startX).Within(0.15f));
+                Assert.That(player.Motor.IsGrounded, Is.True, "Attack and jump together must not jump.");
+                // Send late-recovery presses, then stop before Ready so the driver cannot create a fresh post-attack press.
+                bool pressJump = Combat.Phase != PlayerAttackPhase.Recovery ||
+                    Combat.GetPresentation(Time.timeAsDouble).PhaseProgress < 0.6f;
+                input.Command = new PlayerCommand { Move = Vector2.left, JumpPressed = pressJump, JumpHeld = true };
+                yield return null;
+            }
+            input.Command = new PlayerCommand { Move = Vector2.left, JumpHeld = true };
+            Assert.That(phases, Does.Contain(PlayerAttackPhase.Windup));
+            Assert.That(phases, Does.Contain(PlayerAttackPhase.Active));
+            Assert.That(phases, Does.Contain(PlayerAttackPhase.Recovery));
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
+            yield return Step;
+            Assert.That(player.Motor.Velocity.x, Is.LessThan(0f), "Held movement resumes when recovery ends.");
+            Assert.That(player.Motor.IsGrounded, Is.True, "Jump presses during the attack must not remain buffered.");
+            input.Command = new PlayerCommand { JumpPressed = true, JumpHeld = true };
+            yield return null; yield return Step; yield return null;
+            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f), "A fresh jump after the attack remains available.");
+        }
+
+        [UnityTest] public IEnumerator EmergenceAttackBlocksHorizontalInputButKeepsItsLaunch()
+        {
+            EnterUnderground(Time.timeAsDouble);
+            input.Command = new PlayerCommand { AttackPressed = true };
+            float deadline = Time.realtimeSinceStartup + 2f;
+            while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            float startX = player.Motor.Position.x;
+            float startY = player.Motor.Position.y;
+            input.Command = new PlayerCommand { Move = Vector2.right, JumpPressed = true, JumpHeld = true };
+            bool rose = false;
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(player.Motor.Velocity.x, Is.Zero);
+                Assert.That(player.Motor.Position.x, Is.EqualTo(startX).Within(0.001f));
+                rose |= player.Motor.Velocity.y > 0f;
+                yield return null;
+            }
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
+            Assert.That(rose, Is.True);
+            Assert.That(player.Motor.Position.y, Is.GreaterThan(startY + 0.5f));
+        }
+
         [UnityTest] public IEnumerator NormalAirInputUsesBasicDamageWithoutHoverOrDownwardReaction()
         {
             for (int configuration = 0; configuration < 2; configuration++)
@@ -312,9 +384,10 @@ namespace ActionPlatformer.Tests
                 Assert.That(enemy.DamageVersion, Is.EqualTo(oldVersion + 1));
                 Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Side));
                 Assert.That(Combat.IsPreparingSlam || Combat.IsDescending, Is.False);
-                Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+                Assert.That(player.Motor.Velocity.x, Is.Zero, "Air attacks block horizontal movement while gravity continues.");
                 Assert.That(player.Motor.Velocity.y, Is.LessThan(0f));
-                Assert.That(Movement.IsForcedMoving, Is.False);
+                Assert.That(Movement.IsForcedMoving, Is.True, "Ordinary air side attacks also use light knockback.");
+                Assert.That(Movement.Velocity.y, Is.Zero.Within(.001f), "Light side hits must not become a downward reaction.");
                 Assert.That(player.Shockwave.Visible, Is.False);
             }
         }
@@ -489,7 +562,7 @@ namespace ActionPlatformer.Tests
                 Assert.That(Combat.IsPreparingSlam, Is.True);
                 if (attempt == 0) { Health.ApplyDamage(1); yield return Step; yield return null; }
                 else if (attempt == 1) player.enabled = false;
-                else Health.ApplyDamage(Health.CurrentHealth);
+                else { Health.ApplyDamage(Health.CurrentHealth); yield return Step; yield return null; }
                 Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
                 Assert.That(Combat.Strike, Is.Zero);
                 Assert.That(player.Motor.IsHeld, Is.False);
@@ -853,6 +926,117 @@ namespace ActionPlatformer.Tests
             Assert.That(player.GetComponent<Rigidbody2D>().bodyType, Is.EqualTo(RigidbodyType2D.Dynamic));
         }
 
+        [UnityTest] public IEnumerator UndergroundInputMovesMarkerThenEmergesAtAdjustedColumn()
+        {
+            EnterUnderground(Time.timeAsDouble);
+            Vector2 parked = player.Motor.Position;
+            float startX = Glitch.GroundMarkerPosition.x;
+            input.Command = new PlayerCommand { Move = Vector2.left };
+            for (int i = 0; i < 8; i++) { yield return null; yield return Step; }
+            float leftX = Glitch.GroundMarkerPosition.x;
+            Assert.That(leftX, Is.LessThan(startX - .2f));
+            input.Command = new PlayerCommand { Move = Vector2.right };
+            for (int i = 0; i < 12; i++) { yield return null; yield return Step; }
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.GreaterThan(leftX + .3f));
+            Assert.That(player.Motor.Position, Is.EqualTo(parked));
+            Assert.That(player.Motor.Velocity, Is.EqualTo(Vector2.zero));
+            Assert.That(Health.CanReceiveDamage, Is.False);
+            Assert.That(player.GetComponent<Rigidbody2D>().bodyType, Is.EqualTo(RigidbodyType2D.Kinematic));
+            input.Command = default; yield return null; yield return Step;
+            float chosenX = Glitch.GroundMarkerPosition.x;
+            for (int i = 0; i < 3; i++) { yield return null; yield return Step; }
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(chosenX));
+            var marker = player.transform.Find("Visual/Underground marker");
+            Assert.That(marker.position.x, Is.EqualTo(chosenX).Within(.001f));
+            input.Command = new PlayerCommand { AttackPressed = true };
+            float deadline = Time.realtimeSinceStartup + 1f;
+            while (Glitch.IsUnderground && Time.realtimeSinceStartup < deadline) yield return null;
+            AssertRestored();
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            Assert.That(player.GetComponent<Collider2D>().bounds.center.x, Is.EqualTo(chosenX).Within(.001f));
+            while (player.Motor.Velocity.y <= 0f && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
+            Assert.That(player.Motor.Velocity.x, Is.Zero.Within(.001f));
+        }
+
+        [Test] public void UndergroundMovementUsesConfiguredSpeedAndPhysicsDeltaWithoutExtendingStay()
+        {
+            Set(glitchSettings, "undergroundMoveSpeed", 4f);
+            Set(glitchSettings, "cooldown", 1f);
+            EnterUnderground(0); Vector2 parked = player.Motor.Position;
+            float startX = Glitch.GroundMarkerPosition.x;
+            Glitch.MoveUnderground(1f, .25f);
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(startX + 1f).Within(.001f));
+            for (int i = 0; i < 25; i++) Glitch.MoveUnderground(-1f, .01f);
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(startX).Within(.001f));
+            Assert.That(Glitch.UndergroundPosition.x, Is.EqualTo(Glitch.GroundMarkerPosition.x));
+            Assert.That(Glitch.CooldownRemaining(.5), Is.EqualTo(.5f).Within(.001f));
+            Glitch.Tick(2.01);
+            AssertRestored(); Assert.That(player.Motor.Position, Is.EqualTo(parked));
+            Assert.That(Glitch.CanEmerge, Is.False);
+            Glitch.MoveUnderground(1f, 1f);
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(startX).Within(.001f));
+        }
+
+        [Test] public void UndergroundMovementStopsAtFloorEdgesWithRoomForEntireBody()
+        {
+            EnterUnderground();
+            float halfWidth = player.GetComponent<Collider2D>().bounds.extents.x;
+            Glitch.MoveUnderground(-1f, 100f);
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(-20f + halfWidth).Within(.001f));
+            Assert.That(Glitch.CanEmerge, Is.True);
+            Glitch.MoveUnderground(1f, 100f);
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(20f - halfWidth).Within(.001f));
+            Assert.That(Glitch.TryEmerge(), Is.True); AssertRestored();
+            Assert.That(player.GetComponent<Collider2D>().bounds.max.x, Is.EqualTo(20f).Within(.001f));
+        }
+
+        [UnityTest] public IEnumerator UndergroundMarkerShowsBlockedColumnAndRecoversWhenMovedClear()
+        {
+            EnterUnderground(Time.timeAsDouble);
+            Block(new Vector2(1.5f, 62f), new Vector2(.4f, .2f));
+            Glitch.MoveUnderground(1f, .5f);
+            Assert.That(Glitch.CanEmerge, Is.False);
+            yield return null; yield return null;
+            var marker = player.transform.Find("Visual/Underground marker").GetComponent<SpriteRenderer>();
+            Assert.That(marker.color.r, Is.GreaterThan(marker.color.g));
+            Glitch.MoveUnderground(-1f, .25f);
+            Assert.That(Glitch.CanEmerge, Is.True);
+            yield return null; yield return null;
+            Assert.That(marker.color.g, Is.GreaterThan(marker.color.r));
+            Assert.That(Glitch.TryEmerge(), Is.True); AssertRestored();
+            Assert.That(player.Motor.Position.x, Is.EqualTo(.75f).Within(.001f));
+        }
+
+        [Test] public void BlockedAdjustedEmergenceFindsNearbySpaceAndDisablingClearsAvailability()
+        {
+            EnterUnderground(); Vector2 parked = player.Motor.Position;
+            Glitch.MoveUnderground(1f, .5f);
+            Block(new Vector2(1.5f, 62f), new Vector2(.4f, .2f));
+            Assert.That(Glitch.TryEmerge(), Is.True, "Space is rechecked even before the marker refreshes.");
+            AssertRestored(); Assert.That(player.Motor.Position.x, Is.GreaterThan(1.5f));
+            Assert.That(Glitch.CanEmerge, Is.False);
+            PlacePlayer(parked);
+            EnterUnderground(3); Glitch.MoveUnderground(-1f, .2f);
+            player.gameObject.SetActive(false);
+            Assert.That(Glitch.IsUnderground || Glitch.CanEmerge, Is.False);
+            Assert.That(Health.DamageEnabled, Is.True);
+            Assert.That(player.GetComponent<Rigidbody2D>().bodyType, Is.EqualTo(RigidbodyType2D.Dynamic));
+        }
+
+        [Test] public void UndergroundSpeedCanBeDisabledAndRejectsInvalidSettings()
+        {
+            Set(glitchSettings, "undergroundMoveSpeed", 0f);
+            Assert.That(glitchSettings.TryValidate(), Is.True);
+            EnterUnderground(); Vector2 marker = Glitch.GroundMarkerPosition;
+            Glitch.MoveUnderground(1f, 1f); Assert.That(Glitch.GroundMarkerPosition, Is.EqualTo(marker));
+            foreach (float invalid in new[] { -1f, float.NaN, float.PositiveInfinity })
+            {
+                Set(glitchSettings, "undergroundMoveSpeed", invalid);
+                Assert.That(glitchSettings.TryValidate(), Is.False);
+            }
+        }
+
         [TestCase(1f)]
         [TestCase(2.6f)]
         [TestCase(4.2f)]
@@ -884,13 +1068,70 @@ namespace ActionPlatformer.Tests
             Assert.That(bounds.min.y, Is.EqualTo(marker.y + .02f).Within(.001f));
         }
 
-        [Test] public void BlockedBurrowColumnCancelsInsteadOfChoosingAnOpenSide()
+        [Test] public void BlockedBurrowColumnFindsNearestSpaceTowardOriginalSide()
         {
-            EnterUnderground(); Vector2 original = player.Motor.Position;
+            EnterUnderground();
             // A narrow ceiling blocks only the burrow column; both old side candidates are clear.
+            var ceiling = Block(new Vector2(0f, 62f), new Vector2(.2f, .2f));
+            Assert.That(Glitch.TryEmerge(), Is.True); AssertRestored();
+            Assert.That(player.Motor.Position.x, Is.InRange(-.5f, -.1f));
+            Assert.That(player.GetComponent<Collider2D>().Distance(ceiling.GetComponent<Collider2D>()).isOverlapped, Is.False);
+        }
+
+        [TestCase(-1f)]
+        [TestCase(1f)]
+        public void EquallyNearEmergenceCandidatesPreferLastBurrowMovement(float direction)
+        {
+            EnterUnderground();
+            Glitch.MoveUnderground(-direction, .1f); Glitch.MoveUnderground(direction, .1f);
             Block(new Vector2(0f, 62f), new Vector2(.2f, .2f));
-            Assert.That(Glitch.TryEmerge(), Is.False);
-            AssertRestored(); Assert.That(player.Motor.Position, Is.EqualTo(original));
+            Assert.That(Glitch.TryEmerge(), Is.True);
+            Assert.That(player.Motor.Position.x * direction, Is.InRange(.1f, .5f));
+            Assert.That(Glitch.GroundMarkerPosition.x, Is.EqualTo(player.GetComponent<Collider2D>().bounds.center.x).Within(.001f));
+        }
+
+        [Test] public void NearestEmergenceWinsOverPreferredDirectionAndMultipleObstacles()
+        {
+            EnterUnderground();
+            var center = Block(new Vector2(0f, 62f), new Vector2(.2f, .2f));
+            var left = Block(new Vector2(-.5f, 62f), new Vector2(.4f, .2f));
+            Assert.That(Glitch.TryEmerge(), Is.True);
+            Assert.That(player.Motor.Position.x, Is.InRange(.1f, .5f), "Right is closer despite the original body being on the left.");
+            var collider = player.GetComponent<Collider2D>();
+            Assert.That(collider.Distance(center.GetComponent<Collider2D>()).isOverlapped, Is.False);
+            Assert.That(collider.Distance(left.GetComponent<Collider2D>()).isOverlapped, Is.False);
+        }
+
+        [Test] public void NearestEmergenceAtFloorEdgeStaysOnSameFloorAndSupportsOffsetBody()
+        {
+            player.GetComponent<CapsuleCollider2D>().offset = new Vector2(.2f, .1f);
+            Physics2D.SyncTransforms(); EnterUnderground();
+            Glitch.MoveUnderground(1f, 100f);
+            float desired = Glitch.GroundMarkerPosition.x;
+            var ceiling = Block(new Vector2(desired, 62f), new Vector2(.8f, .2f));
+            Assert.That(Glitch.TryEmerge(), Is.True);
+            var collider = player.GetComponent<Collider2D>();
+            Assert.That(collider.bounds.center.x, Is.InRange(desired - 1f, desired - .1f));
+            Assert.That(collider.bounds.max.x, Is.LessThanOrEqualTo(20f));
+            Assert.That(collider.Distance(ceiling.GetComponent<Collider2D>()).isOverlapped, Is.False);
+        }
+
+        [UnityTest] public IEnumerator BlockedMarkerAttackEmergesNearbyAndLaunchesWithoutRestartingCooldown()
+        {
+            Set(glitchSettings, "cooldown", 1f);
+            double entered = Time.timeAsDouble;
+            EnterUnderground(entered); Glitch.MoveUnderground(1f, .5f);
+            Block(new Vector2(1.5f, 62f), new Vector2(.4f, .2f));
+            Glitch.MoveUnderground(0f, Time.fixedDeltaTime);
+            Assert.That(Glitch.CanEmerge, Is.False);
+            input.Command = new PlayerCommand { AttackPressed = true };
+            float deadline = Time.realtimeSinceStartup + 1f;
+            while (Glitch.IsUnderground && Time.realtimeSinceStartup < deadline) yield return null;
+            AssertRestored(); Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            Assert.That(player.Motor.Position.x, Is.InRange(1.6f, 2.1f));
+            Assert.That(Glitch.CooldownRemaining(entered + .5), Is.EqualTo(.5f).Within(.001f));
+            while (player.Motor.Velocity.y <= 0f && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
         }
 
         [Test] public void EmergenceCentersOffsetCapsuleAndHitsBothSidesOfBurrow()
@@ -924,7 +1165,7 @@ namespace ActionPlatformer.Tests
             Assert.That(player.GetComponent<Collider2D>().bounds.center.x, Is.EqualTo(Glitch.GroundMarkerPosition.x).Within(.001f));
             PlacePlayer(new Vector2(-3f, 61.32f)); EnterUnderground(2);
             Vector2 original = player.Motor.Position;
-            Block(new Vector2(0f, 62.1f), new Vector2(4f, 0.4f));
+            Block(new Vector2(0f, 62.1f), new Vector2(44f, 0.4f));
             Assert.That(Glitch.TryEmerge(), Is.False);
             AssertRestored(); Assert.That(player.Motor.Position, Is.EqualTo(original));
         }
@@ -992,10 +1233,12 @@ namespace ActionPlatformer.Tests
                 Combat.Tick(now + 0.13); Combat.Tick(now + 0.2); Combat.Tick(now + 0.4);
             }
             Assert.That(Movement.IsForcedMoving, Is.True);
-            Assert.That(Movement.Velocity.x, Is.EqualTo(6f).Within(0.01f));
-            Movement.Stop(); Assert.That(Movement.Velocity.x, Is.EqualTo(6f).Within(0.01f));
+            Assert.That(Movement.Velocity.x, Is.EqualTo(combatSettings.KnockbackSpeed).Within(0.01f));
+            Movement.Stop(); Assert.That(Movement.Velocity.x, Is.EqualTo(combatSettings.KnockbackSpeed).Within(0.01f));
             Movement.CancelForcedMovement(); Set(enemyDefinition, "allowForcedMovement", false);
             Movement.ApplyForcedMovement(Vector2.up * 10f, 0.35f);
+            Assert.That(Movement.IsForcedMoving, Is.False);
+            Movement.ApplyKnockback(6f, 24f, .35f);
             Assert.That(Movement.IsForcedMoving, Is.False);
         }
 
@@ -1028,11 +1271,236 @@ namespace ActionPlatformer.Tests
         {
             EnterUnderground(Time.timeAsDouble);
             yield return null;
-            input.Command = new PlayerCommand { JumpPressed = true, AttackPressed = true };
+            Vector2 marker = Glitch.GroundMarkerPosition;
+            input.Command = new PlayerCommand { Move = Vector2.right, JumpPressed = true, AttackPressed = true };
             yield return null; yield return Step; yield return null;
+            Assert.That(Glitch.GroundMarkerPosition, Is.EqualTo(marker), "Space cancel takes priority over burrow movement and emergence.");
             AssertRestored(); Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
             Assert.That(enemy.CurrentHealth, Is.EqualTo(200));
             Assert.That(player.transform.Find("Visual").GetComponent<SpriteRenderer>().enabled, Is.True);
+        }
+
+        [UnityTest] public IEnumerator PlayerHitAnimationRestartsOnDamageThenReturnsToMovementAndClearsOnDisable()
+        {
+            var animator = player.GetComponentInChildren<Animator>();
+            var sprite = player.GetComponentInChildren<SpriteRenderer>();
+            Combat.TryAttack(enemy, 1f, false, Time.timeAsDouble);
+            Health.ApplyDamage(1);
+            input.Command = new PlayerCommand { Move = Vector2.right };
+            yield return Step; yield return null; yield return null;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);
+            Assert.That(sprite.sprite.name, Is.EqualTo("adventurer-hurt-00"));
+            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f), "Hit keeps existing walking rules.");
+            uint version = player.ReactionPresentation.Version;
+            yield return new WaitForSeconds(0.11f);
+            Assert.That(player.ReactionPresentation.Progress, Is.GreaterThan(0.3f));
+            Health.ApplyDamage(1);
+            yield return Step; yield return null; yield return null;
+            Assert.That(player.ReactionPresentation.Version, Is.GreaterThan(version));
+            Assert.That(player.ReactionPresentation.Progress, Is.LessThan(0.3f));
+            Assert.That(sprite.sprite.name, Is.EqualTo("adventurer-hurt-00"));
+            yield return new WaitForSeconds(combatSettings.HitStun + 0.05f);
+            yield return null; yield return null;
+            Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Run"), Is.True);
+            Health.ApplyDamage(1); yield return Step; yield return null;
+            player.enabled = false; player.enabled = true;
+            yield return null; yield return null;
+            Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.False);
+        }
+
+        [UnityTest] public IEnumerator PlayerDeathPlaysEveryFrameBlocksActionsThenDeactivatesWithoutRevival()
+        {
+            var animator = player.GetComponentInChildren<Animator>();
+            var sprite = player.GetComponentInChildren<SpriteRenderer>();
+            Combat.TryAttack(enemy, 1f, false, Time.timeAsDouble);
+            Health.ApplyDamage(Health.CurrentHealth);
+            input.Command = new PlayerCommand { Move = Vector2.right, JumpHeld = true,
+                JumpPressed = true, AttackPressed = true, GlitchPressed = true,
+                AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.up * .35f) };
+            Assert.That(player.gameObject.activeSelf, Is.True, "Leave time for the death animation.");
+            float startX = player.Motor.Position.x;
+            var frames = new HashSet<string>();
+            float deadline = Time.realtimeSinceStartup + 2f;
+            yield return Step; yield return null;
+            while (player.gameObject.activeSelf && Time.realtimeSinceStartup < deadline)
+            {
+                if (animator.GetCurrentAnimatorStateInfo(0).IsName("Die")) frames.Add(sprite.sprite.name);
+                Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.Die));
+                Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
+                Assert.That(player.Motor.Velocity.x, Is.Zero);
+                Assert.That(player.Motor.Position.x, Is.EqualTo(startX).Within(.001f));
+                Assert.That(Health.CanReceiveDamage, Is.False);
+                Assert.That(Glitch.SuccessVersion, Is.Zero);
+                yield return null;
+            }
+            Assert.That(player.gameObject.activeSelf, Is.False);
+            for (int i = 0; i < 7; i++) Assert.That(frames, Does.Contain("adventurer-die-" + i.ToString("00")));
+            Assert.That(enemy.DamageVersion, Is.Zero);
+            player.gameObject.SetActive(true);
+            yield return null; yield return Step; yield return null;
+            Assert.That(player.gameObject.activeSelf, Is.False, "Re-enabling does not revive or restart a finished death.");
+        }
+
+        [UnityTest] public IEnumerator PlayerDeathRestoresBurrowBodyAndZeroDurationSkipsPresentation()
+        {
+            EnterUnderground(Time.timeAsDouble);
+            Health.SetDamageEnabled(true); // Force a lethal external effect through the otherwise invulnerable burrow.
+            Health.ApplyDamage(Health.CurrentHealth);
+            yield return Step; yield return null; yield return null;
+            Assert.That(Glitch.IsUnderground, Is.False);
+            Assert.That(player.Motor.IsHeld, Is.False);
+            Assert.That(player.GetComponent<Rigidbody2D>().bodyType, Is.EqualTo(RigidbodyType2D.Dynamic));
+            Assert.That(player.GetComponentInChildren<SpriteRenderer>().enabled, Is.True);
+            Assert.That(player.GetComponentInChildren<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Die"), Is.True);
+            player.gameObject.SetActive(false);
+            RebuildPlayer(true, true);
+            Set(player, "deathDuration", 0f);
+            Health.ApplyDamage(Health.CurrentHealth);
+            yield return Step; yield return null;
+            Assert.That(player.gameObject.activeSelf, Is.False);
+        }
+
+        [Test] public void AttackBufferAcceptsOnlyLateRecoveryAndConsumesOnceAcrossTargets()
+        {
+            Combat.TryAttack(enemy, 1f, false, 0);
+            Assert.That(Combat.BufferAttack(.01), Is.False);
+            Combat.Tick(.13);
+            Assert.That(Combat.BufferAttack(.14), Is.False);
+            Combat.Tick(.2);
+            Assert.That(Combat.BufferAttack(.21), Is.False);
+            Assert.That(Combat.BufferAttack(.29), Is.True);
+            Assert.That(Combat.BufferAttack(.31), Is.True);
+            Assert.That(Combat.ConsumeBufferedAttack(.37), Is.False);
+            Combat.Tick(.39);
+            Assert.That(Combat.ConsumeBufferedAttack(.39), Is.True);
+            Assert.That(Combat.ConsumeBufferedAttack(.39), Is.False);
+            var second = CreateEnemy(2f);
+            Assert.That(Combat.TryAttack(second,1f,false,.39), Is.True);
+            Assert.That(Combat.Strike, Is.EqualTo(2));
+        }
+
+        [TestCase("hit")]
+        [TestCase("reset")]
+        [TestCase("glitch_cancel")]
+        public void AttackBufferClearsOnInterruptionAndCanBeDisabled(string reason)
+        {
+            Combat.TryAttack(enemy,1f,false,0); Combat.Tick(.13); Combat.Tick(.2);
+            Assert.That(Combat.BufferAttack(.3), Is.True);
+            if(reason=="hit") Combat.Interrupt(.31);
+            else if(reason=="reset") Combat.Reset();
+            else Combat.CancelRecovery();
+            Assert.That(Combat.HasBufferedAttack, Is.False);
+            Assert.That(Combat.ConsumeBufferedAttack(1), Is.False);
+            Combat.Reset(); Set(combatSettings,"attackBufferTime",0f);
+            Combat.TryAttack(enemy,1f,false,2); Combat.Tick(2.13); Combat.Tick(2.2);
+            Assert.That(Combat.BufferAttack(2.37), Is.False);
+        }
+
+        [TestCase(-1f)]
+        [TestCase(1f)]
+        public void MeleeImpactIsDirectionalOncePerSwingIncludingMultipleAndLethalTargets(float direction)
+        {
+            PlacePlayer(new Vector2(-direction,61.32f));
+            var second=CreateEnemy(.1f*direction);
+            second.ApplyDamage(second.CurrentHealth-10);
+            Combat.TryAttack(enemy,direction,false,0); Combat.Tick(.13);
+            Assert.That(second.IsAlive, Is.False);
+            Assert.That(Combat.ConsumeImpact(out var impact), Is.True);
+            Assert.That(impact.Direction, Is.EqualTo(Vector2.right*direction));
+            Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Normal));
+            Assert.That(Combat.ConsumeImpact(out _), Is.False);
+            var lateTarget=CreateEnemy(.2f*direction);
+            Combat.Tick(.14);
+            Assert.That(lateTarget.DamageVersion, Is.EqualTo(1));
+            Assert.That(Combat.ConsumeImpact(out _), Is.False, "A new victim in the same swing must not restart hit stop.");
+            Combat.Tick(.2); Combat.Tick(.4);
+            Combat.TryAttack(enemy,direction,false,.41); Combat.Tick(.54); Combat.ConsumeImpact(out _);
+            Combat.Tick(.61); Combat.Tick(.81);
+            Combat.TryAttack(enemy,direction,false,.82); Combat.Tick(.95);
+            Assert.That(Combat.ConsumeImpact(out impact), Is.True);
+            Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Heavy));
+        }
+
+        [Test] public void MissAndInvulnerabilityProduceNoImpactWhileEmergenceAndSlamUseVerticalImpacts()
+        {
+            Combat.TryAttack(enemy,1f,false,0); Combat.Tick(.13);
+            Assert.That(Combat.ConsumeImpact(out _), Is.False);
+            PlacePlayer(new Vector2(-1f,61.32f)); enemy.SetDamageEnabled(false);
+            Combat.Reset(); Combat.TryAttack(enemy,1f,false,1); Combat.Tick(1.13);
+            Assert.That(Combat.ConsumeImpact(out _), Is.False);
+            enemy.SetDamageEnabled(true); PlacePlayer(new Vector2(0f,61.32f));
+            Combat.Reset(); Combat.TryAttack(enemy,1f,true,2); Combat.Tick(2.13);
+            Assert.That(Combat.ConsumeImpact(out var impact), Is.True);
+            Assert.That(impact.Direction, Is.EqualTo(Vector2.up));
+            Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Heavy));
+            Combat.Reset(); PlacePlayer(new Vector2(0f,65f)); Combat.ObserveArrival(true);
+            Combat.TryAttack(enemy,1f,false,3,false); Combat.Tick(3.5);
+            Assert.That(Combat.ConsumeImpact(out _), Is.False);
+            Combat.LandSlam(new Vector2(0f,60.5f),3.51);
+            Assert.That(Combat.ConsumeImpact(out impact), Is.True);
+            Assert.That(impact.Direction, Is.EqualTo(Vector2.down));
+            Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Slam));
+        }
+
+        [UnityTest] public IEnumerator LateRecoveryInputDuringHitStopQueuesOneAttackWithoutUnlockingMovement()
+        {
+            input.Command=new PlayerCommand { AttackPressed=true, Move=Vector2.right };
+            float deadline=Time.realtimeSinceStartup+3f;
+            while ((Combat.Phase!=PlayerAttackPhase.Recovery || player.AttackPresentation.PhaseProgress<.65f) &&
+                Time.realtimeSinceStartup<deadline) yield return null;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
+            uint version=player.AttackPresentation.Version;
+            Set(combatSettings,"heavyHitStopDuration",.1f);
+            player.Feedback.Play(new PlayerImpact(Vector2.right,PlayerImpactStrength.Heavy),Time.unscaledTimeAsDouble);
+            int samples=input.Samples;
+            input.Command=new PlayerCommand { AttackPressed=true, Move=Vector2.right };
+            yield return null; yield return null;
+            Assert.That(input.Samples, Is.GreaterThan(samples));
+            Assert.That(Combat.HasBufferedAttack, Is.True);
+            while (player.AttackPresentation.Version==version && Time.realtimeSinceStartup<deadline) yield return null;
+            Assert.That(player.AttackPresentation.Version, Is.EqualTo(version+1));
+            Assert.That(Combat.Strike, Is.EqualTo(2));
+            Assert.That(player.Motor.Velocity.x, Is.Zero);
+            Assert.That(Combat.HasBufferedAttack, Is.False);
+            while(Combat.IsAttacking && Time.realtimeSinceStartup<deadline) yield return null;
+            yield return new WaitForSeconds(.15f);
+            Assert.That(player.AttackPresentation.Version, Is.EqualTo(version+1), "One press cannot auto-repeat.");
+        }
+
+        [UnityTest] public IEnumerator RealHitStopFreezesPhysicsAndCombatThenRestoresAndDisableCleansCamera()
+        {
+            Set(combatSettings,"hitStopDuration",.12f);
+            PlacePlayer(new Vector2(-1f,61.32f));
+            input.Command=new PlayerCommand { AttackPressed=true };
+            float deadline=Time.realtimeSinceStartup+3f;
+            while(!player.Feedback.IsHitStopped && Time.realtimeSinceStartup<deadline) yield return null;
+            Assert.That(player.Feedback.IsHitStopped, Is.True);
+            Assert.That(enemy.DamageVersion, Is.EqualTo(1));
+            yield return null;
+            double gameTime=Time.timeAsDouble;
+            Vector2 playerPosition=player.Motor.Position;
+            Vector2 enemyPosition=Movement.Position;
+            float progress=player.AttackPresentation.PhaseProgress;
+            yield return new WaitForSecondsRealtime(.04f);
+            Assert.That(Time.timeAsDouble, Is.EqualTo(gameTime).Within(.001));
+            Assert.That(player.Motor.Position, Is.EqualTo(playerPosition));
+            Assert.That(Movement.Position, Is.EqualTo(enemyPosition));
+            Assert.That(player.AttackPresentation.PhaseProgress, Is.EqualTo(progress).Within(.001));
+            while(player.Feedback.IsHitStopped && Time.realtimeSinceStartup<deadline) yield return null;
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            yield return new WaitForSecondsRealtime(.18f);
+            Vector3 cameraOrigin=camera.transform.position;
+            player.Feedback.Play(new PlayerImpact(Vector2.down,PlayerImpactStrength.Slam),Time.unscaledTimeAsDouble);
+            player.Feedback.LateTick(Time.unscaledTimeAsDouble);
+            Assert.That(camera.transform.position.y, Is.LessThan(cameraOrigin.y));
+            player.enabled=false;
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            Assert.That(Vector3.Distance(camera.transform.position,cameraOrigin), Is.LessThan(.00001f));
+            player.enabled=true; yield return null;
+            Assert.That(Combat.HasBufferedAttack, Is.False);
         }
 
         [UnityTest] public IEnumerator TakingDamageCancelsAttackAndBlocksGlitchButAllowsWalking()
@@ -1157,6 +1625,197 @@ namespace ActionPlatformer.Tests
             Object.DestroyImmediate(moving);
             Block(new Vector2(0f, 59.2f), new Vector2(20f, 0.2f));
             Assert.That(Glitch.TryExecute(Request(GlitchDirection.Down), 0), Is.False);
+        }
+
+        [UnityTest] public IEnumerator LightFirstAndSecondHitsStayShortAndFinisherTravelsFarInBothDirections()
+        {
+            var reaction = new GroundHitReaction(combatSettings);
+            foreach(float direction in new[]{-1f,1f})
+            {
+                float[] distances = new float[3];
+                for(int strike=1;strike<=3;strike++)
+                {
+                    Movement.CancelForcedMovement();
+                    enemy.GetComponent<Rigidbody2D>().position=new Vector2(0f,61.01f);
+                    Physics2D.SyncTransforms();
+                    float origin=Movement.Position.x;
+                    reaction.Apply(enemy,new PlayerAttackSelection(PlayerAttack.Side,direction,Vector2.zero,Vector2.one),
+                        new PlayerComboStep(strike,strike==3?1:strike+1,strike==3));
+                    Assert.That(Movement.Velocity.x, Is.EqualTo(direction*(strike==3?combatSettings.KnockbackSpeed:combatSettings.LightKnockbackSpeed)));
+                    float deadline=Time.realtimeSinceStartup+2f;
+                    while(Movement.IsForcedMoving && Time.realtimeSinceStartup<deadline) yield return Step;
+                    Assert.That(Movement.IsForcedMoving, Is.False);
+                    distances[strike-1]=(Movement.Position.x-origin)*direction;
+                    Assert.That(Movement.Velocity.x, Is.Zero.Within(.001f));
+                }
+                Assert.That(distances[0], Is.InRange(.02f,.35f));
+                Assert.That(distances[1], Is.EqualTo(distances[0]).Within(.08f));
+                Assert.That(distances[2], Is.GreaterThan(2.5f));
+                Assert.That(distances[2], Is.GreaterThan(distances[0]*10f));
+            }
+        }
+
+        [Test] public void LightKnockbackSettingsRejectInvalidValuesAndAllowZeroSpeed()
+        {
+            foreach(float value in new[]{-1f,float.NaN,float.PositiveInfinity})
+            {
+                Set(combatSettings,"lightKnockbackSpeed",value);
+                Assert.That(combatSettings.TryValidate(), Is.False);
+            }
+            Set(combatSettings,"lightKnockbackSpeed",0f);
+            Assert.That(combatSettings.TryValidate(), Is.True);
+            foreach(float value in new[]{0f,-1f,float.NaN,float.PositiveInfinity})
+            {
+                Set(combatSettings,"lightKnockbackDeceleration",value);
+                Assert.That(combatSettings.TryValidate(), Is.False);
+            }
+            Set(combatSettings,"lightKnockbackDeceleration",30f);
+            Assert.That(combatSettings.TryValidate(), Is.True);
+            new GroundHitReaction(combatSettings).Apply(enemy,
+                new PlayerAttackSelection(PlayerAttack.Side,1f,Vector2.zero,Vector2.one),PlayerComboStep.Basic);
+            Assert.That(Movement.Velocity.x, Is.Zero);
+        }
+
+        [UnityTest] public IEnumerator KnockbackDecaysInBothDirectionsWithoutAiOverwriteAndRetainsMinimumLock()
+        {
+            foreach(float direction in new[]{-1f,1f})
+            {
+                Movement.CancelForcedMovement();
+                var origin=Movement.Position;
+                Movement.ApplyKnockback(direction*6f,24f,.5f);
+                Assert.That(Movement.Velocity.x, Is.EqualTo(direction*6f));
+                float previous=6f;
+                for(int i=0;i<16;i++)
+                {
+                    Movement.MoveTo(origin.x-direction*10f,2f); Movement.Stop();
+                    yield return Step;
+                    float current=Mathf.Abs(Movement.Velocity.x);
+                    Assert.That(current, Is.LessThanOrEqualTo(previous+.001f));
+                    Assert.That(Movement.Velocity.x*direction, Is.GreaterThanOrEqualTo(0f));
+                    previous=current;
+                }
+                Assert.That(Movement.Velocity.x, Is.Zero.Within(.001f));
+                Assert.That((Movement.Position.x-origin.x)*direction, Is.InRange(.1f,1.1f));
+                Assert.That(Movement.IsForcedMoving, Is.True, "Settling early does not cancel the minimum action lock.");
+                for(int i=0;i<12;i++) yield return Step;
+                Assert.That(Movement.IsForcedMoving, Is.False);
+            }
+        }
+
+        [UnityTest] public IEnumerator KnockbackWallStopDoesNotRestartWhenWallIsRemoved()
+        {
+            foreach(float direction in new[]{-1f,1f})
+            {
+                Movement.CancelForcedMovement();
+                enemy.GetComponent<Rigidbody2D>().position=new Vector2(0f,61.01f);
+                var wall=Block(new Vector2(direction*.85f,62f),new Vector2(.2f,4f));
+                Movement.ApplyKnockback(direction*6f,12f,.5f);
+                for(int i=0;i<7;i++) yield return Step;
+                Assert.That(Movement.Velocity.x, Is.Zero.Within(.001f));
+                Assert.That(Mathf.Abs(Movement.Position.x), Is.LessThan(.3f));
+                Vector2 stopped=Movement.Position;
+                Object.DestroyImmediate(wall); Physics2D.SyncTransforms();
+                for(int i=0;i<4;i++) yield return Step;
+                Assert.That(Movement.Position.x, Is.EqualTo(stopped.x).Within(.001f));
+                Assert.That(Movement.Velocity.x, Is.Zero.Within(.001f));
+            }
+        }
+
+        [UnityTest] public IEnumerator KnockbackDecayCanOutlastLockAndRepeatedHitsReplaceItsDirection()
+        {
+            Movement.ApplyKnockback(3f,6f,.04f);
+            for(int i=0;i<5;i++) yield return Step;
+            Assert.That(Movement.IsForcedMoving, Is.True);
+            Assert.That(Movement.Velocity.x, Is.InRange(.1f,2.99f));
+            Movement.Stop();
+            Assert.That(Movement.Velocity.x, Is.GreaterThan(0f));
+            Movement.ApplyKnockback(-4f,20f,.1f);
+            Assert.That(Movement.Velocity.x, Is.EqualTo(-4f), "A new hit replaces the kick instead of stacking stored speed.");
+            for(int i=0;i<15;i++) yield return Step;
+            Assert.That(Movement.IsForcedMoving, Is.False);
+            Assert.That(Movement.Velocity.x, Is.Zero.Within(.001f));
+            Movement.ApplyKnockback(6f,24f,.35f);
+            enemy.gameObject.SetActive(false); enemy.gameObject.SetActive(true);
+            Assert.That(Movement.IsForcedMoving, Is.False);
+            yield return Step;
+            Assert.That(Movement.Velocity.x, Is.Zero);
+        }
+
+        [UnityTest] public IEnumerator KnockbackPreservesVerticalVelocityAndNewLaunchReplacesHorizontalReaction()
+        {
+            enemy.GetComponent<Rigidbody2D>().position=new Vector2(0f,65f);
+            Movement.ApplyForcedMovement(new Vector2(0f,10f),.35f);
+            Movement.ApplyKnockback(6f,24f,.35f);
+            Assert.That(Movement.Velocity.y, Is.EqualTo(10f));
+            yield return Step; yield return Step;
+            Assert.That(Movement.Velocity.y, Is.GreaterThan(0f));
+            Assert.That(Movement.Velocity.x, Is.InRange(0.1f,5.99f));
+            Movement.ApplyForcedMovement(new Vector2(0f,-12f),.35f);
+            Assert.That(Movement.Velocity.y, Is.EqualTo(-12f));
+            yield return Step;
+            Assert.That(Movement.Velocity.x, Is.Zero);
+            Assert.That(Movement.Velocity.y, Is.LessThan(0f));
+        }
+
+        [UnityTest] public IEnumerator ActualEnemyFsmDefersItsMovementDuringKnockbackAndDeathCancelsIt()
+        {
+            Set(enemyDefinition,"fsm",AssetDatabase.LoadAssetAtPath<ActionPlatformer.Units.Fsm.GroundUnitFsmDefinition>(
+                "Assets/_Game/Data/Fsm/PatrolEnemyFsm.asset"));
+            var actor=CreateEnemy(8f); yield return null;
+            var movement=actor.GetComponent<GroundMovement2D>();
+            movement.ApplyKnockback(6f,24f,.35f); actor.ApplyDamage(1);
+            yield return null; yield return Step; yield return null;
+            Assert.That(movement.IsForcedMoving, Is.True);
+            Assert.That(movement.Velocity.x, Is.InRange(.1f,5.99f));
+            Assert.That(actor.Owner.Fsm.CurrentState.GetType().Name, Is.EqualTo("HitState"));
+            actor.ApplyDamage(actor.CurrentHealth); yield return null; yield return null;
+            Assert.That(movement.IsForcedMoving, Is.False);
+            Assert.That(movement.Velocity.x, Is.Zero);
+        }
+
+        [UnityTest] public IEnumerator LiveTuningThreeHitComboAppliesDecayingFinisherKnockback()
+        {
+            var live=AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset");
+            Set(combatSettings,"windup",live.Windup); Set(combatSettings,"activeDuration",live.ActiveDuration);
+            Set(combatSettings,"recovery",live.Recovery); Set(combatSettings,"slamHoverDuration",live.SlamHoverDuration);
+            PlacePlayer(new Vector2(-.975f,61.32f));
+            float finisherOrigin = 0f;
+            for(int strike=1;strike<=3;strike++)
+            {
+                float origin = Movement.Position.x;
+                if (strike == 3) finisherOrigin = origin;
+                input.Command=new PlayerCommand { AttackPressed=true };
+                float deadline=Time.realtimeSinceStartup+3f;
+                while(enemy.DamageVersion<strike && Time.realtimeSinceStartup<deadline) yield return null;
+                Assert.That(enemy.DamageVersion, Is.EqualTo(strike));
+                Assert.That(Combat.Strike, Is.EqualTo(strike));
+                if(strike<3)
+                {
+                    Assert.That(Mathf.Abs(Movement.Velocity.x), Is.InRange(.01f, combatSettings.LightKnockbackSpeed));
+                    while(Combat.IsAttacking && Time.realtimeSinceStartup<deadline) yield return null;
+                    Assert.That(Movement.Position.x-origin, Is.InRange(.02f,.35f), "Light hits leave the target in combo reach.");
+                }
+            }
+            Assert.That(Movement.IsForcedMoving, Is.True);
+            float first=Mathf.Abs(Movement.Velocity.x);
+            Assert.That(first, Is.GreaterThan(0f));
+            for(int i=0;i<4;i++) yield return Step;
+            Assert.That(Mathf.Abs(Movement.Velocity.x), Is.LessThan(first));
+            float stopDeadline = Time.realtimeSinceStartup + 2f;
+            while (Movement.IsForcedMoving && Time.realtimeSinceStartup < stopDeadline) yield return null;
+            Assert.That(Movement.IsForcedMoving, Is.False);
+            Assert.That(Movement.Position.x-finisherOrigin, Is.InRange(2.5f,4.5f), "The finisher sends the enemy well beyond basic attack reach.");
+        }
+
+        [TestCase(0f)]
+        [TestCase(-1f)]
+        [TestCase(float.NaN)]
+        [TestCase(float.PositiveInfinity)]
+        public void KnockbackRejectsInvalidDeceleration(float value)
+        {
+            Set(combatSettings,"knockbackDeceleration",value);
+            Assert.That(combatSettings.TryValidate(), Is.False);
+            Assert.Throws<System.ArgumentOutOfRangeException>(()=>Movement.ApplyKnockback(6f,value,.35f));
         }
 
         [UnityTest] public IEnumerator ForcedMovementSurvivesFixedUpdatesAndStopsAfterDuration()

@@ -21,7 +21,7 @@ namespace ActionPlatformer.Tests
             Assert.That(new SerializedObject(visual.GetComponent<PlayerVisual>()).FindProperty("showAttackArea").boolValue, Is.False);
             var controller = (AnimatorController)animator.runtimeAnimatorController;
             var machine = controller.layers[0].stateMachine;
-            string[] names = { "Idle","Run","Jump","Fall","Attack1","Attack2","Attack3","AirAttack1","AirAttack2","AirAttack3","Lift","Emergence","SlamHover","SlamFall","SlamLand" };
+            string[] names = { "Idle","Run","Jump","Fall","Attack1","Attack2","Attack3","AirAttack1","AirAttack2","AirAttack3","Lift","Emergence","SlamHover","SlamFall","SlamLand","Hit","Die" };
             foreach (string name in names)
             {
                 var state = machine.states.Single(s => s.state.name == name).state;

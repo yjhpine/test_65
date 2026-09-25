@@ -104,13 +104,14 @@ namespace ActionPlatformer.Player
         {
             if (attack.Kind == PlayerAttack.Shockwave) return;
             if (!target.Owner.Definition.AllowForcedMovement || !target.TryGetComponent<GroundMovement2D>(out var movement)) return;
-            Vector2 velocity;
             if (attack.Kind == PlayerAttack.Side)
             {
-                if (!combo.IsFinisher) return;
-                velocity = new Vector2(attack.Facing * tuning.KnockbackSpeed, movement.Velocity.y);
+                float speed = combo.IsFinisher ? tuning.KnockbackSpeed : tuning.LightKnockbackSpeed;
+                float deceleration = combo.IsFinisher ? tuning.KnockbackDeceleration : tuning.LightKnockbackDeceleration;
+                movement.ApplyKnockback(attack.Facing * speed, deceleration, tuning.ForcedDuration);
+                return;
             }
-            else velocity = new Vector2(0f, attack.Kind == PlayerAttack.Slam ? -tuning.SlamKnockdownSpeed : tuning.LaunchSpeed);
+            var velocity = new Vector2(0f, attack.Kind == PlayerAttack.Slam ? -tuning.SlamKnockdownSpeed : tuning.LaunchSpeed);
             movement.ApplyForcedMovement(velocity, tuning.ForcedDuration);
         }
     }

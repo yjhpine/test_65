@@ -1,5 +1,76 @@
 # Movement Lab 검증 기록
 
+## 1·2타 작은 넉백 / 3타 큰 넉백
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 옆 공격의 일반 타격에 Light Knockback Speed=3 / Deceleration=30을 추가하고 콤보 막타는 Knockback Speed=12 / Deceleration=18로 조정했다. 동일한 초기 속도·감속 경로를 사용하며 수직 속도는 보존한다. 기본 3타 외 콤보 길이 설정도 IsFinisher로 구분하고 콤보 비활성화 시 작은 넉백, 명중 반응 비활성화 시 넉백 제외를 유지한다.
+- 전체 Play Mode **168/168 통과**, 15:55:33~15:56:50 KST, 76.327초 (`Library/PrototypeValidation/ComboKnockbackPlayMode.xml`). 신규 검사는 좌우 방향에서 1·2타의 짧은 이동(0.02~0.35)과 3타의 긴 이동(2.5 이상, 일반 타격의 10배 이상), 작은 넉백 설정의 유효성·속도 0을 확인했다. 실제 저장된 빠른 공격 설정의 3연타 검사에서도 첫 두 타 이후 사거리 유지와 막타 이동 거리(2.5~4.5)를 확인했다. 기존 공중 기본 공격·교체 가능한 연계 규칙 검사도 새 작은 넉백 동작에 맞춰 통과했다.
+- 전체 Edit Mode **25/25 통과**, 15:58:00 KST, 0.098초 (`Library/PrototypeValidation/ComboKnockbackEditMode.xml`). C# 컴파일 오류·경고 없음, Unity MCP Console 새 경고/오류 없음(cursor 99), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다. 사용자 변경 공격 시간·잠복 이동 속도·적 체력 및 씬 배치를 보존했다.
+
+## 3타 감속 넉백
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- GroundHitReaction의 옆 공격 막타를 GroundMovement2D.ApplyKnockback으로 연결했다. 초기 수평 속도만 한 번 설정하고 매 물리 단계 실제 Rigidbody 속도를 Knockback Deceleration(기본 24)만큼 감속한다. Knockback Speed=6을 유지했다. 수직 속도·중력은 보존하며 벽 검사는 수평 속도를 0으로 만들어 장애물이 제거돼도 다시 밀어붙이지 않는다. 기존 ApplyForcedMovement의 띄우기/내려찍기 경로는 유지한다.
+- Forced Duration=0.35초는 최소 행동 제한이며 속도가 먼저 멈춰도 남은 제한을 유지한다. 감속 시간이 더 길면 잔여 넉백이 끝날 때까지 IsForcedMoving으로 AI/MoveTo/Stop 덮어쓰기를 방지한다. 새 넉백은 방향·속도·감속을 교체하고 사망/비활성화는 초기화한다.
+- 변경 전 전체 Play Mode **126/156 통과, 30개 실패** (`Library/PrototypeValidation/KnockbackBaselinePlayMode.xml`). 기존 검사가 고정 시각/몸체 위치/30 HP를 가정해 현재 조정된 공격 시간, 잠복 이동 속도, 적 체력에서 실패했다. PlayerGlitchCombatTests의 복제 설정에 검사 전용 0.12/0.06/0.18초·내려찍기 준비 0.5초·잠복 이동 속도 3을 명시하고 UnitCombatFsmTests의 복제 적을 30 HP로 고정했다. 실제 에셋의 Windup=0.006, Active=0.1, Recovery=0.08, Slam Hover=0, Underground Move Speed=10, 적 MaxHealth=1000 및 사용자 씬 편집은 보존했다.
+- 최종 전체 Play Mode **166/166 통과**, 15:48:05~15:49:17 KST, 72.758초 (`Library/PrototypeValidation/KnockbackPlayMode.xml`). 신규 10개는 좌우 단조 감속/최소 제한/AI 명령 무시, 벽 정지 후 벽 제거에도 재가속 없음, 감속이 제한 시간보다 긴 경우/재피격 교체/비활성화, 수직 속도 유지/내려찍기 교체, 실제 적 FSM 피격·사망 정리, 실제 저장된 빠른 공격 설정의 1·2·3타 명중/넉백, 잘못된 감속값 4종 검사다. 기존 고정형 적 검사에도 넉백 거부를 추가했다.
+- 전체 Edit Mode **25/25 통과**, 15:50:06 KST, 0.095초 (`Library/PrototypeValidation/KnockbackEditMode.xml`). C# 컴파일 오류·경고 없음, Unity MCP Console 새 경고/오류 없음(cursor 94), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다. 프리팹·씬 변경 없이 기존 PlayerCombatTuning에 감속 설정만 추가했다.
+
+## 히트스톱·방향성 카메라 흔들림·공격 입력 예약
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- PlayerCombat에 실제 피해 결과의 방향/강도 전달과 후딜레이 마지막 0.1초의 1회 공격 예약을 추가했다. 같은 검격의 다중/추가 타격은 연출을 반복하지 않는다. 처치 타격도 연출하고 헛공격/무적은 제외한다. 내려찍기 하강과 착지 명중은 별도 단계다. 예약은 실행 시 최신 위치/대상을 사용하며 피격/Reset/성공한 후딜레이 글리치 취소에서 초기화한다.
+- PlayerUnit이 일반 C# PlayerImpactFeedback을 생성한다. 싱글 플레이 Time.timeScale 정지(일반 0.035초, 막타·띄우기·출현 0.055초, 내려찍기 0.08초)와 연결된 고정 Aim Camera의 방향성 감쇠 오프셋을 관리한다. 비스케일 시간으로 종료하고 이전 배속을 복원한다. FixedDeltaTime은 건드리지 않는다. 입력 전에 카메라 오프셋을 제거해 조준 좌표를 보존한다. 추가 패키지/씬 컴포넌트/스프라이트/효과음은 없다. 설정은 기존 PlayerCombatTuning에 연결했다.
+- 전체 Play Mode **156/156 통과**, 15:30:43~15:31:53 KST, 69.874초. 결과 `Library/PrototypeValidation/ImpactFeedbackPlayMode.xml`. 신규 17개는 예약 시점/단일 소비/대상 변경/취소/0 설정, 실제 명중 중 물리·공격 시간 정지와 재개, 정지 중 입력 수집과 예약 연계, 처치/다중 적/늦은 추가 타격의 중복 연출 방지, 헛공격/무적 제외, 일반/막타/출현/내려찍기 강도·방향, 네 방향 카메라 원위치/조준 복원, 비활성화 정리, 기존 배속/기존 정지/외부 배속 변경 보존, 가장 강한 연출 선택과 무카메라 동작, 설정 검증을 포함한다.
+- 전체 Edit Mode **25/25 통과**, 15:32:57 KST, 0.106초. 결과 `Library/PrototypeValidation/ImpactFeedbackEditMode.xml`. C# 컴파일 오류·경고 없음, Unity MCP Console 새 경고/오류 없음(cursor 89), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개. 신규 런타임/검사 스크립트의 Unity 생성 meta도 원본에 반영했다.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다. 저장 씬·프리팹 배치와 기존 이동/공격 수치는 변경하지 않았다. 진폭과 시간은 초기값이며 현재 단일 플레이어/고정 카메라 구성을 대상으로 한다.
+
+## 플레이어 Hit·Die 애니메이션
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 기존 Adventurer ZIP의 hurt 3프레임과 die 7프레임을 원본 그대로 추가했다(10개 바이트 비교 일치). Unity에서 Hit/Die Sprite 전용 비반복 클립·상태를 생성했다. 기존 Controller 상태와 GUID를 유지하고 두 상태만 추가했다. Root Motion/Animation Event는 없다.
+- PlayerUnit이 피격 표시 시작과 사망 지연을 소유하고 IPlayerActionState.ReactionPresentation으로 전달한다. PlayerVisual은 Hit/Die를 공격·이동보다 우선 재생한다. 피격은 기존 Hit Stun=0.25초에 맞추며 재피격 시 재시작한다. 피격 중 걷기는 유지한다. 사망은 조작/공격/글리치를 정리하고 중력은 유지하며 Death Duration=0.7초 뒤 비활성화한다. Player 프리팹의 UnitHealth.DeactivateOnDeath=false로 연결했다. 0초 사망·잠복 몸체 복원·종료된 사망의 재활성화도 처리한다.
+- 전체 Play Mode **139/139 통과**, 13:52:55~13:54:02 KST, 67.169초. 결과 `Library/PrototypeValidation/PlayerReactionsPlayMode.xml`. 새 검사 5개는 재피격/이동 복귀/비활성화 초기화, 사망 7프레임/입력 차단/지연 종료/부활 방지, 잠복 사망 복원/0초 사망, 표시 우선순위/프레임/초기화, 렌더 캡처다. 기존 내려찍기 사망 취소 검사는 즉시 비활성화 대신 다음 상태 처리 단계를 기다리도록 변경했다.
+- 전체 Edit Mode **25/25 통과**, 13:54:47 KST, 0.099초. 결과 `Library/PrototypeValidation/PlayerReactionsEditMode.xml`. 기존 에셋 검사를 Hit/Die까지 확장해 Sprite 참조·임포트·Missing Script·Animator 설정을 확인했다.
+- `Library/PrototypeValidation/PlayerReactions.png`를 직접 확인했다. 위쪽은 피격 3프레임, 아래쪽은 사망 7프레임이며 크기·발 위치·마지막 자세를 확인했다. C# 컴파일 오류·경고 없음. Unity MCP Console 새 경고/오류 없음(cursor 84), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다. 저장 씬과 기존 이동/공격 수치는 변경하지 않았다.
+
+## 공격 중 이동·점프 차단
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- PlayerUnit이 기존 PlayerCombat.IsAttacking 상태에 따라 준비·판정·후딜레이 중 수평 속도를 즉시 0으로 만든다. 점프 요청과 버퍼를 차단하며, 공격 종료/피격 취소 후 누르고 있는 방향의 이동을 재개한다. 별도 FSM이나 Unit/FsmRuntime 기능은 추가하지 않았다. CharacterMotor2D가 속도 쓰기를 담당한다.
+- 일반 공중 공격의 중력, 출현 상승, 내려찍기 준비/하강/충격파, 후딜레이 글리치 취소는 유지한다. 씬·프리팹·이동/공격 수치는 변경하지 않았다.
+- 전체 Play Mode 실행은 **133/134 통과**, 13:13:05~13:14:10 KST, 64.797초. 결과 `Library/PrototypeValidation/AttackMovementLockPlayMode.xml`. 신규 이동/점프 검사가 공격 종료 프레임에도 새 JumpPressed를 만들어 실패했다. 마지막 점프를 후딜레이 안에서 보내도록 테스트만 수정한 후 해당 검사 **1/1 통과**, 13:15:06~13:15:07 KST, 0.811초 (`AttackMovementLockFocused.xml`). 런타임 코드는 최초 전체 실행 이후 변경하지 않았다. 최종 코드 기준 134개 모두 통과 결과를 확보했으며 전체 묶음을 다시 실행하지는 않았다.
+- 신규 검사는 달리기 중 즉시 정지, 공격+점프 동시 입력, 모든 일반 공격 단계에서 이동/점프 차단, 후딜레이 입력의 버퍼 제거, 종료 후 이동/새 점프 복구, 이동 입력 중 출현 상승 보존을 확인했다. 기존 공중 공격 검사는 수평 정지·중력 유지로 기대값을 변경했다. 기존 피격 취소 후 이동, 내려찍기, 글리치 연계 검사도 통과했다.
+- 전체 Edit Mode **25/25 통과**, 13:16:09 KST, 0.097초 (`AttackMovementLockEditMode.xml`). C# 컴파일 오류·경고 없음, Unity MCP Console 새 경고/오류 없음(cursor 79), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다.
+
+## 막힌 잠복 위치의 가까운 출현 지점 보정
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 출현 공격 요청 시 현재 위치가 막혔으면 같은 바닥의 좌우 후보를 가까운 순서로 검사한다. 0.05월드 단위 간격으로 탐색한 뒤 발견한 빈 경계를 6번 세분화한다. 양쪽이 발견되면 보정 후 거리를 비교하며 0.001 이내 동률은 마지막 실제 잠복 이동 방향, 이동 전에는 원래 몸체 쪽을 우선한다. 콜라이더 offset·전체 몸체 공간·바닥 끝 검사와 대상/지면 유효성을 유지한다. 0.05보다 좁은 빈 중심 좌표 구간은 샘플링에서 놓칠 수 있다는 해상도 한계를 가이드에 기록했다.
+- 탐색은 출현 요청 시에만 실행하며, 매 물리 프레임의 CanEmerge와 표시 색은 여전히 현재 열 하나의 검사 결과다. 성공하면 표시 좌표를 실제 보정 출현 위치에 맞춘 뒤 기존 출현 공격을 시작한다. 쿨타임을 다시 시작하지 않는다. 같은 바닥 전체가 막혔거나 대상/지면이 무효이면 기존 정리 경로로 복귀한다.
+- 전체 Play Mode **132/132 통과**, 12:54:21~12:55:24 KST, 63.610초. 결과 `Library/PrototypeValidation/NearestEmergencePlayMode.xml`, 로그 `NearestEmergencePlayMode.log`. 신규 5개는 좌우 동률 방향 2개, 선호 방향보다 가까운 반대쪽/복수 장애물, 바닥 끝과 offset Capsule, 실제 공격 입력의 보정 출현·상승·쿨타임 유지다. 기존 차단 검사도 근처 출현 또는 전체 바닥 차단 복귀라는 최신 규칙으로 갱신했다.
+- 전체 Edit Mode **25/25 통과**. 결과 `Library/PrototypeValidation/NearestEmergenceEditMode.xml`, 로그 `NearestEmergenceEditMode.log`. C# 컴파일 오류·경고 없음, Unity MCP Console 새 경고/오류 없음(cursor 74), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 조작과 실행 파일 빌드는 수행하지 않았다. 씬·프리팹·기존 이동/공격 설정값은 변경하지 않았다.
+
+## 잠복 중 출현 위치 조절
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 기존 Move 액션의 A/D·좌우 방향키 입력을 사용한다. PlayerUnit은 FixedUpdate에서 PlayerGlitch.MoveUnderground를 호출하며 몸체 대신 논리 좌표와 지면 표시를 이동한다. GlitchTuning의 Underground Move Speed 기본값은 3월드 단위/초다. 같은 바닥의 양 끝에서 몸체 전체 너비를 확보하도록 제한하고, 출현 가능 여부는 실제 출현 검사와 같은 함수로 계산해 표시 색을 청록/빨강으로 갱신한다.
+- 전체 Play Mode **127/127 통과**, 12:40:48~12:41:52 KST, 63.271초. 결과 `Library/PrototypeValidation/BurrowMovePlayMode.xml`, 로그 `BurrowMovePlayMode.log`. 신규 6개는 좌우 입력·정지·조절한 지점의 출현/상승, 실제 몸체 Kinematic/속도 0/피해 차단 유지, 시간 간격별 이동량, 속도 0 및 유효성 검사, 체류/쿨타임 비연장, 바닥 양 끝 제한, 막힌 지점 표시와 이동 후 복구, 출현 직전 차단 재검사 및 비활성화 복원을 확인한다. 기존 Space 취소 검사에 이동+공격 동시 입력 우선순위도 추가했다.
+- 전체 Edit Mode **25/25 통과**, 12:42:56 KST, 0.139초. 결과 `Library/PrototypeValidation/BurrowMoveEditMode.xml`, 로그 `BurrowMoveEditMode.log`. C# 컴파일 오류·경고 없음. Unity MCP Console 새 경고/오류 없음(cursor 69), 수정 범위 diff 공백 검사 통과, 원본/검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 키보드 조작이나 실행 파일 빌드는 수행하지 않았다. 입력 액션·씬·프리팹·기존 이동/공격 수치는 변경하지 않았다. 신규 설정은 GlitchTuning.asset에만 추가했다.
+
 ## 겹침 공격의 띄우기 오분류와 잠복 지점 출현
 
 2026-09-25, Unity 6000.3.23f1 / Windows Editor.

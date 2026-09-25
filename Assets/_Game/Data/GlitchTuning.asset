@@ -20,6 +20,7 @@ MonoBehaviour:
   undergroundEnabled: 1
   undergroundDepth: 0.6
   undergroundDuration: 2
+  undergroundMoveSpeed: 10
   targetMask:
     serializedVersion: 2
     m_Bits: 4
