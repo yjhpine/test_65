@@ -63,7 +63,7 @@ namespace ActionPlatformer.Units.Features
         private void OnDisable() => ClearTarget();
 
         private bool IsAvailable(UnitHealth candidate) => candidate != null && candidate != health &&
-            candidate.isActiveAndEnabled && candidate.IsAlive && candidate.Owner != null && candidate.Owner.isActiveAndEnabled;
+            candidate.CanReceiveDamage;
 
         private bool InRange(UnitHealth candidate, float range) =>
             ((Vector2)candidate.transform.position - (Vector2)transform.position).sqrMagnitude <= range * range;

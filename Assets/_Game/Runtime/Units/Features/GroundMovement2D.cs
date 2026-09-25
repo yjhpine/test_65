@@ -19,6 +19,28 @@ namespace ActionPlatformer.Units.Features
         private float targetX;
         private float speed;
         private bool hasDestination;
+        private float forcedRemaining;
+        private float forcedHorizontal;
+        public bool IsForcedMoving => forcedRemaining > 0f;
+
+        public void ApplyForcedMovement(Vector2 velocity, float duration)
+        {
+            if (!IsFinite(velocity.x) || !IsFinite(velocity.y) || !IsFinite(duration) || duration <= 0f)
+                throw new System.ArgumentOutOfRangeException(nameof(duration));
+            if (!isActiveAndEnabled || body == null) return;
+            if (TryGetComponent<Unit>(out var unit) &&
+                (!unit.isActiveAndEnabled || unit.Definition == null || !unit.Definition.AllowForcedMovement)) return;
+            hasDestination = false;
+            forcedRemaining = duration;
+            forcedHorizontal = velocity.x;
+            body.linearVelocity = velocity;
+        }
+
+        public void CancelForcedMovement()
+        {
+            if (IsForcedMoving && body != null) body.linearVelocity = Vector2.zero;
+            forcedRemaining = 0f;
+        }
 
         public Vector2 Position => body == null ? (Vector2)transform.position : body.position;
         public Vector2 Velocity => body == null ? Vector2.zero : body.linearVelocity;
@@ -60,11 +82,18 @@ namespace ActionPlatformer.Units.Features
         {
             hasDestination = false;
             IsBlocked = false;
-            SetHorizontalVelocity(0f);
+            if (!IsForcedMoving) SetHorizontalVelocity(0f);
         }
 
         private void FixedUpdate()
         {
+            if (IsForcedMoving)
+            {
+                // Gravity and collisions retain authority over vertical motion.
+                forcedRemaining = Mathf.Max(0f, forcedRemaining - Time.fixedDeltaTime);
+                SetHorizontalVelocity(forcedHorizontal);
+                return;
+            }
             if (!hasDestination || HasArrived)
             {
                 SetHorizontalVelocity(0f);
@@ -100,7 +129,7 @@ namespace ActionPlatformer.Units.Features
             if (body != null) body.linearVelocity = new Vector2(horizontal, body.linearVelocity.y);
         }
 
-        private void OnDisable() => Stop();
+        private void OnDisable() { CancelForcedMovement(); Stop(); }
 
         private static bool IsFinite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
     }

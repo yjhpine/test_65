@@ -8,7 +8,7 @@ namespace ActionPlatformer.Player
         private readonly PlayerInput playerInput;
         private InputActionAsset cachedActions;
         private InputActionMap playerMap;
-        private InputAction move, jump;
+        private InputAction move, jump, aim, glitch, attack;
         private bool invalidConfiguration;
 
         public PlayerInputReader(PlayerInput playerInput)
@@ -25,6 +25,9 @@ namespace ActionPlatformer.Player
             playerMap = actions?.FindActionMap("Player");
             move = playerMap?.FindAction("Move");
             jump = playerMap?.FindAction("Jump");
+            aim = playerMap?.FindAction("Aim");
+            glitch = playerMap?.FindAction("Glitch");
+            attack = playerMap?.FindAction("Attack");
             if (move == null || jump == null)
             {
                 Debug.LogError("PlayerInput needs an action asset with Player/Move and Player/Jump.", playerInput);
@@ -45,7 +48,11 @@ namespace ActionPlatformer.Player
                 Move = move.enabled ? move.ReadValue<Vector2>() : Vector2.zero,
                 JumpPressed = jump.enabled && jump.WasPressedThisFrame(),
                 JumpHeld = jump.enabled && jump.IsPressed(),
-                JumpReleased = jump.enabled && jump.WasReleasedThisFrame()
+                JumpReleased = jump.enabled && jump.WasReleasedThisFrame(),
+                AimScreenPosition = aim != null && aim.enabled ? aim.ReadValue<Vector2>() : Vector2.zero,
+                HasAim = aim != null && aim.enabled && playerInput.currentControlScheme == "Keyboard&Mouse",
+                GlitchPressed = glitch != null && glitch.enabled && glitch.WasPressedThisFrame(),
+                AttackPressed = attack != null && attack.enabled && attack.WasPressedThisFrame()
             };
         }
     }

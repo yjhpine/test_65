@@ -15,6 +15,8 @@ namespace ActionPlatformer.Player
         private readonly Collider2D bodyCollider;
         private readonly ContactFilter2D groundFilter;
         private readonly RaycastHit2D[] groundHits = new RaycastHit2D[8];
+        private RigidbodyType2D savedBodyType;
+        public bool IsHeld { get; private set; }
 
         public Vector2 Velocity => body.linearVelocity;
         public Vector2 Position => body.position;
@@ -56,6 +58,7 @@ namespace ActionPlatformer.Player
 
         public void Simulate(float horizontal, bool jumpHeld, float deltaTime)
         {
+            if (IsHeld) return;
             Vector2 velocity = Velocity;
             velocity.x = MovementMath.HorizontalSpeed(velocity.x, horizontal, IsGrounded, tuning, deltaTime);
             float gravity = velocity.y > 0f ? tuning.RiseGravity : tuning.FallGravity;
@@ -66,8 +69,74 @@ namespace ActionPlatformer.Player
 
         public void Teleport(Vector2 position)
         {
+            Relocate(position, Vector2.zero);
+        }
+
+        public void Relocate(Vector2 position, Vector2 velocity)
+        {
             body.position = position;
+            body.linearVelocity = velocity;
+            IsGrounded = false;
+        }
+
+        public void SetVerticalVelocity(float velocity)
+        {
+            body.linearVelocity = new Vector2(Velocity.x, velocity);
+            IsGrounded = false;
+        }
+
+        public void Hover()
+        {
             body.linearVelocity = Vector2.zero;
+            IsGrounded = false;
+        }
+
+        // Sweep the entire body through this step so a fast descent cannot skip a thin platform.
+        public bool SimulateSlam(float speed, float deltaTime, out Vector2 impact)
+        {
+            impact = default;
+            if (IsHeld) return false;
+            float travel = speed * deltaTime;
+            int count = bodyCollider.Cast(Vector2.down, groundFilter, groundHits, travel + 0.02f);
+            int nearest = -1;
+            for (int i = 0; i < count; i++)
+                if (groundHits[i].normal.y > 0.65f &&
+                    (nearest < 0 || groundHits[i].distance < groundHits[nearest].distance)) nearest = i;
+            if (nearest >= 0)
+            {
+                var floor = groundHits[nearest];
+                Relocate(Position + Vector2.down * Mathf.Max(0f, floor.distance - 0.01f), Vector2.zero);
+                IsGrounded = true;
+                impact = floor.point;
+                return true;
+            }
+            body.linearVelocity = Vector2.down * speed;
+            IsGrounded = false;
+            return false;
+        }
+
+        public void StopSlam()
+        {
+            body.linearVelocity = Vector2.zero;
+            RefreshContacts();
+        }
+
+        public void Hold()
+        {
+            if (IsHeld) return;
+            savedBodyType = body.bodyType;
+            body.linearVelocity = Vector2.zero;
+            body.bodyType = RigidbodyType2D.Kinematic;
+            IsHeld = true;
+            IsGrounded = false;
+        }
+
+        public void Release()
+        {
+            if (!IsHeld) return;
+            body.bodyType = savedBodyType;
+            body.linearVelocity = Vector2.zero;
+            IsHeld = false;
             IsGrounded = false;
         }
     }

@@ -14,7 +14,9 @@ namespace ActionPlatformer.Tests
         private PlayerUnit player;
         private Driver input;
         private Keyboard testKeyboard;
+        private Mouse testMouse;
         private Gamepad testGamepad;
+        private GameObject testLedge;
         private static readonly WaitForFixedUpdate FixedStep = new WaitForFixedUpdate();
 
         private sealed class InputFocusScope : System.IDisposable
@@ -65,8 +67,10 @@ namespace ActionPlatformer.Tests
         [UnityTearDown] public IEnumerator Cleanup()
         {
             if (testKeyboard != null) InputSystem.RemoveDevice(testKeyboard);
+            if (testMouse != null) InputSystem.RemoveDevice(testMouse);
             if (testGamepad != null) InputSystem.RemoveDevice(testGamepad);
-            testKeyboard = null; testGamepad = null;
+            testKeyboard = null; testMouse = null; testGamepad = null;
+            if (testLedge != null) Object.Destroy(testLedge);
             yield return null;
         }
 
@@ -140,7 +144,13 @@ namespace ActionPlatformer.Tests
             input.Frame.JumpHeld = false; input.Frame.JumpReleased = true;
             float low = player.Motor.Position.y;
             for (int i = 0; i < 35; i++) { yield return FixedStep; low = Mathf.Max(low, player.Motor.Position.y); }
-            Assert.That(high - floorY, Is.InRange(2.7f, 3.5f));
+            // Follow the authored jump height; do not silently change the player's tuning for the test.
+            float expectedHeight = 4f;
+#if UNITY_EDITOR
+            var authored = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerTuning>("Assets/_Game/Data/PlayerTuning.asset");
+            expectedHeight = new UnityEditor.SerializedObject(authored).FindProperty("jumpHeight").floatValue;
+#endif
+            Assert.That(high - floorY, Is.InRange(expectedHeight - 0.5f, expectedHeight + 0.3f));
             Assert.That(high - low, Is.GreaterThan(1f));
         }
 
@@ -156,6 +166,11 @@ namespace ActionPlatformer.Tests
 
         private IEnumerator WalkOffMiddleLedge()
         {
+            // The editable lab layout is not a test fixture. Supply our own ledge.
+            testLedge = new GameObject("Coyote test ledge");
+            testLedge.transform.position = new Vector3(3f, 3f, 0f);
+            testLedge.AddComponent<BoxCollider2D>().size = new Vector2(3f, 0.5f);
+            Physics2D.SyncTransforms();
             player.Motor.Teleport(new Vector2(3f, 4.1f)); yield return Steps(15);
             Assert.That(player.Motor.IsGrounded, Is.True);
             input.Frame.Move = Vector2.right;
@@ -205,6 +220,9 @@ namespace ActionPlatformer.Tests
                 var reader = new PlayerInputReader(playerInput);
                 Assert.That(playerInput.currentActionMap.name, Is.EqualTo("Player"));
                 testKeyboard = InputSystem.AddDevice<Keyboard>();
+                testMouse = InputSystem.AddDevice<Mouse>();
+                // Batch editors have no physical devices at initial PlayerInput.OnEnable.
+                playerInput.enabled = false; playerInput.enabled = true;
                 InputSystem.QueueStateEvent(testKeyboard, new KeyboardState(Key.D, Key.Space));
                 InputSystem.Update();
                 PlayerCommand keyboard = reader.Sample();
@@ -235,6 +253,7 @@ namespace ActionPlatformer.Tests
                 var playerInput = player.GetComponent<PlayerInput>();
                 var reader = new PlayerInputReader(playerInput);
                 testGamepad = InputSystem.AddDevice<Gamepad>();
+                playerInput.enabled = false; playerInput.enabled = true;
                 playerInput.SwitchCurrentControlScheme("Gamepad", testGamepad);
                 player.SetInputSource(null);
 

@@ -17,4 +17,6 @@ MonoBehaviour:
   kind: 2
   maxHealth: 30
   attackPower: 5
+  allowGlitchTarget: 1
+  allowForcedMovement: 1
   fsm: {fileID: 11400000, guid: 0884d07fa748e01458040b3450f2c0b8, type: 2}

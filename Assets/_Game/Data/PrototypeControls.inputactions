@@ -25,6 +25,36 @@
           "interactions": "",
           "initialStateCheck": false,
           "priority": 0
+        },
+        {
+          "name": "Aim",
+          "type": "Value",
+          "id": "8129ea33-656c-4567-9c25-d4b729488166",
+          "expectedControlType": "Vector2",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": true,
+          "priority": 0
+        },
+        {
+          "name": "Glitch",
+          "type": "Button",
+          "id": "4fafd746-d1a7-4e81-9a3b-a05dc0976b9e",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": false,
+          "priority": 0
+        },
+        {
+          "name": "Attack",
+          "type": "Button",
+          "id": "20be14c7-e8fb-439a-9398-130f3e577714",
+          "expectedControlType": "Button",
+          "processors": "",
+          "interactions": "",
+          "initialStateCheck": false,
+          "priority": 0
         }
       ],
       "bindings": [
@@ -190,6 +220,61 @@
           "processors": "",
           "groups": "XR",
           "action": "Jump",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "9e4abb62-3e75-4770-b786-de971ba435e1",
+          "path": "<Mouse>/position",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "Aim",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "6f0ec62e-88c2-409c-ab2e-7129017e44e8",
+          "path": "<Keyboard>/leftShift",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "Glitch",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "cebebcec-b66c-407c-8791-2ad2a13543ad",
+          "path": "<Keyboard>/rightShift",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "Glitch",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "941f230f-9d39-4e7b-a47c-3a675737e14d",
+          "path": "<Mouse>/leftButton",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "Attack",
+          "isComposite": false,
+          "isPartOfComposite": false
+        },
+        {
+          "name": "",
+          "id": "9878b6dc-1d11-4122-81af-e714dbb58e11",
+          "path": "<Keyboard>/j",
+          "interactions": "",
+          "processors": "",
+          "groups": "Keyboard&Mouse",
+          "action": "Attack",
           "isComposite": false,
           "isPartOfComposite": false
         }

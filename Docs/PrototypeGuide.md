@@ -1,6 +1,6 @@
 # 이동·점프 기초 — Movement Lab
 
-현재 범위는 **이동 가감속, 가변 점프, 코요테 타임, 점프 입력 버퍼**입니다.
+현재 범위는 **이동 가감속, 가변 점프, 코요테 타임, 점프 입력 버퍼, 글리치 재배치와 플레이어 공격**입니다.
 유닛 공통 기반은 **정의 데이터 연결과 선택적 FSM 실행**까지 구현했습니다. 구체적인 몬스터·NPC 행동과 전환은 C#으로 확장합니다.
 순찰 적 프리팹은 대기·왕복 이동과 추적·공격·피격·사망 상태를 사용합니다.
 
@@ -9,30 +9,33 @@
 
 - 좌우 이동: A/D 또는 방향키 / 게임패드 왼쪽 스틱.
 - 점프: Space / 게임패드 아래 버튼.
+- 글리치: 마우스로 적의 상·하·좌·우를 조준하고 Shift를 새로 누릅니다. 벽 너머 또는 도착 공간이 막힌 요청은 취소합니다.
+- 공격: 좌클릭 또는 J. 옆 3타·아래 띄우기·위 내려찍기를 사용하고 대상 변경 후에도 콤보를 이어갑니다.
+- 지면 적 아래로 글리치하면 지하 상태가 됩니다. 공격으로 출현하고 Space로 취소하며, 최대 2초 뒤 원래 위치로 돌아옵니다.
 - 점프를 짧게 누르면 낮게, 길게 누르면 높게 뜁니다.
 - 발판을 벗어난 뒤 0.1초 안에는 점프할 수 있습니다.
 - 착지 전 0.13초 안에 누른 점프는 착지 시 실행됩니다.
 
 씬에는 픽셀아트 플레이어, 단색 바닥, 경계 벽, 점프 확인용 발판 3개와 고정 카메라가 있습니다. 현재 저장된 MovementLab에는 PatrolEnemy 인스턴스 1개도 배치되어 있습니다.
-플레이어 공격 입력, 대시·체크포인트·재시작·일시정지·HUD·효과음·연출·건물 배경과 와이어 이동은 없습니다. 적의 기본 근접 공격과 유닛 피해 처리는 구현되어 있습니다.
+대시·체크포인트·재시작·일시정지·HUD·효과음·건물 배경과 와이어 이동은 없습니다. 공격은 Adventurer의 검격 애니메이션, 지하는 청록색 지면 표시로 확인합니다.
 
 ## 조절 위치
 `Assets/_Game/Data/PlayerTuning.asset`에서 이동 속도, 지상 가속·감속, 공중 가속, 점프 높이, 상승·낙하 중력, 점프 해제 배율, 코요테 타임, 입력 버퍼를 조절합니다.
 초깃값은 이전 프로토타입의 이동·점프 설정을 유지했습니다.
 Player 프리팹의 PlayerUnit에서 Definition, Tuning, Ground Mask, Visual 참조를 연결합니다. Definition은 `Assets/_Game/Data/Units/PlayerDefinition.asset`이며 ID는 `player`, Kind는 `Player`, FSM은 비어 있습니다. 이동 수치는 별도의 PlayerTuning에서 관리합니다.
 
-`Assets/_Game/Data/PrototypeControls.inputactions`에는 Player 맵의 Move / Jump만 있습니다.
+`Assets/_Game/Data/PrototypeControls.inputactions`에는 Player 맵의 Move / Jump / Aim / Glitch / Attack이 있습니다. 새 기능은 키보드·마우스용이며 기존 게임패드 이동·점프는 유지합니다.
 기본 `Assets/Settings/InputSystem_Actions.inputactions`와 프로젝트 전역 입력 등록도 보존했습니다. 플레이어 루트의 Unity 기본 `PlayerInput`에 PrototypeControls를 연결하고 Default Action Map을 `Player`로 설정했습니다.
 `PlayerInput`이 액션 활성화와 기기 연결, 싱글 플레이에서 키보드·게임패드 자동 전환을 관리합니다. Behavior는 `Invoke C Sharp Events`이며 이벤트 연결 없이 `PlayerInputReader`가 해당 컴포넌트의 액션 값을 읽습니다. Reader는 PlayerUnit이 생성하는 일반 C# 객체이며 프리팹에 부착하지 않습니다. 액션을 별도로 복제하거나 활성화하지 않습니다.
 입력을 끄고 켤 때는 `PlayerInput.DeactivateInput()` / `ActivateInput()`을 사용합니다. PlayerInput 컴포넌트나 Player 액션 맵이 비활성화된 동안 Reader는 빈 명령을 반환합니다. 물리 정지나 점프 버퍼 초기화는 별도 처리입니다.
 `Assets/_Game/Prefabs/Player.prefab`은 루트에서 물리 몸체와 입력·컨트롤러·모터를 관리하고, 바로 아래 `Visual` 자식에서 `SpriteRenderer`와 `Animator`를 관리합니다.
 
 ## 플레이어 외형과 애니메이션
-Pixel Frog의 [Pixel Adventure](https://pixelfrog-assets.itch.io/pixel-adventure-1)에 포함된 **Virtual Guy**를 적용했습니다. CC0 에셋이며 출처와 라이선스는 `Docs/ThirdPartyNotices.md`에 기록했습니다.
+rvros의 [Animated Pixel Adventurer](https://rvros.itch.io/animated-pixel-hero)를 적용했습니다. 개인·상업적 사용 및 수정이 허용되는 제작자 라이선스이며 에셋 단독 재배포는 금지됩니다. 출처·원본 해시·사용 조건은 `Docs/ThirdPartyNotices.md`에 기록했습니다.
 
-원본 이미지는 `Assets/_Game/Art/Characters/VirtualGuy`, 애니메이션은 `Assets/_Game/Animations/Player`에 있습니다. 32×32 프레임, 16 PPU, Point 필터, 무압축이며, 대기 11프레임과 달리기 12프레임을 20 FPS로 반복합니다. 점프·낙하는 각각 한 프레임입니다.
+원본 이미지는 `Assets/_Game/Art/Characters/Adventurer`, 애니메이션은 `Assets/_Game/Animations/Player`에 있습니다. 50×37 프레임, 18 PPU, Point 필터, 무압축이며 발 피벗 `(25/50, 1/37)`을 사용합니다. 대기 4프레임(10 FPS), 달리기 6프레임(12.5 FPS), 점프 4프레임, 낙하 2프레임입니다. 기존 몸체·Visual 위치와 이동 수치는 유지합니다. VirtualGuy 원본은 미사용 에셋으로 보존합니다.
 
-Player 프리팹의 `Visual`에는 SpriteRenderer, Animator, PlayerVisual이 있습니다. PlayerUnit이 Awake에서 PlayerVisual에 `ICharacterMotionState`를 전달합니다. PlayerVisual은 이 읽기 전용 인터페이스의 속도와 접지만 읽어 `Moving`, `Grounded`, `Rising` 파라미터를 갱신하고 이동 방향에 따라 SpriteRenderer의 Flip X를 변경합니다. 구체적인 모터나 PlayerUnit 참조는 보관하지 않습니다. 정지하면 마지막 방향을 유지합니다. Animator의 Apply Root Motion은 꺼져 있습니다.
+Player 프리팹의 `Visual`에는 SpriteRenderer, Animator, PlayerVisual이 있습니다. PlayerUnit이 초기화 시 `ICharacterMotionState`와 선택적 `IPlayerActionState`를 전달합니다. PlayerVisual은 읽기 전용 상태로 이동·공격 애니메이션과 Flip X를 갱신합니다. 구체적인 모터나 PlayerUnit 참조는 보관하지 않습니다. 정지하면 마지막 방향을 유지합니다. Animator의 Apply Root Motion은 꺼져 있습니다.
 
 다른 캐릭터로 교체할 때는 `Visual`의 Sprite와 Animator Controller를 교체하고 위 세 Bool 파라미터를 유지합니다. 현재 `Visual`의 위치는 `(0, -0.8, 0)`, 스케일은 `(1, 1, 1)`, Color는 흰색이며 스프라이트 피벗은 하단 중앙입니다.
 루트의 Transform과 Rigidbody2D는 이동용으로 유지하고, 스프라이트 프레임이나 외형 변형 애니메이션은 `Visual`에 바인딩합니다. 충돌 크기는 루트의 CapsuleCollider2D에서 별도로 조절합니다.
@@ -153,7 +156,7 @@ UnitCombat2D의 `Target Mask`는 Ignore Raycast(4), `Obstacle Mask`는 Default(1
 
 적의 UnitHealth는 `Deactivate On Death`를 꺼서 FSM이 사망 지연을 처리합니다. 플레이어는 FSM이 없으므로 이 옵션을 켜서 체력 0에서 즉시 비활성화합니다. 사망한 개체를 다시 활성화해도 체력은 0이며 적은 다시 사망 상태로 들어갑니다. 풀링용 부활·체력 초기화 API는 별도 구현 대상입니다.
 
-Play 중 Unit/PlayerUnit Inspector에서 `FSM State`, `Target`, `Health`를 확인할 수 있습니다. 적을 선택하고 `Test Damage`와 `Apply Test Damage`로 피격·사망을 시험합니다. 플레이어 공격 입력은 없습니다.
+Play 중 Unit/PlayerUnit Inspector에서 `FSM State`, `Target`, `Health`를 확인할 수 있습니다. 적을 선택하고 `Test Damage`와 `Apply Test Damage`로 피격·사망을 시험합니다. 플레이어의 좌클릭/J 공격으로도 피해를 줄 수 있습니다.
 
 ### FSM과 애니메이션 연결
 
@@ -172,3 +175,69 @@ Pig의 Attack 5프레임, Hit 2프레임, Dead 4프레임을 기존 원본 압�
 `Game > Prototype > Validate EditMode / Validate PlayMode`에서 실행합니다.
 가상 키보드·게임패드 테스트는 검사 중에만 에디터 입력 포커스 제한을 해제하고, 종료 시 원래 설정을 복원합니다. 실제 플레이 입력 설정은 변경하지 않습니다.
 현재 결과와 검증 범위는 `Docs/PrototypeValidation.md`에 기록합니다.
+
+## 글리치·플레이어 공격 (2026-09-24)
+
+- `PlayerUnit`이 일반 C# 객체 `PlayerGlitch`와 `PlayerCombat`을 생성하고 FixedUpdate 실행 순서를 조정합니다. `GlitchUtility`는 대상·방향·배치·공간 검사를 담당하며 Unit/FsmRuntime에 플레이어 기능을 추가하지 않습니다.
+- `GlitchTuning.asset`: 최대 거리 6, 보정 반경 0.75(0이면 직접 조준만), 중심 반경 0.1, 여유 간격 0.15, 쿨타임 0, 지하 깊이 0.6, 체류 2초. 쿨타임은 성공 시에만 시작하며 0 설정은 기존 타이머도 해제합니다.
+- `PlayerCombatTuning.asset`: 선딜레이/판정/후딜레이 0.12/0.06/0.18초, 콤보 유지 1초, 공격 길이/폭 1.2/1.6, 밀쳐내기/띄우기 속도 6/10, 출현 상승 10, 강제 이동 0.35초, 플레이어 피격 제한 0.25초입니다. 피해는 UnitDefinition.AttackPower를 사용합니다. 공중 내려찍기 설정은 아래 절을 참고합니다.
+- Player 프리팹에 두 설정 에셋을 연결했습니다. 카메라는 씬 객체이므로 MovementLab의 Player 인스턴스 `Aim Camera`에 고정 카메라를 연결합니다. 다른 씬에 배치할 때도 해당 카메라를 명시적으로 연결해야 합니다. 두 행동 설정이 모두 없으면 기존 이동 전용으로 동작합니다.
+- 직접 조준 우선, 동률은 개체 Instance ID 순서, 대각선은 좌우 우선입니다. 중앙을 가리키면 플레이어가 있던 좌우 측을 사용합니다. 좌우 도착은 몸 크기가 다른 적과 발 높이를 맞춥니다. 선택 방향이 막히면 다른 방향으로 바꾸지 않습니다.
+- Shift 입력 시 대상·방향을 고정하고 실제 실행 직전에 생존·활성·거리·시야·도착 공간을 다시 검사합니다. 성공한 재배치에서만 이전 점프 버퍼와 코요테 상태를 지웁니다.
+- 적의 상하좌우를 마우스로 조준하면 해당 방향의 도착 몸체 영역이 청록색 테두리로 표시됩니다. 공간 차단·쿨타임·공격/피격 제한 중에는 빨간색입니다. 아래 조준이 지하 진입으로 이어지면 지면에 납작한 표시가 나타납니다. 미리보기는 실제 이동과 같은 배치 검사를 사용하며 이동이나 쿨타임을 발생시키지 않습니다. 조준 해제·대상 소멸·입력 비활성화·지하 체류·플레이어 비활성화 시 사라집니다.
+- 지하는 정적인 수평 BoxCollider2D 바닥만 지원합니다. 이동 발판·경사·인접한 중첩 층은 제외합니다. 실제 몸체는 원래 위치에서 Kinematic으로 고정되고 Collider를 유지하지만 유닛 간 충돌은 하지 않습니다. 화면에는 적 아래의 지면 표시만 보입니다. 지하 중에는 피해와 적의 타깃 선정을 명시적으로 차단합니다.
+- 출현 시 대상과 **잠복 표시 지점 바로 위의 지상 공간**을 재검사합니다. 잠복 당시의 X좌표를 유지하며, 대상이 이동해도 따라가거나 좌우로 우회하지 않습니다. 출현 공간 차단·대상 소멸·체류 시간 만료·Space 취소는 원래 몸체 위치로 복귀하며, 비활성화도 물리·피격·표시 상태를 복원합니다. 지하 중 재글리치는 금지합니다.
+- 공격과 글리치가 동시에 요청되면 재배치 후 공격합니다. 지하에서는 Space 취소가 공격보다 우선합니다. 공격 판정이 끝난 후에는 글리치로 후딜레이를 취소할 수 있습니다.
+- 후딜레이 중 함께 누른 공격 입력도 FixedUpdate까지 보관하고, 글리치가 성공해 후딜레이를 취소한 다음 공격 가능 여부를 판단합니다. 글리치가 실패하면 기존 후딜레이 제한을 유지하고 해당 공격 요청은 소비합니다.
+- 콤보는 공격 판정 시작에 소비하며 공중 내려찍기는 하강 시작에 소비합니다. 헛공격·출현 공격도 한 타이며 대상 변경은 타수를 유지합니다. 피격·사망·비활성화·유효 시간 만료 시 초기화합니다.
+- `UnitDefinition.AllowGlitchTarget`과 `AllowForcedMovement`는 독립 설정입니다. PatrolEnemy는 둘 다 허용합니다. 글리치 불가 적도 타격할 수 있고, 고정형 적은 피해를 받으면서 강제 이동만 거부합니다.
+- 적의 강제 이동은 `GroundMovement2D`가 소유합니다. 강제 이동 중 MoveTo/Stop이 속도를 덮어쓰지 않으며 FSM은 새 추적·공격을 보류하고 피격·사망 처리는 유지합니다.
+- `PlayerVisual`은 `ICharacterMotionState`와 선택적 `IPlayerActionState`만 읽습니다. 방향·공격 애니메이션·지하 표시를 갱신하며 물리 루트는 변경하지 않습니다. 판정 도형은 Visual의 **Show Attack Area** 디버그 옵션으로 켤 수 있으며 기본 프리팹에서는 꺼져 있습니다.
+
+### Adventurer 공격 표시 (2026-09-25)
+
+- 지상 1·2·3타는 Attack1/2/3, 일반 공중 공격은 AirAttack1/2/3 상태를 사용합니다. 공중 원본 횡검격은 두 종류이므로 3타는 첫 검격을 재사용합니다. 타수와 피해량은 그대로 유지합니다.
+- Lift와 Emergence는 위로 베는 Attack1 프레임을 재사용합니다. 위쪽 글리치 이후 내려찍기는 원본 air-attack3의 준비 자세(SlamHover) → 하강 반복(SlamFall) → 착지(SlamLand)를 사용합니다. 0.5초 대기와 착지 충격파는 기존 전투 타이밍을 따릅니다.
+- `PlayerCombat.GetPresentation`이 공격 종류·타수·반복 번호·시작 시 공중 여부·단계 진행률을 읽기 전용으로 제공합니다. PlayerUnit이 IPlayerActionState로 전달하고 PlayerVisual만 Animator를 조작합니다. 글리치에는 애니메이션·콤보 책임을 추가하지 않았습니다.
+- 기존 Moving/Grounded/Rising 파라미터를 유지하고 ActionOverride Bool과 ActionTime Float을 추가했습니다. 준비는 클립의 0~0.35, 타격은 0.35~0.6, 회복은 0.6~1 구간에 맞춰 재생합니다. 하강은 별도 반복 클립이며 착지 첫 프레임은 충격파 시점에 시작합니다. Animation Event와 Root Motion은 사용하지 않습니다.
+- 피격 취소·글리치 취소·지하·비활성화에서 공격 표시를 해제하고 이동 애니메이션으로 돌아갑니다. 표시를 바꿔도 공격 판정·콤보·물리를 진행시키지 않습니다.
+
+### 공격과 연계 규칙의 분리
+
+몬스터와 몸체가 겹친 상태의 일반 공격은 옆 공격으로 처리합니다. 위치 기반 띄우기는 몬스터 몸체 하단이 플레이어 몸체 상단 이상에 있을 때만 선택하며 접촉 오차 0.02를 허용합니다. 중심 높이만으로 큰 몬스터를 위쪽 대상으로 분류하지 않습니다. 잠복 출현은 명시적인 출현 공격이므로 이 규칙과 별도로 띄우기를 유지하고, 타격 영역도 잠복 위치의 X축을 중심으로 대칭입니다.
+
+`PlayerUnit`의 Glitch Tuning과 Combat Tuning은 각각 선택 사항입니다. Glitch Tuning만 비우면 이동·점프·기본 공격을 사용할 수 있고, Combat Tuning만 비우면 글리치·지하 진입/출현을 사용할 수 있습니다. 둘 다 없으면 이동 전용입니다.
+
+`PlayerCombat`이 콤보 순번·대상 이력·공격 단계·유효 시간·피격 제한과 피해 판정을 소유합니다. `PlayerGlitch`는 이를 변경하지 않으며 PlayerUnit이 대상과 출현 여부를 전달하고 실행 순서를 조정합니다. 공통 몸체·시야 조회는 `UnitPhysics2D`, 글리치 대상·도착점 계산은 `GlitchUtility`에 둡니다.
+
+| 교체 계약 | 기본 구현 | 연결하지 않았을 때 |
+|---|---|---|
+| `IPlayerComboRule` | `SequentialComboRule`: 지정 타수 순환과 대상 변경 시 유지 여부 계산 | 매번 기본 1타, 마무리 반응 없음 |
+| `IPlayerAttackSelector` | `PositionAttackSelector`: 상대 위치/출현에 따른 공격 종류·영역·상승 요청 | 바라보는 방향의 기본 옆 공격 |
+| `IPlayerHitReaction` | `GroundHitReaction`: 명중 후 밀쳐내기·띄우기·하향 이동 | 피해만 적용 |
+
+규칙은 실행 상태를 저장하지 않고 생성자로 주입합니다. 새 규칙을 구현해 PlayerUnit의 초기화 연결만 교체하면 됩니다. 공격 가능 시간과 타수 소비 시점은 계속 PlayerCombat이 관리합니다. 명중 반응은 숫자 3 대신 콤보 규칙이 반환한 마무리 여부를 사용합니다.
+
+`PlayerCombatTuning.asset` Inspector의 **Enable Combo / Enable Position Attacks / Enable Hit Reactions**로 각 연계를 독립적으로 끌 수 있습니다. 기본은 모두 켜짐, **Combo Length=3**, **Retain Combo On Target Change=켜짐**입니다. 이 옵션과 타수 규칙 변경은 플레이어가 초기화될 때 반영되므로 Play Mode를 다시 시작해야 합니다. 기본 프리팹의 기존 조작·타이밍·연계는 유지합니다.
+
+### 유닛 충돌과 공중 내려찍기 (2026-09-25)
+
+- 현재 유닛 몸체가 사용하는 Ignore Raycast(2) 레이어의 자기 레이어 충돌을 Physics 2D 설정에서 껐습니다. 플레이어·적·허수아비는 서로 통과하며 Default 지형과는 계속 충돌합니다. 새 유닛 몸체도 같은 레이어를 사용합니다. 타격·조준 조회는 유지하며 글리치 도착점도 충돌하지 않는 유닛 때문에 막히지 않습니다.
+- 실제 공격 실행 직전 모터의 접지를 확인합니다. **적 위쪽으로 글리치가 성공한 뒤 공중에서 하는 첫 공격만 내려찍기**입니다. 일반 점프·낙하·좌우/아래 글리치 뒤 공중 공격은 바라보는 방향의 기본 옆 공격입니다. 지상의 공격 선택·콤보와 지하 출현 공격은 유지하며, 출현 후 공중에서 다시 공격할 때도 기본 옆 공격을 사용합니다.
+- 내려찍기 가능 상태는 PlayerCombat이 소유합니다. PlayerUnit은 성공한 재배치의 위쪽 도착 여부와 접지 여부만 전달하며 PlayerGlitch는 공격·콤보를 변경하지 않습니다. 내려찍기 시작 시 한 번 소비하고 착지·다른 방향 재배치·피격·사망·비활성화 시 해제합니다. 실패한 글리치는 이 상태를 새로 만들지 않습니다.
+- 내려찍기가 선택되면 입력 실행 위치에서 0.5초 동안 수평·수직 속도를 0으로 유지한 뒤 `Descending` 단계로 내려찍습니다. 대기·하강 중 이동·점프·재공격·글리치를 제한하며 피해는 계속 받을 수 있습니다. 모터가 몸체 전체를 매 물리 프레임 이동 거리만큼 검사하여 가장 먼저 닿는 바닥/발판에서 멈춥니다. 일반 공중 옆 공격은 기존 준비 시간 0.12초를 사용하며 이동과 중력이 계속 적용됩니다.
+- 대기 중에는 피해가 없고, 하강 시작부터 공격을 시작할 때 바라보던 전방에 Box 판정이 생깁니다. 영역은 지상 옆 공격과 같은 Reach/Width를 사용합니다. 명중한 적에게 AttackPower 피해와 강한 하향 속도를 적용합니다. 벽에 가려진 적은 제외하며 Enable Hit Reactions가 꺼져 있거나 Allow Forced Movement가 꺼진 적은 피해만 받습니다.
+- 착지 지점에서 원형 범위의 충격파 피해를 적용합니다. 전방 타격과 충격파는 명중 기록을 공유하므로 같은 공격에서 이미 맞은 적은 다시 피해를 받지 않습니다. 피해량은 AttackPower이며 지형에 가려진 대상은 제외합니다. 충격파 자체는 강제 하향 반응 없이 피해만 주며 PlayerVisual이 지면 위로 퍼졌다 사라지는 노란 반원으로 표시합니다.
+- Inspector의 **Slam Hover Duration=0.5초**, **Slam Speed=28**(플레이어 하강), **Slam Knockdown Speed=36**(전방에 맞은 적 하강), **Shockwave Radius=2**, **Shockwave Duration=0.22초**, **Slam Timeout=3초**가 시작값입니다. 적의 행동을 제한하는 시간은 기존 Forced Duration(0.35초)을 사용하며 수직 이동은 중력·지형 충돌을 따릅니다. 공중 대기 시간은 지상 공격의 Windup과 독립적이며 0이면 즉시 하강합니다. 바닥이 없으면 하강 제한 시간 후 충격파 없이 일반 이동으로 돌아옵니다. 피격·사망·비활성화는 공중 대기·하강·충격파 표시를 취소합니다.
+- 공격 상태·타수·충격파 피해는 PlayerCombat, 물리 이동은 CharacterMotor2D, 표현은 PlayerVisual이 담당합니다. 선택적 연계 세 가지를 꺼도 위쪽 글리치의 내려찍기 선택은 유지하며, 글리치 없는 구성에서는 기본 공중 공격을 사용합니다.
+
+## 훈련용 허수아비
+
+`Assets/_Game/Prefabs/Enemies/TrainingDummy.prefab`을 MovementLab 중앙 바닥 `(0, 0.92, 0)`에 한 개 배치했습니다. 기존 플레이어·순찰 적·발판 배치는 유지합니다. 다른 곳에서는 같은 프리팹을 바닥 위에 놓으면 됩니다.
+
+- 루트: Unit, UnitHealth, GroundMovement2D, Rigidbody2D, BoxCollider2D. FSM과 UnitCombat2D가 없어 스스로 움직이거나 공격하지 않습니다.
+- `TrainingDummyDefinition.asset`: ID `enemy.training-dummy`, 이름 훈련용 허수아비, Kind Monster, 최대 체력 100, 공격력 0, 글리치 대상·강제 이동 허용. Monster 분류는 기존 플레이어 공격의 타격 대상으로 사용하기 위한 설정입니다.
+- UnitHealth의 `Preserve Health On Damage`를 허수아비에서만 켰습니다. 타격 피해량 반환과 DamageVersion 증가는 유지하며 체력을 차감하지 않아 반복 연습할 수 있습니다. DamageEnabled/비활성화의 피해 차단은 그대로 적용됩니다. 일반 플레이어·적은 기본값 false로 기존 체력 감소·사망을 유지합니다.
+- 좌우/상하 글리치, 지하 출현, 3타 밀쳐내기·띄우기·내려찍기를 받습니다. 밀려난 위치로부터 자동 복귀하는 기능은 없습니다.
+- 공중에서 공격하면 하강 전방 타격 또는 착지 충격파로 허수아비에 피해를 줍니다. 한 공격에서는 한 번만 맞으며 색 변화로 명중을 확인합니다. 체력은 유지됩니다.
+- Visual은 기존 Block 스프라이트로 만든 나무 기둥·짚 몸체·표적입니다. TrainingDummyVisual이 명중 시 0.15초 동안 붉게 표시하며, 비활성화 시 원래 색으로 복원합니다. 외형 코드는 피해·이동·체력을 변경하지 않습니다.

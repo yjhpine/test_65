@@ -1,5 +1,117 @@
 # Movement Lab 검증 기록
 
+## 겹침 공격의 띄우기 오분류와 잠복 지점 출현
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 수정 전 재현 검사 7개 중 5개 실패: 높이 2.6/4.2인 몬스터와 겹쳤을 때 Side 대신 Lift가 선택됐고, 잠복 출현은 표시 X=0 대신 대상 이동에 따라 -0.525/0.975/0.525로 이동했다. 결과 `Library/PrototypeValidation/BurrowOverlapBefore.xml`. 중심 간 높이만 비교하는 공격 선택 및 좌우 후보/오른쪽 동률 우선이 원인이었다.
+- PositionAttackSelector는 대상 하단과 플레이어 상단을 비교하여 실제 아래쪽 공격일 때만 Lift를 선택한다(접촉 오차 0.02). TryEmergence는 잠복 당시 표시의 X축을 몸체 중심에 맞추며 콜라이더 offset도 보정한다. 대상 이동을 따라가지 않고, 해당 열의 지상 공간이 막히면 원위치/물리/피해 상태를 복원한다. 출현 공격 Box의 가로 편향도 제거했다.
+- 전체 Play Mode **121/121 통과**, 02:24:47~02:25:48 KST, 61.352초. 결과 `Library/PrototypeValidation/BurrowOverlapPlayMode.xml`, 로그 `BurrowOverlapPlayMode.log`. 신규 8개는 몸 크기별 겹침 공격, 대상의 좌/우 이동 후 고정 출현, 열린 좌우 공간으로 우회하지 않는 차단 취소, offset Capsule과 출현 지점 좌우 타격을 검사한다. 실제 입력 출현 검사에도 잠복 X 유지와 수직 상승을 추가했다. 기존 띄우기/출현 피해·콤보·공중 연계·취소·복원 검사를 포함한다.
+- 전체 Edit Mode **25/25 통과**. 결과 `Library/PrototypeValidation/BurrowOverlapEditMode.xml`, 로그 `BurrowOverlapEditMode.log`. C# 컴파일 오류·경고 없음. Unity MCP Console 새 경고/오류 없음(cursor 64). 수정 범위 diff 공백 검사 통과, 원본과 검증 복사본 `_Game` 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본 에디터 수동 플레이나 실행 파일 빌드는 수행하지 않았다. 씬·프리팹·공격/이동 설정값은 수정하지 않았다.
+
+## 위쪽 글리치 후에만 내려찍기 선택
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 위쪽 글리치가 성공한 뒤 첫 공중 공격만 Slam을 선택하도록 변경했다. 일반 공중에서는 대상 상대 위치나 출현 이력과 무관하게 기본 Side를 선택하고 이동·중력을 유지한다. 내려찍기의 0.5초 대기·전방 하향 타격·착지 충격파는 유지했다.
+- PlayerUnit이 성공한 위쪽 도착 여부와 접지 사실을 전달하고 PlayerCombat이 일회성 내려찍기 가능 상태를 소유한다. 사용·착지·다른 방향 재배치·피격·사망·비활성화로 해제한다. PlayerGlitch에는 공격 상태를 추가하지 않았다.
+- 전체 Play Mode **109/109 통과**, 01:12:41~01:13:41 KST, 60.47초. 신규 8개는 한 번 사용 후 기본 공격/콤보 유지, 접지·다른 도착·피격·초기화 후 상태 해제(4개), 글리치 유무 두 구성에서 일반 공중 입력의 기본 피해와 정상 이동, 좌우/아래 글리치 후 기본 공격, 위쪽 글리치 후 착지하고 다시 점프했을 때 기본 공격을 확인했다.
+- 기존 내려찍기 구성 검사에는 위쪽 도착이라는 새 전제 정보를 명시했다. 실제 입력으로 위쪽 글리치와 공격을 동시/순차 실행하는 기존 3개 회귀 검사는 그대로 통과했고, 나머지 기존 이동·피격·지하·허수아비·충격파 검사도 통과했다.
+- 전체 Edit Mode **24/24 통과**, 01:14:53 KST, 0.057초. 결과: `Library/PrototypeValidation/GlitchOnlySlamPlayMode.xml`, `GlitchOnlySlamEditMode.xml`; 로그: `GlitchOnlySlamPlay.log`, `GlitchOnlySlamEdit.log`. C# 컴파일 오류·경고 없음. Unity MCP Console의 새 경고/오류 없음(cursor 54), git diff --check 통과, 원본과 검증 복사본 _Game 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 실행했다. 원본 에디터 수동 조작·실행 파일 빌드는 수행하지 않았으며 씬·프리팹·이동 및 공격 수치는 변경하지 않았다.
+
+## 공중 내려찍기 전방 타격과 적 하향 반응
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 0.5초 공중 대기 뒤 Descending 동안 전방 Reach/Width Box로 타격한다. PlayerCombat의 기본 공중 공격에 포함되어 위치 연계 옵션과 독립적이다. GroundHitReaction이 Slam 명중에 Slam Knockdown Speed(기본 36)의 하향 속도를 주며 기존 GroundMovement2D의 중력/충돌과 강제 이동 우선 규칙을 사용한다. 적의 강제 이동 거부 또는 명중 반응 옵션 해제 시 피해만 적용한다.
+- 전방 타격과 착지 충격파는 같은 명중 기록을 공유한다. 충격파 반응 메타데이터는 PlayerAttack.Shockwave로 구분하여 기존 피해 전용 반응을 유지한다. PlayerVisual은 하강 중에도 전방 판정을 표시하며, 준비/착지 후에는 그 Box를 표시하지 않는다.
+- 전체 Play Mode 101개 실행, **100개 통과/기존 허수아비 검사 1개 실패**, 00:58:31~00:59:30 KST, 59.16초. 신규 6개(방향별 2, 벽/피해 허용 1, 선택적 반응/고정 적 2, 실제 하강/착지 1)는 모두 통과했다. 좌우 전방과 후방 제외, 준비 중 피해 없음, 중복 Collider와 충격파 사이 중복 방지, 벽 차단, 고정형 적, 명중 반응 옵션 해제, 공중 적 하향 속도와 바닥 충돌을 확인했다.
+- 실패 원인은 기존 허수아비 검사가 첫 피해 직후 충격파가 이미 생겼다고 가정한 것이다. 새 전방 판정은 착지보다 먼저 명중하므로 실제 착지까지 기다리도록 수정하고 해당 검사 **1/1 재검증 통과**, 01:00:46 KST, 0.77초. 전체 실행 이후 런타임 변경은 없으며 다른 통과 검사도 변경하지 않았다. 최종 검사 코드로 전체 101개를 한 번에 다시 실행하지는 않았다.
+- 전체 Edit Mode **24/24 통과**, 01:01:43 KST, 0.052초. 결과: `Library/PrototypeValidation/SlamFrontPlayMode.xml`, `SlamFrontDummy.xml`, `SlamFrontEditMode.xml`; 로그: `SlamFrontPlay.log`, `SlamFrontDummy.log`, `SlamFrontEdit.log`. 최종 C# 컴파일 오류·경고 없음. Unity MCP Console 새 경고/오류 없음(cursor 54), git diff --check 통과, 원본과 검증 복사본 _Game 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 실행했다. 원본 에디터 수동 조작과 실행 파일 빌드는 수행하지 않았다. 씬·프리팹·기본 이동 수치는 수정하지 않았다.
+
+## 공중 내려찍기 전 0.5초 정지
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 공중 Slam의 준비 시간을 별도 `Slam Hover Duration`(기본 0.5초)으로 분리했다. PlayerCombat이 시간을 관리하고 PlayerUnit은 준비 중 일반 이동·점프를 보류하며 CharacterMotor2D.Hover가 수평·수직 속도를 0으로 유지한다. 물리 모드나 피해 허용은 변경하지 않는다. 준비 중 피격·사망·비활성화도 취소 경로에 포함했다. 지상 공격 준비 시간 0.12초와 기존 착지 충격파는 유지한다.
+- 전체 Play Mode **95/95 통과**, 00:38:57~00:39:55 KST, 58.15초. 신규 3개는 0.499초 준비/0.5초 하강 경계·0초 설정·지상 준비 시간 유지, 초기 상승/수평 속도와 반복 이동·점프·공격 입력에도 공중 위치 유지 후 하강/명중, 피격·비활성화·사망 시 공격/정지 해제와 피해·물리 상태를 확인했다. 기존 92개도 통과했다.
+- 전체 Edit Mode **24/24 통과**, 00:40:56 KST, 0.059초. 결과: `Library/PrototypeValidation/SlamHoverPlayMode.xml`, `SlamHoverEditMode.xml`; 로그: `SlamHoverPlay.log`, `SlamHoverEdit.log`. C# 컴파일 오류·경고 없음. Unity MCP Console 새 경고/오류 없음(cursor 49), git diff --check 통과, 원본과 검증 복사본 _Game 해시 차이 0개.
+- 동일 버전의 격리 Unity 프로젝트에서 실행했으며 원본 에디터 수동 조작과 실행 파일 빌드는 수행하지 않았다. 씬·프리팹 배치와 기존 이동 수치는 변경하지 않았다.
+
+## 유닛 간 충돌 해제·공중 급강하와 착지 충격파
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- 유닛 몸체의 Ignore Raycast(2) 자기 레이어 충돌을 해제하고 지형 충돌·타깃 조회·피해 판정은 유지했다. 글리치 도착점 검사는 충돌하지 않는 유닛을 장애물에서 제외한다.
+- 공격 직전 접지를 확인해 모든 공중 공격을 Slam으로 선택한다. 선딜레이 뒤 모터가 수직 하강하며 몸체 sweep으로 첫 지면에 정지한다. 착지 시 PlayerCombat이 반경 2의 피해를 한 번 적용하고 PlayerVisual이 퍼지는 반원을 표시한다. 하강 중 접촉 피해와 이전 적 하향 속도 반응은 없다. 기본 하강 속도 28, 표시 0.22초, 바닥 없음 제한 3초.
+- 최종 전체 Play Mode **92/92 통과**, 00:29:21~00:30:14 KST, 52.43초. 신규 7개는 유닛 겹침/접촉 없음과 지형 접지, 글리치·연계 없는 공중 공격, 좌우 범위 피해/중복 Collider/범위 외 대상, 100 속도에서도 두께 0.06 발판에서 정지, 벽 뒤 피해 차단, 모든 상대 방향·출현 요청의 공중 Slam 선택, 피격·비활성화 정리, 바닥 없음 종료를 확인했다. 기존 내려찍기·허수아비·배치 차단 검사는 변경된 사양으로 갱신했다. 이동·FSM·지하·입력·미리보기 회귀도 통과했다.
+- 첫 실행은 90/92였다. 범위 외 적이 선딜레이 동안 이동한 플레이어의 실제 충격파 범위에 들어온 테스트 배치와, 비활성 유닛도 CanReceiveDamage=true라고 기대한 단언을 수정했다. 최종 검사에서는 실제 충격파 중심과 Collider 사이 거리가 반경 밖임을 검증하고 DamageEnabled와 활성 조건을 구분했다. 런타임 오류를 숨기기 위해 검사 범위를 축소하지 않았다.
+- 전체 Edit Mode **24/24 통과**, 00:31:10 KST, 0.053초. 충격파 표시 시점을 고정하도록 캡처 검사를 보완하고 해당 Play Mode **1/1 추가 통과**, 00:32:05~00:32:06 KST, 1.49초. 테스트에서만 표시 시간을 늘리고 Time.timeScale을 일시 정지한 뒤 finally로 복원했다. 실제 카메라 캡처 `Library/PrototypeValidation/GlitchShockwave.png`에서 노란 반원을 확인했다. 전체 검사 이후 런타임 변경은 없다.
+- 결과: `Library/PrototypeValidation/AirSlamFinalPlayMode.xml`, `AirSlamEditMode.xml`, `AirSlamVisual.xml`; 로그는 같은 접두사의 Play/Edit/Visual 로그다. C# 컴파일 오류·경고 없음. 원본 Unity MCP Console의 새 경고/오류 없음(cursor 44). 기존 설정 누락 테스트의 의도된 오류 로그 두 건은 유지한다.
+- 동일 버전의 격리 Unity 프로젝트에서 검증했다. 원본과 복사본의 _Game 및 Physics2D 설정 해시 일치, git diff --check 통과. 씬·프리팹 배치와 기본 이동 수치는 수정하지 않았다. 원본 에디터의 수동 조작·실행 파일 빌드는 수행하지 않았다.
+
+## 기본 공격과 글리치·연계 규칙 분리
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- PlayerCombat이 콤보 진행·공격 시간·피해를 소유하고, 상태 없는 IPlayerComboRule/IPlayerAttackSelector/IPlayerHitReaction을 생성자로 받도록 분리했다. 글리치와 전투 설정은 독립적으로 선택 가능하다. 세 연계의 Inspector 스위치는 기본 활성이고 초기화 시 적용된다. 공통 물리 조회는 UnitPhysics2D로 이동했다.
+- 전체 Play Mode **85/85 통과**, 00:02:07~00:02:57 KST, 49.33초. 기존 76개와 신규 9개가 공격 전용·글리치 전용·이동 전용 구성, 연계별 제거 및 전체 제거 시 기본 피해, 교체한 공격 영역·반응, 2타 마무리 반응과 대상 변경 초기화를 확인했다. 기존 내려찍기 회귀·지하 복원·프리뷰·허수아비·이동·적 FSM 검사도 통과했다.
+- 공유 규칙을 사용하는 두 PlayerCombat의 콤보 진행이 섞이지 않는 단언을 강화하고 해당 검사 **1/1 추가 통과**, 00:03:48 KST, 0.18초. 이 추가 단언 외에 전체 검사 이후 런타임 코드 변경은 없다.
+- 전체 Edit Mode **24/24 통과**, 00:04:42 KST, 0.057초. 결과 파일: `Library/PrototypeValidation/CombatSeparationPlayMode.xml`, `CombatRuleOwnership.xml`, `CombatSeparationEditMode.xml`. 대응 로그: `CombatSeparationPlay.log`, `CombatRuleOwnership.log`, `CombatSeparationEdit.log`.
+- C# 컴파일 오류·경고 없음. Play Mode 로그의 설정 누락 두 건은 기존 UnitLifecycleTests의 의도된 검사다. Unity MCP Console의 새 경고/오류 없음(cursor 39). git diff --check 통과, _Game 파일 meta 누락 0개, 원본과 검증 복사본 해시 차이 0개.
+- 이전부터 원본 에디터의 MCP 메인 스레드 요청이 시간 초과되어 동일 버전의 격리 프로젝트 `Temp/GlitchValidationProject`에서 실행했다. 원본 에디터 수동 조작과 실행 파일 빌드는 수행하지 않았다. 씬 배치·프리팹·기존 이동 수치는 이번 구조 변경에서 수정하지 않았다.
+
+## 위쪽 글리치 직후 내려찍기 입력 조사·수정
+
+2026-09-24, Unity 6000.3.23f1 / Windows Editor. 보고 경로: 적 위로 글리치한 직후 공격.
+
+- 기존 공격 대기 상태에서 위쪽 글리치와 공격의 동시 입력·순차 입력은 모두 Slam 선택, 실제 명중, 공중 적의 하향 이동으로 통과했다. 따라서 단순 방향 선택이나 같은 물리 프레임의 재배치 자체는 재현 원인이 아니었다.
+- 이전 공격의 Recovery 중 위쪽 글리치와 공격을 함께 입력하면 글리치는 성공하지만 공격이 시작되지 않았다. 수정 전 회귀 검사 `SlamAfterRecoveryCancelTopGlitchPreservesSameFrameAttack` 실패: 글리치 뒤 Phase=Ready, Attack=이전 Side 상태. 결과: `Library/PrototypeValidation/SlamRecoveryBaseline.xml`.
+- 원인: PlayerUnit.OnUnitUpdate가 Combat.CanAttack이 false인 후딜레이에서 공격 입력을 버렸다. 이후 FixedUpdate에서 글리치가 성공해 후딜레이를 취소해도 공격 요청이 남아 있지 않았다. 공격 요청을 수집하고, 기존 FixedUpdate의 글리치 처리 뒤 TryAttack에서 실행 가능 여부를 검사하도록 조건 한 곳을 수정했다. 실패한 글리치는 공격 제한을 우회하지 않는다.
+- 최종 Play Mode **76/76 통과**, 23:34:58~23:35:46 KST, 47.60초. 새로운 5개는 동시/순차 위쪽 글리치·내려찍기, 후딜레이 취소 시 다음 콤보 타수와 명중, 글리치 실패 시 후딜레이 유지, 지상 허수아비 타격을 확인했다. 기존 71개도 통과했다.
+- 별도 관찰: 지상 허수아비에 내려찍기는 정상 명중했다(DamageVersion=1). 다음 물리 프레임의 속도는 (0,0)으로, 바닥이 하향 이동을 막는다. 허수아비의 체력 유지 설정으로 HP는 100이다. 이 경우 색 변화가 명중 표시이며 플레이어 급강하 기능은 기존 사양에 없다.
+- `SlamFixPlayMode.xml`, `SlamFixPlay.log`에 최종 결과를 보관했다. C# 컴파일 오류·경고 없음, git diff --check 통과. 기존 격리 Unity 프로젝트에서 재현·검증했고 원본 _Game과 검증 복사본의 해시 차이 0개를 확인했다. 원본 에디터 수동 입력·Edit Mode 재실행·실행 파일 빌드는 수행하지 않았다.
+
+## 훈련용 허수아비
+
+2026-09-24, Unity 6000.3.23f1 / Windows Editor.
+
+- TrainingDummy 프리팹·정의 에셋을 만들고 MovementLab 중앙 바닥 `(0, 0.92, 0)`에 한 개 추가했다. 기존 씬 객체의 배치는 유지했다. Unit/UnitHealth/GroundMovement2D를 사용하며 FSM과 공격 기능은 없다. Block 스프라이트를 조합한 외형과 명중 시 색 변화를 추가했다.
+- 허수아비의 UnitHealth에만 Preserve Health On Damage를 켰다. 타격 수신·피해량 반환·DamageVersion 증가는 유지하고 체력을 차감하지 않는다. 기존 플레이어·적의 기본 체력·사망 동작은 유지한다.
+- 최종 Play Mode **71/71 통과**, 23:21:49~23:22:36 KST, 46.62초. 신규 3개가 수동 대기, 반복 치명타 20회에도 생존·체력 유지, 피해 차단/비활성화, 글리치 조준·배치, 3타 콤보·명중 표시·밀쳐내기, 지하 출현으로 플레이어와 허수아비 띄우기를 검증했다. 기존 68개도 모두 통과했다.
+- 프리팹 Missing Script 0개, _Game 파일의 meta 누락 0개. C# 컴파일 오류·경고 없음, git diff --check 통과. 실제 Play Mode 카메라 캡처 `Library/PrototypeValidation/TrainingDummy.png`로 외형을 확인했다.
+- 결과: `Library/PrototypeValidation/TrainingDummyPlayMode.xml`, 로그: `TrainingDummyPlay.log`. 기존 격리 Unity 프로젝트에서 생성·검증했고 원본 _Game 파일과 검증 복사본의 해시 차이 0개를 확인했다. 일회성 에셋 생성 코드는 Temp의 격리 프로젝트에만 있으며 원본 프로젝트에는 추가하지 않았다. 원본 에디터 수동 입력, Edit Mode 재실행, 실행 파일 빌드는 이번 변경에서 수행하지 않았다.
+
+## 글리치 도착 위치 미리보기
+
+2026-09-24, Unity 6000.3.23f1 / Windows Editor.
+
+- 마우스로 적의 상하좌우를 조준하면 선택된 도착 몸체 영역을 청록색 테두리로 표시한다. 배치가 막혔거나 쿨타임·공격/피격 제한 중이면 빨간색이며, 지하 진입은 지면 위 납작한 표시를 사용한다. 조준·대상·입력 유효성 상실, 지하 진입, 플레이어 비활성화 시 정리한다.
+- PlayerGlitch의 읽기 전용 배치 검사를 미리보기와 실행이 공유한다. PlayerUnit이 입력과 전투 제한을 반영하고 IPlayerActionState를 통해 PlayerVisual에 전달한다. 추가 컴포넌트·프리팹 연결·텍스처는 필요 없다.
+- 최종 Play Mode **68/68 통과**, 23:11:38~23:12:23 KST, 44.29초. 새 6개 검사는 4방향 미리보기와 실행 위치 일치·게임 상태 불변, 방향 변경과 차단/지하 표시, 쿨타임·공격 제한·조준/대상/비활성화 정리를 확인한다. 기존 62개도 함께 통과했다.
+- 첫 실행에서 캡처 보조 함수가 제거된 임시 벽을 읽어 1개 실패했다. Unity 객체의 null 검사를 추가한 뒤 전체 재실행이 통과했다. 게임 실행 코드의 오류는 아니었다.
+- 실제 Play Mode 카메라의 `Library/PrototypeValidation/GlitchPreviewRight.png`, `GlitchPreviewBlocked.png`, `GlitchPreviewUnderground.png`를 확인했다. 결과 XML: `GlitchPreviewPlayMode.xml`, 로그: `GlitchPreviewPlay.log`. 최종 C# 컴파일 오류·경고 없음, git diff --check 통과.
+- Unity MCP recompile 요청의 시간 초과가 지속돼 기존 격리 검증 프로젝트에서 실행했다. 검증 복사본과 원본 _Game 파일의 해시 차이 0개를 확인했다. 원본 에디터 수동 입력·실행 파일 빌드·Edit Mode 재실행은 이번 미리보기 변경에서 수행하지 않았다.
+
+## 글리치·플레이어 공격 구현
+
+2026-09-24, Unity 6000.3.23f1 / Windows Editor.
+
+- PlayerGlitch·PlayerCombat 일반 C# 실행 객체와 GlitchUtility, 기능별 설정 에셋을 추가했다. PlayerUnit이 입력 요청과 실행 순서를 조정하고 모터가 플레이어 물리를 변경한다. Unit/FsmRuntime은 변경하지 않았다.
+- 마우스 조준·Shift 글리치·좌클릭/J 공격을 연결했다. 4방향 배치, 논리 지하·출현, 방향별 타격과 3타 콤보, 피격 취소, 후딜레이 글리치 취소, 적 강제 이동을 구현했다. 기존 PlayerTuning과 씬 위치는 그대로이며 씬 수정은 Aim Camera 참조 1개뿐이다.
+- 최종 Play Mode **62/62 통과**, 22:46:22~22:47:05 KST, 43.63초. 기존 37개와 신규 25개를 모두 실행했다. 결과: `Library/PrototypeValidation/GlitchPlayMode.xml`, 로그: `GlitchBatchPlay.log`.
+- 최종 Edit Mode **24/24 통과**, 22:48:24 KST, 0.061초. 기존 16개와 새 방향·배치 계산 검사 8개를 실행했다. 결과: `Library/PrototypeValidation/GlitchEditMode.xml`, 로그: `GlitchBatchEdit.log`.
+- 신규 검사는 조준 우선·보정 해제, 방향 경계·몸 크기, 벽·천장·다른 유닛에 의한 취소, 대상 소멸, 실패 시 이동·쿨타임 보존, 지하 타깃·피해 제외와 종료 복원, 콤보 대상 변경·헛공격·중복 타격 방지, 고정형 적, 상하 공격·출현, 강제 이동 지속, 입력 우선순위·점프 버퍼 초기화·피격 제한을 확인한다. 실제 FixedUpdate 물리에서 지하 → 출현 타격 → 플레이어·적 상승 → 공중 재글리치 흐름도 확인했다.
+- 가상 Shift 눌림·유지·재입력과 입력 비활성화 검사 통과. 배치 에디터에서 장치를 포커스 설정 변경 전에 만들면 비활성 상태로 추가되는 원인을 확인했고, 검사에서 포커스 설정 후 가상 장치를 생성하도록 수정했다. 설정은 finally에서 복원한다.
+- 기존 점프 검사에 남아 있던 이전 높이 기준을 현재 에셋 값에 맞춰 읽도록 수정했다. 기존 키보드·게임패드 검사도 실물 장치가 없는 배치 환경에서 PlayerInput이 가상 장치를 정상 연결하도록 보완했다. 게임의 점프 높이·입력 설정은 변경하지 않았다.
+- 공격 판정 도형과 지하 지면 표시를 실제 Play Mode 카메라로 렌더링하고 이미지로 확인했다. `Library/PrototypeValidation/GlitchAttack.png`, `GlitchUnderground.png`에 보관했다. 새 스프라이트·효과음·HUD는 추가하지 않았다.
+- 최종 배치 실행에서 C# 컴파일 오류·경고는 없었다. 테스트 중 게임 오류 로그는 LogAssert.Expect로 의도한 PlayerTuning·UnitDefinition 누락 각 1건이다. _Game 파일의 meta 누락 0개, git diff --check 통과.
+- 검증 환경: 원본 에디터의 Unity MCP 메인 스레드 요청이 60초 후 반복해서 시간 초과되어, Assets/Packages/ProjectSettings를 `Temp/GlitchValidationProject`에 복사하고 동일 Unity 버전으로 별도 배치 에디터를 실행했다. 원본 에디터를 종료하지 않았다. MCP Console에는 도구 시간 초과가 남아 있으며, 배치 로그의 라이선스 연결·entitlement 메시지는 게임 테스트 오류와 구분한다. 최종 결과 XML의 시간·통과 수를 기준으로 검증했다.
+- 실물 키보드·마우스의 조작감과 원본 에디터 Game 뷰 수동 조작, 실행 파일 빌드는 이번 검증에 포함하지 않았다. 지하는 Rigidbody가 없는 정적인 수평 BoxCollider2D 지면을 지원하며 원래 위치의 보이지 않는 몸체가 다른 유닛을 막는 제약은 계획대로 유지한다.
+
 ## FSM 상태 애니메이션 연결
 
 2026-09-16, Unity 6000.3.23f1 / Windows Editor.
@@ -241,3 +353,14 @@ Play Mode에서는 좌우 가속·반전·정지, 누르는 시간에 따른 점
 2026-09-11 17:17 KST. 기존 Player 프리팹을 유지하고 직접 자식 `Body`를 `Visual`로 변경해 SpriteRenderer와 Animator를 배치했습니다. 루트의 물리·입력·이동 컴포넌트와 기존 스프라이트의 위치·크기·색은 유지했습니다. Animator Controller는 미지정이며 Apply Root Motion은 꺼져 있습니다.
 
 프리팹과 MovementLab 인스턴스의 구조 및 에디터 컴파일을 확인했습니다. 최초 Play Mode 실행에서는 이동 동작 6개가 통과했고 가상 키보드 입력 검사에서 Move 값이 0으로 관측돼 1개가 실패했습니다. Game 뷰에 포커스를 두고 재실행한 결과 7/7 통과(10.61초)했습니다. 입력 검증 시 에디터 포커스의 영향을 유의해야 합니다. 실제 애니메이션 재생·전환 검증은 리소스를 연결한 뒤 수행해야 합니다.
+# Adventurer 외형과 공격 애니메이션 연결
+
+2026-09-25, Unity 6000.3.23f1 / Windows Editor.
+
+- rvros Adventurer 1.5의 원본 PNG 46개와 이동/공격 클립 15개를 연결했다. 원본과 PNG 해시 불일치 0개, 필요한 `.meta` 누락 0개. Player 프리팹의 Missing Script 0개와 모든 클립의 Sprite 참조를 검사했다. Root Motion, Transform 곡선, Animation Event는 없다.
+- 최종 Play Mode **113/113 통과**, 01:43:13~01:44:14 KST, 60.925초. 결과 `Library/PrototypeValidation/AdventurerPlayModeVerified.xml`, 로그 `AdventurerPlayModeVerified.log`. 지상 3타 준비/명중/회복, 일반 공중 검격, 띄우기·출현, 내려찍기 준비/하강 반복/착지, 지하 숨김/복원, 공격 반복/비활성화 복원, 바닥 없는 하강 종료 후 낙하 표시와 기존 이동·전투를 검증했다. 읽기 전용 표시 조회가 공격을 진행하거나 타수를 소비하지 않는 것도 검사했다.
+- 전체 Edit Mode **25/25 통과**, 01:41:59 KST, 0.097초. 결과 `Library/PrototypeValidation/AdventurerEditMode.xml`, 로그 `AdventurerEditMode.log`. 새 에셋 참조·임포트·Animator 전환 차단 검사 1개 포함. 이후 바뀐 것은 공중에서 하강이 시간 초과될 때 착지 대신 낙하를 표시하는 런타임/PlayMode 검사이며, 최종 PlayMode에서 재컴파일·검증했다.
+- 첫 전체 실행은 107/112 통과했다. 새 반복 표시 검사의 프레임 수 대기를 물리 시간 대기로 수정했고, 비활성 Animator에 Play를 호출하던 경고를 없앴다. 기존 검사 4개는 편집된 씬에서 제거된 발판 및 기존 띄우기 값 10을 가정했다. 테스트 전용 발판 생성/정리와 현재 Tuning 값 조회로 수정했다. 저장 씬이나 사용자의 Launch Speed=20 / Emergence Speed=25는 변경하지 않았다.
+- 최종 C# 컴파일 오류·경고 및 비활성 Animator 경고 없음. 원본/검증 복사본의 `_Game` 파일 해시를 비교했다. 이번 수정 범위의 `git diff --check` 통과. 전체 diff에는 기존 편집된 MovementLab의 공백 경고가 남아 있으며 관련 없는 씬을 재직렬화하지 않았다.
+- 렌더링 미리보기 `Library/PrototypeValidation/AdventurerAttacks.png`를 직접 확인했다. 위쪽은 지상 1·2·3타/일반 공중 공격, 아래쪽은 출현/내려찍기 준비/하강/착지다. 실제 전투 테스트의 `GlitchAttack.png`에서도 발 위치와 적 상대 검격을 확인했다.
+- 검사는 동일 버전의 격리 Unity 프로젝트에서 실행했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다. 제작자 라이선스와 출처는 `Docs/ThirdPartyNotices.md`에 기록했다.

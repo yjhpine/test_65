@@ -12,6 +12,8 @@ namespace ActionPlatformer.Units
         [SerializeField, Min(1)] private int maxHealth = 100;
         [SerializeField, Min(0)] private int attackPower = 10;
         [SerializeField] private FsmDefinition fsm;
+        [SerializeField] private bool allowGlitchTarget;
+        [SerializeField] private bool allowForcedMovement = true;
 
         public string UnitId => unitId;
         public string DisplayName => displayName;
@@ -19,6 +21,8 @@ namespace ActionPlatformer.Units
         public int MaxHealth => maxHealth;
         public int AttackPower => attackPower;
         public FsmDefinition Fsm => fsm;
+        public bool AllowGlitchTarget => allowGlitchTarget;
+        public bool AllowForcedMovement => allowForcedMovement;
 
         public bool TryValidate(out string error)
         {

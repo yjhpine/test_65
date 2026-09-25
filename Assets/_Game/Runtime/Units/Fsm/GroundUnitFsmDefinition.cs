@@ -111,8 +111,9 @@ namespace ActionPlatformer.Units.Fsm
 
             public IFsmState CombatState()
             {
+                if (Movement.IsForcedMoving) return null;
                 if (Combat == null || !Combat.isActiveAndEnabled || Combat.Target == null || !Combat.Target.IsAlive ||
-                    !Combat.Target.isActiveAndEnabled || !Combat.Target.Owner.isActiveAndEnabled) return null;
+                    !Combat.Target.CanReceiveDamage) return null;
                 return Combat.IsTargetInRange(Settings.attackRange) ? (IFsmState)Attack : Chase;
             }
         }
@@ -143,6 +144,8 @@ namespace ActionPlatformer.Units.Fsm
                         context.Hit.RestartStun();
                     }
                 }
+                if (context.Movement.IsForcedMoving && this != context.Hit && this != context.Death)
+                    return this == context.WaitRight ? null : context.WaitRight;
                 context.RefreshTarget();
                 return Step(deltaTime);
             }
@@ -269,6 +272,7 @@ namespace ActionPlatformer.Units.Fsm
             public override void Enter()
             {
                 elapsed = 0f;
+                context.Movement.CancelForcedMovement();
                 context.Movement.Stop();
                 if (context.Combat != null) context.Combat.ClearTarget();
                 if (context.Settings.deathDelay == 0f) context.Owner.gameObject.SetActive(false);

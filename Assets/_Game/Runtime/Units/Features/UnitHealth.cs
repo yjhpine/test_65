@@ -8,6 +8,8 @@ namespace ActionPlatformer.Units.Features
     {
         [Tooltip("Turn off when a death state manages the delay before deactivation.")]
         [SerializeField] private bool deactivateOnDeath = true;
+        [Tooltip("Accept hits and damage reactions without losing health, for training targets.")]
+        [SerializeField] private bool preserveHealthOnDamage;
         private Unit owner;
         private bool initialized;
 
@@ -16,6 +18,10 @@ namespace ActionPlatformer.Units.Features
         public uint DamageVersion { get; private set; }
         public bool IsAlive => initialized && CurrentHealth > 0;
         public Unit Owner => owner;
+        public bool DamageEnabled { get; private set; } = true;
+        public bool CanReceiveDamage => DamageEnabled && IsAlive && isActiveAndEnabled && owner != null && owner.isActiveAndEnabled;
+
+        public void SetDamageEnabled(bool value) => DamageEnabled = value;
 
         private void Awake()
         {
@@ -34,9 +40,9 @@ namespace ActionPlatformer.Units.Features
         public int ApplyDamage(int amount)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
-            if (amount == 0 || !IsAlive || !isActiveAndEnabled || !owner.isActiveAndEnabled) return 0;
+            if (amount == 0 || !CanReceiveDamage) return 0;
             int applied = Mathf.Min(amount, CurrentHealth);
-            CurrentHealth -= applied;
+            if (!preserveHealthOnDamage) CurrentHealth -= applied;
             unchecked { DamageVersion++; }
             if (!IsAlive && deactivateOnDeath) gameObject.SetActive(false);
             return applied;
