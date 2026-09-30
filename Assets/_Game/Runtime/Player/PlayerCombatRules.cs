@@ -103,8 +103,8 @@ namespace ActionPlatformer.Player
         public void Apply(UnitHealth target, PlayerAttackSelection attack, PlayerComboStep combo)
         {
             if (attack.Kind == PlayerAttack.Shockwave) return;
-            if (!target.Owner.Definition.AllowForcedMovement || !target.TryGetComponent<GroundMovement2D>(out var movement)) return;
-            if (attack.Kind == PlayerAttack.Side)
+            if (!target.Owner.Definition.AllowForcedMovement || !target.TryGetComponent<IForcedMovementReceiver>(out var movement)) return;
+            if (attack.Kind == PlayerAttack.Side || attack.Kind == PlayerAttack.Air)
             {
                 float speed = combo.IsFinisher ? tuning.KnockbackSpeed : tuning.LightKnockbackSpeed;
                 float deceleration = combo.IsFinisher ? tuning.KnockbackDeceleration : tuning.LightKnockbackDeceleration;

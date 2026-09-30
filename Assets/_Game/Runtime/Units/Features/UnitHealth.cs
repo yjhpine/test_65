@@ -12,6 +12,7 @@ namespace ActionPlatformer.Units.Features
         [SerializeField] private bool preserveHealthOnDamage;
         private Unit owner;
         private bool initialized;
+        private IUnitDamageGuard damageGuard;
 
         public int CurrentHealth { get; private set; }
         public int MaxHealth { get; private set; }
@@ -26,6 +27,7 @@ namespace ActionPlatformer.Units.Features
         private void Awake()
         {
             owner = GetComponent<Unit>();
+            damageGuard = GetComponent<IUnitDamageGuard>();
             if (owner.Definition == null || !owner.Definition.TryValidate(out _))
             {
                 Debug.LogError("Unit health needs a valid Unit Definition.", this);
@@ -35,6 +37,15 @@ namespace ActionPlatformer.Units.Features
             MaxHealth = owner.Definition.MaxHealth;
             CurrentHealth = MaxHealth;
             initialized = true;
+        }
+
+        // Context-free damage (tests/environment) retains its existing behavior.
+        public int ApplyDamage(int amount, Vector2 sourcePosition, bool bypassDirectionalGuard = false)
+        {
+            if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
+            if (amount == 0 || !CanReceiveDamage) return 0;
+            if (!bypassDirectionalGuard && damageGuard != null && damageGuard.BlocksDamage(sourcePosition)) return 0;
+            return ApplyDamage(amount);
         }
 
         public int ApplyDamage(int amount)

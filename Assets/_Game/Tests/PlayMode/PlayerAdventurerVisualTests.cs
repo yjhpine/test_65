@@ -71,8 +71,17 @@ namespace ActionPlatformer.Tests
                 yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack" + strike + (strike == 2 ? "-03" : "-02"));
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Recovery, .99f);
                 yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack" + strike + (strike == 1 ? "-04" : "-05"));
-                Attack(state, PlayerAttack.Side, strike, true, PlayerAttackPhase.Active);
+                state.Velocity = new Vector2(8f, -4f);
+                Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Windup);
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, strike == 2 ? "air-attack1-03" : "air-attack1-00");
+                Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Active);
                 yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, strike == 2 ? "air-attack2-00" : "air-attack1-01");
+                Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Recovery, .99f);
+                state.IsGrounded = true; // Landing cannot restart the swing as a ground animation.
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, strike == 2 ? "air-attack2-02" : "air-attack1-03");
+                state.AttackPhase = PlayerAttackPhase.Ready;
+                yield return RenderFrame();
+                Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Run"), Is.True);
             }
             Assert.That(visual.transform.Find("Attack area").GetComponent<SpriteRenderer>().enabled, Is.False);
             Assert.That(visual.transform.localPosition, Is.EqualTo(Vector3.zero));
@@ -173,7 +182,7 @@ namespace ActionPlatformer.Tests
         [UnityTest] public IEnumerator CaptureAdventurerAttackPresentation()
         {
             if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) Assert.Ignore("Graphics device required.");
-            var kinds = new[]{PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Emergence,PlayerAttack.Slam,PlayerAttack.Slam,PlayerAttack.Slam};
+            var kinds = new[]{PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Air,PlayerAttack.Emergence,PlayerAttack.Slam,PlayerAttack.Slam,PlayerAttack.Slam};
             for (int i=0; i<8; i++)
             {
                 var state = new State();

@@ -155,7 +155,7 @@ namespace ActionPlatformer.Player
             int state = attack.Kind == PlayerAttack.Slam
                 ? (phase == PlayerAttackPhase.Windup ? SlamHover : phase == PlayerAttackPhase.Descending ? SlamFall : SlamLand)
                 : attack.Kind == PlayerAttack.Lift ? Lift : attack.Kind == PlayerAttack.Emergence ? Emergence
-                : attack.Airborne ? AirAttacks[strike] : GroundAttacks[strike];
+                : attack.Kind == PlayerAttack.Air ? AirAttacks[strike] : GroundAttacks[strike];
             // Clips place their impact at 0.35 and recovery at 0.6. Combat owns all real timing.
             float progress = phase == PlayerAttackPhase.Windup ? attack.PhaseProgress * 0.35f
                 : phase == PlayerAttackPhase.Active ? Mathf.Lerp(0.35f, 0.6f, attack.PhaseProgress)

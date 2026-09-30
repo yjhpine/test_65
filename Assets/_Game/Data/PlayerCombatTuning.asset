@@ -46,6 +46,17 @@ MonoBehaviour:
   slamShakeAmplitude: 0.14
   shakeDuration: 0.14
   shakeFrequency: 22
+  damageSlowTimeScale: 0.2
+  damageSlowDuration: 0.15
+  damageSlowRecovery: 0.1
+  damageShakeAmplitude: 0.22
+  damageShakeDuration: 0.28
+  damageZoom: 0.035
+  damageZoomDuration: 0.18
+  damageFlashOpacity: 0.7
+  damageFlashDuration: 0.065
+  damageVignetteOpacity: 0.8
+  damageScreenDuration: 0.45
   targetMask:
     serializedVersion: 2
     m_Bits: 4

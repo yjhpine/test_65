@@ -3,7 +3,7 @@ using UnityEngine;
 namespace ActionPlatformer.Player
 {
     public enum GlitchDirection { Left, Right, Up, Down }
-    public enum PlayerAttack { Side, Lift, Slam, Emergence, Shockwave }
+    public enum PlayerAttack { Side, Lift, Slam, Emergence, Shockwave, Air }
     public enum PlayerAttackPhase { Ready, Windup, Active, Recovery, Descending }
 
     public enum PlayerReaction { None, Hit, Die }

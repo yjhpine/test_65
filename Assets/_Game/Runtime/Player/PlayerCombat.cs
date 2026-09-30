@@ -53,6 +53,8 @@ namespace ActionPlatformer.Player
         public bool IsDescending => Phase == PlayerAttackPhase.Descending;
         public bool IsPreparingSlam => Attack == PlayerAttack.Slam && Phase == PlayerAttackPhase.Windup;
         public bool IsAttacking => Phase != PlayerAttackPhase.Ready;
+        // Air swings keep steering until landing; other attacks own their movement.
+        public bool BlocksMovement(bool grounded) => IsAttacking && (Attack != PlayerAttack.Air || grounded);
         public bool CanReposition(double now) => now >= stunnedUntil &&
             (Phase == PlayerAttackPhase.Ready || Phase == PlayerAttackPhase.Recovery);
         public bool CanAttack(double now) => now >= stunnedUntil && Phase == PlayerAttackPhase.Ready;
@@ -99,7 +101,7 @@ namespace ActionPlatformer.Player
             pendingComboTarget = target;
             var forward = PlayerAttackSelection.Side(body.bounds, facing, tuning);
             if (!grounded)
-                selection = slamReady ? new PlayerAttackSelection(PlayerAttack.Slam, facing, forward.HitOffset, forward.HitSize) : forward;
+                selection = new PlayerAttackSelection(slamReady ? PlayerAttack.Slam : PlayerAttack.Air, facing, forward.HitOffset, forward.HitSize);
             else selection = attackSelector?.Select(body.bounds, target, facing, emergence) ?? forward;
             if (Attack == PlayerAttack.Slam) slamReady = false;
             hit.Clear();
@@ -191,7 +193,8 @@ namespace ActionPlatformer.Player
                     !UnitPhysics2D.HasSight(shockwave ? shockwaveCenter : (Vector2)body.bounds.center,
                         candidates[i].bounds.center, tuning.ObstacleMask, obstacles)) continue;
                 hit.Add(target);
-                if (target.ApplyDamage(owner.Definition.AttackPower) <= 0) continue;
+                bool bypassGuard = shockwave || Attack == PlayerAttack.Emergence || Attack == PlayerAttack.Lift || Attack == PlayerAttack.Slam;
+                if (target.ApplyDamage(owner.Definition.AttackPower, body.bounds.center, bypassGuard) <= 0) continue;
                 dealtDamage = true; // Lethal hits also produce feedback.
                 if (target.IsAlive)
                     hitReaction?.Apply(target, shockwave ? new PlayerAttackSelection(PlayerAttack.Shockwave,
@@ -205,7 +208,7 @@ namespace ActionPlatformer.Player
                 combo.IsFinisher || Attack == PlayerAttack.Lift || Attack == PlayerAttack.Emergence
                     ? PlayerImpactStrength.Heavy : PlayerImpactStrength.Normal;
             Vector2 direction = Attack == PlayerAttack.Slam ? Vector2.down :
-                Attack == PlayerAttack.Side ? Vector2.right * Facing : Vector2.up;
+                (Attack == PlayerAttack.Side || Attack == PlayerAttack.Air) ? Vector2.right * Facing : Vector2.up;
             if (!hasImpact || strength > pendingImpact.Strength) pendingImpact = new PlayerImpact(direction, strength);
             hasImpact = true;
         }

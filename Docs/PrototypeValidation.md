@@ -1,5 +1,13 @@
 # Movement Lab 검증 기록
 
+## 공중 검격 상태와 이동 유지 (2026-09-30)
+
+- PlayerAttack.Air를 추가해 일반 공중 검격을 Side/Slam과 구분했다. PlayerCombat.BlocksMovement가 공중 검격에서만 수평 조작을 허용하며 착지 후에는 남은 공격 동안 지상 이동 제한을 적용한다. 중력과 점프 해제는 유지하고 공격 중 새 점프 입력은 예약하지 않는다. 지상 공격·출현·위쪽 글리치 후 내려찍기, 콤보·넉백 수치는 보존했다.
+- PlayerVisual이 Air 상태에서 기존 Adventurer AirAttack1/2/3 클립을 재사용하도록 연결했다. 준비/타격/후딜레이 프레임과 착지 시 같은 검격 유지, 종료 후 Run 복귀를 검사했다. 신규 스프라이트나 Animator/프리팹 재생성 없이 연결했다.
+- 원본 Unity 6000.3.23f1 에디터에서 MCP 컴파일 완료(errors 없음). 전체 Play Mode **171/171 통과**, 21:24:03~21:25:21 KST, 78.216초 (`Library/PrototypeValidation/AirAttackPlayMode.xml`). 신규 3개는 전체 공격 단계의 수평 이동·중력·방향 전환, 점프 해제·피격/비활성화 취소, 착지 후 이동 잠금·점프 예약 방지를 검사한다. 기존 일반 공중 공격 및 외형 검사를 Air 동작에 맞춰 갱신했다.
+- 전체 Edit Mode **25/25 통과**, 21:25:51 KST, 0.435초 (`Library/PrototypeValidation/AirAttackEditMode.xml`). Animator/클립·프리팹 참조 검사 포함. Console 오류 조회의 2건은 UnitLifecycleTests가 LogAssert로 예상한 정의/튜닝 누락 오류이며 추가 오류는 없다. 첫 Console 조회는 시간 초과됐지만 get_console_logs 재조회와 실제 테스트 실행은 성공했다.
+- `Library/PrototypeValidation/AdventurerAttacks.png` 렌더 이미지를 직접 확인했다(위쪽 네 번째 공중 검격). 수정 범위 diff 공백 검사 통과. 수동 키보드 플레이 및 실행 파일 빌드는 수행하지 않았다. 씬·프리팹·튜닝 에셋 변경 없음.
+
 ## 1·2타 작은 넉백 / 3타 큰 넉백
 
 2026-09-25, Unity 6000.3.23f1 / Windows Editor.
@@ -435,3 +443,41 @@ Play Mode에서는 좌우 가속·반전·정지, 누르는 시간에 따른 점
 - 최종 C# 컴파일 오류·경고 및 비활성 Animator 경고 없음. 원본/검증 복사본의 `_Game` 파일 해시를 비교했다. 이번 수정 범위의 `git diff --check` 통과. 전체 diff에는 기존 편집된 MovementLab의 공백 경고가 남아 있으며 관련 없는 씬을 재직렬화하지 않았다.
 - 렌더링 미리보기 `Library/PrototypeValidation/AdventurerAttacks.png`를 직접 확인했다. 위쪽은 지상 1·2·3타/일반 공중 공격, 아래쪽은 출현/내려찍기 준비/하강/착지다. 실제 전투 테스트의 `GlitchAttack.png`에서도 발 위치와 적 상대 검격을 확인했다.
 - 검사는 동일 버전의 격리 Unity 프로젝트에서 실행했다. 원본 에디터 수동 조작 및 실행 파일 빌드는 수행하지 않았다. 제작자 라이선스와 출처는 `Docs/ThirdPartyNotices.md`에 기록했다.
+
+
+## 신규 적 3종 검증 — 2026-09-30
+
+원본 프로젝트를 열고 있는 Unity 6000.3.23f1에서 실행했다.
+
+- 컴파일: Unity MCP recompile 완료, 오류 0.
+- PlayMode 전체 **187/187 통과** (기존 171 + EnemyPatternTests 15 + 플레이어 재배치 버전 1). 실행 2026-09-30 13:16:48–13:18:08 UTC, 79.53초. `Library/PrototypeValidation/EnemyPatternsPlayMode.xml`에 이번 `PlayMode.xml`을 복사 보존했다.
+- EditMode 전체 **29/29 통과** (기존 25 + 프리팹/설정 검증 4). 실행 2026-09-30 13:18:35 UTC, 0.54초. `Library/PrototypeValidation/EnemyPatternsEditMode.xml`에 보존했다.
+- 신규 검사는 정면 차단/후면·상하·방어 무시 피해, 방향 전환과 준비 고정, 실제 돌진 경로 1회 피해, 벽·발판 끝 정지, 공중 실행 취소, 피격 중 준비 유지, 백신 감시 초기화/시야 상실 취소/고정 사격/후속 광선 무피해, 드론 거리별 선택/강제 이동 중 방향·시계 유지/순항 복귀, 광선 폭과 지형 차단/단방향 발판 통과, 무적 대상 제외, 사망/비활성화 정리를 검사한다.
+- PlayerGlitchCombatTests의 입력 경로로 일반 재배치·잠복 진입·출현 때만 RepositionVersion이 증가하고 실패/잠복 이동은 증가시키지 않는지 확인했다. 기존 이동·공중 공격·콤보·순찰 적·허수아비 검사를 포함한다.
+- 처음 신규 검사에서는 Animator 갱신 전 사망 상태를 읽어 1건 실패했고, 검사에서 표시 반영 프레임을 기다리도록 수정했다. 최종 전체 결과는 위와 같다.
+- MCP run_tests 전체 호출은 전달/실행 상태가 지연되어 시간 초과했다. 기존 PrototypeValidation의 RunPlayMode/RunEditMode를 직접 호출하여 새 결과 XML을 확보했다. 중간 실행 중단에 따른 Test Runner 로그와 UnitLifecycleTests의 의도된 오류 2건은 런타임 게임 오류와 구분했다.
+
+MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확인했다. 첫 교전에서는 방패 정면 공격의 BlockVersion +1 / 피해 0, 후면 글리치 공격의 체력 75→65를 확인했다. 다른 적의 간섭을 실행 중에만 제외한 분리 확인에서는 잠복 진입 성공 → 출현 공격 명중(HP 65, 방패병 상승 속도 19.31), 백신 감시 진행도 약 0.46→글리치 후 약 0.09, 조준 고정 후 발사, 드론 근거리 수직 전격 발사, 드론 위쪽 글리치 후 Slam 선택을 확인했다. 테스트용 상태 변경은 Play Mode 종료로 복원했으며 씬에 저장하지 않았다.
+
+렌더링 캡처를 직접 확인했다: `EnemyPatternsOverview.png`, `EnemyShieldBlock.png`, `EnemyShieldRear.png`, `EnemyShieldUnderground.png`, `EnemyShieldEmergence.png`, `EnemyTurretScan.png`, `EnemyTurretLocked.png`, `EnemyDroneAim.png`, `EnemyDroneVertical.png`, `EnemyDroneSlam.png` (`Library/PrototypeValidation`). 원본 캐릭터/드로이드/드론의 표시 크기와 피벗, 방패, 감시 막대, 고정 조준선과 전격의 몸체 기준 위치를 확인했다. 마우스/키보드를 사람이 직접 조작한 테스트나 실행 파일 빌드는 수행하지 않았다.
+
+
+## 플레이어 피격 화면 피드백 검증 — 2026-09-30
+
+- 원본 Unity MCP에서 런타임 C# 컴파일과 최초 URP 셰이더 검증은 오류 없이 완료했다. Player 프리팹의 전용 머티리얼과 PlayerCombatTuning의 새 9개 설정값을 연결했다.
+- 이후 원본 에디터 메인 스레드가 테스트 시작 및 상태 조회에 응답하지 않았다. 확인 창 여부를 사용자에게 문의했고, 검증은 `Temp/DamageFeedbackValidation`의 임시 복사본에서 **동일 Unity 6000.3.23f1** 배치 모드로 수행했다. 원본 에디터의 실행 검증이 완료됐다고 주장하지 않는다.
+- 프로젝트 PlayMode 기능/회귀 검사 **190개 전부 통과** (이전 187 + 피격 피드백 검사 3). 신규 검사는 피격 재시작·히트스톱/줌/카메라 원복, 렌더 자원 재사용·해제, 효과 개별 비활성화와 설정 범위 검증을 확인한다.
+- 임시 복사본에 추가한 MovementLab 렌더 검사에서는 최초 1건 실패: 렌더 타깃의 화면 비율이 바뀌면 카메라 앞 도형이 좌우 끝을 덮지 못했다. 셰이더를 clip-space 전체 화면 출력으로 수정하고 해당 렌더 검사를 다시 실행해 **1/1 통과**했다. 첫 전체 실행은 13:45:02–13:46:25 UTC(기능 190 통과 + 렌더 1 실패), 수정 후 렌더 재실행은 13:48:16–13:48:18 UTC다.
+- 렌더 검사는 무적 중 실제 피해 0/피드백 미발생, 실제 피해 후 히트스톱과 줌, 화면 중심 섬광 및 모서리 붉은색 픽셀, 시간 경과 뒤 카메라 위치·배율·timeScale 복원과 표면 숨김, 플레이어 비활성화 시 렌더 자원 해제를 확인했다.
+- 직접 확인한 이미지: `Library/PrototypeValidation/PlayerDamageFlash.png`, `PlayerDamageVignette.png`, `PlayerDamageRestored.png`. 원본 검사 결과는 `PlayerDamageFullPlayMode.xml`(최초 렌더 실패 포함), `PlayerDamageVisual.xml`(수정 후 성공)로 보존한다. 이전 작업의 통과 기록을 재사용하지 않았다.
+
+- 최종 EditMode **29/29 통과**, 2026-09-30 13:49:27 UTC. `Library/PrototypeValidation/PlayerDamageEditMode.xml`에 보존했다. 검증 복사본과 원본 프로젝트의 변경된 런타임 C#·최종 셰이더 바이트가 동일함을 확인했다.
+
+
+## 플레이어 피격 슬로우모션 (2026-09-30)
+
+- 피격 전용 정지를 0.2배속/실시간 0.15초 유지/0.1초 부드러운 복귀로 교체했다. 적 명중 히트스톱은 유지하며 피격 슬로우 중에는 중첩하지 않는다. 물리 시간 간격도 비율에 맞춰 조절하고 종료·비활성화 때 복원한다.
+- Unity MCP 첫 컴파일 성공 후 두 번째 요청은 시간 초과했다. AssetDatabase.Refresh 및 컴파일 요청으로 최신 테스트 어셈블리 반영을 확인했다. 이전 테스트 어셈블리 실행에서 나온 2건 실패는 최종 결과에 포함하지 않는다.
+- 피드백 PlayMode 검사 15/15 통과. 최초 신규 검사에서 Unity의 fixedDeltaTime 내부 정밀도 때문에 소유 값 비교가 실패하는 문제를 발견했고, 실제 저장값을 읽어 보관하도록 수정 후 재검증했다.
+- PlayerGlitchCombatTests 119개 실행: 기존 118개 통과, 신규 실제 피격 검사 1개는 복원 간격 약 6e-9초 차이로 실패했다. 해당 비교에 1e-7초 허용 오차를 적용한 뒤 신규 검사만 재실행하여 1/1 통과했다. 실제 PlayerUnit/UnitHealth 피격, 슬로우 중 물리 이동, 정상 시간 복귀, 비활성화 복원을 확인했다.
+- 결과: Library/PrototypeValidation/PlayerSlowFeedback.xml, PlayerSlowCombat.xml(허용 오차 수정 전), PlayerSlowIntegration.xml(수정 후). 최종 컴파일 후 Console error 조회 0건. 관련 파일 git diff --check 통과. 전체 EditMode/빌드/수동 교전은 이번에 실행하지 않았다.

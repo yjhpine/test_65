@@ -4,7 +4,7 @@ namespace ActionPlatformer.Units.Features
 {
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Rigidbody2D))]
-    public sealed class GroundMovement2D : MonoBehaviour
+    public sealed class GroundMovement2D : MonoBehaviour, IForcedMovementReceiver
     {
         [SerializeField] private Collider2D bodyCollider;
         [SerializeField] private LayerMask environmentMask = 1;
@@ -68,6 +68,16 @@ namespace ActionPlatformer.Units.Features
 
         public Vector2 Position => body == null ? (Vector2)transform.position : body.position;
         public Vector2 Velocity => body == null ? Vector2.zero : body.linearVelocity;
+        public bool IsGrounded
+        {
+            get
+            {
+                if (body == null || Velocity.y > .2f) return false;
+                int count = bodyCollider.Cast(Vector2.down, environmentFilter, hits, .08f);
+                for (int i = 0; i < count; i++) if (hits[i].normal.y > .65f) return true;
+                return false;
+            }
+        }
         public bool IsBlocked { get; private set; }
         public bool HasArrived => hasDestination && Mathf.Abs(targetX - Position.x) <= arrivalTolerance;
 

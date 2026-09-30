@@ -48,6 +48,18 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(0f)] private float slamShakeAmplitude = 0.14f;
         [SerializeField, Min(0f)] private float shakeDuration = 0.14f;
         [SerializeField, Min(0.01f)] private float shakeFrequency = 22f;
+        [Header("Player damage feedback (0 disables each effect)")]
+        [SerializeField, Range(.01f, 1f)] private float damageSlowTimeScale = .2f;
+        [SerializeField, Min(0f)] private float damageSlowDuration = .15f;
+        [SerializeField, Min(0f)] private float damageSlowRecovery = .1f;
+        [SerializeField, Min(0f)] private float damageShakeAmplitude = .22f;
+        [SerializeField, Min(0f)] private float damageShakeDuration = .28f;
+        [SerializeField, Range(0f, .2f)] private float damageZoom = .035f;
+        [SerializeField, Min(0f)] private float damageZoomDuration = .18f;
+        [SerializeField, Range(0f, 1f)] private float damageFlashOpacity = .7f;
+        [SerializeField, Min(0f)] private float damageFlashDuration = .065f;
+        [SerializeField, Range(0f, 1f)] private float damageVignetteOpacity = .8f;
+        [SerializeField, Min(0f)] private float damageScreenDuration = .45f;
         [SerializeField] private LayerMask targetMask = 1 << 2;
         [SerializeField] private LayerMask obstacleMask = 1;
         public float Windup => windup;
@@ -84,6 +96,17 @@ namespace ActionPlatformer.Player
         public float SlamShakeAmplitude => slamShakeAmplitude;
         public float ShakeDuration => shakeDuration;
         public float ShakeFrequency => shakeFrequency;
+        public float DamageSlowTimeScale => damageSlowTimeScale;
+        public float DamageSlowDuration => damageSlowDuration;
+        public float DamageSlowRecovery => damageSlowRecovery;
+        public float DamageShakeAmplitude => damageShakeAmplitude;
+        public float DamageShakeDuration => damageShakeDuration;
+        public float DamageZoom => damageZoom;
+        public float DamageZoomDuration => damageZoomDuration;
+        public float DamageFlashOpacity => damageFlashOpacity;
+        public float DamageFlashDuration => damageFlashDuration;
+        public float DamageVignetteOpacity => damageVignetteOpacity;
+        public float DamageScreenDuration => damageScreenDuration;
         public LayerMask TargetMask => targetMask;
         public LayerMask ObstacleMask => obstacleMask;
         public bool TryValidate() => (!enableCombo || comboLength >= 1) && NonNegative(windup) && Positive(activeDuration) && NonNegative(recovery) &&
@@ -94,7 +117,12 @@ namespace ActionPlatformer.Player
             Positive(forcedDuration) && NonNegative(hitStun) && NonNegative(attackBufferTime) &&
             NonNegative(hitStopDuration) && NonNegative(heavyHitStopDuration) && NonNegative(slamHitStopDuration) &&
             NonNegative(shakeAmplitude) && NonNegative(heavyShakeAmplitude) && NonNegative(slamShakeAmplitude) &&
-            NonNegative(shakeDuration) && Positive(shakeFrequency);
+            NonNegative(shakeDuration) && Positive(shakeFrequency) &&
+            Positive(damageSlowTimeScale) && damageSlowTimeScale <= 1f &&
+            NonNegative(damageSlowDuration) && NonNegative(damageSlowRecovery) && NonNegative(damageShakeAmplitude) && NonNegative(damageShakeDuration) &&
+            NonNegative(damageZoom) && damageZoom <= .2f && NonNegative(damageZoomDuration) &&
+            NonNegative(damageFlashOpacity) && damageFlashOpacity <= 1f && NonNegative(damageFlashDuration) &&
+            NonNegative(damageVignetteOpacity) && damageVignetteOpacity <= 1f && NonNegative(damageScreenDuration);
         private static bool Positive(float value) => value > 0f && !float.IsInfinity(value);
         private static bool NonNegative(float value) => value >= 0f && !float.IsInfinity(value);
     }

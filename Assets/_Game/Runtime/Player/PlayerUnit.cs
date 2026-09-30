@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 namespace ActionPlatformer.Player
 {
     [RequireComponent(typeof(PlayerInput), typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
-    public sealed class PlayerUnit : Unit, IPlayerActionState
+    public sealed class PlayerUnit : Unit, IPlayerActionState, IUnitRepositionState
     {
         [SerializeField] private PlayerTuning tuning;
         [SerializeField] private LayerMask groundMask = 1;
@@ -14,6 +14,8 @@ namespace ActionPlatformer.Player
         [SerializeField] private GlitchTuning glitchTuning;
         [SerializeField] private PlayerCombatTuning combatTuning;
         [SerializeField] private Camera aimCamera;
+        [Tooltip("Optional camera overlay material for player damage flashes and vignette.")]
+        [SerializeField] private Material damageScreenMaterial;
         [Tooltip("Time to display Die before deactivating the player. UnitHealth Deactivate On Death must be off.")]
         [SerializeField, Min(0f)] private float deathDuration = 0.7f;
         private double hitStartedAt = double.NegativeInfinity;
@@ -32,6 +34,7 @@ namespace ActionPlatformer.Player
         private uint observedDamage;
         private float facing = 1f;
 
+        public uint RepositionVersion { get; private set; }
         public CharacterMotor2D Motor { get; private set; }
         public PlayerGlitch Glitch { get; private set; }
         public PlayerCombat Combat { get; private set; }
@@ -88,7 +91,7 @@ namespace ActionPlatformer.Player
                         combatTuning.EnablePositionAttacks ? new PositionAttackSelector(combatTuning) : null,
                         combatTuning.EnableHitReactions ? new GroundHitReaction(combatTuning) : null);
             }
-            if (combatTuning != null) Feedback = new PlayerImpactFeedback(combatTuning, aimCamera);
+            if (combatTuning != null) Feedback = new PlayerImpactFeedback(combatTuning, aimCamera, damageScreenMaterial);
             if (visual != null) visual.Initialize(Motor, this);
             return true;
         }
@@ -111,9 +114,11 @@ namespace ActionPlatformer.Player
                 if (Combat == null || !Combat.IsAttacking)
                 {
                     if (command.JumpPressed) RequestJump();
-                    if (command.JumpReleased) RequestJumpRelease();
                     if (Mathf.Abs(command.Move.x) > 0.01f) facing = Mathf.Sign(command.Move.x);
                 }
+                // Releasing an existing jump still cuts its height during an air swing.
+                if (command.JumpReleased && (Combat == null || !Combat.BlocksMovement(Motor.IsGrounded)))
+                    RequestJumpRelease();
                 if ((command.HasAim || command.GlitchPressed) && Glitch != null && aimCamera != null)
                 {
                     Ray ray = aimCamera.ScreenPointToRay(command.AimScreenPosition);
@@ -181,6 +186,7 @@ namespace ActionPlatformer.Player
                     Glitch.MoveUnderground(horizontalInput, Time.fixedDeltaTime);
                     if (pendingAttack && (Combat == null || Combat.CanAttack(now)) && Glitch.TryEmerge())
                     {
+                        unchecked { RepositionVersion++; }
                         relocated = true;
                         FaceArrival();
                         Motor.RefreshContacts();
@@ -194,6 +200,7 @@ namespace ActionPlatformer.Player
             {
                 if (pendingGlitch && Glitch != null && CanReposition(now) && Glitch.TryExecute(glitchRequest, now))
                 {
+                    unchecked { RepositionVersion++; }
                     Combat?.CancelRecovery();
                     Combat?.ObserveArrival(glitchRequest.Direction == GlitchDirection.Up && !IsUnderground);
                     relocated = true;
@@ -221,10 +228,18 @@ namespace ActionPlatformer.Player
                 Combat.TryAttack(Glitch?.ArrivalTarget, facing, false, now, Motor.IsGrounded);
             }
             ApplyImpactFeedback();
-            bool movementLocked = Combat != null && Combat.IsAttacking;
+            bool attacking = Combat != null && Combat.IsAttacking;
+            bool movementLocked = Combat != null && Combat.BlocksMovement(Motor.IsGrounded);
+            if (attacking)
+            {
+                // Never queue a fresh jump from an attack, including a swing that lands.
+                jumpBuffer.Clear();
+                jumpGraceAvailable = false;
+                lastGroundedAt = double.NegativeInfinity;
+            }
             if (movementLocked)
             {
-                ClearJumpState();
+                pendingJumpRelease = false;
                 Motor.StopHorizontal();
             }
             if (Combat != null && Combat.IsPreparingSlam)
@@ -250,7 +265,7 @@ namespace ActionPlatformer.Player
                 Motor.Simulate(0f, jumpHeld, Time.fixedDeltaTime);
                 return;
             }
-            if (Motor.IsGrounded) { lastGroundedAt = now; jumpGraceAvailable = true; }
+            if (!attacking && Motor.IsGrounded) { lastGroundedAt = now; jumpGraceAvailable = true; }
             if (jumpGraceAvailable && now - lastGroundedAt <= tuning.CoyoteTime &&
                 jumpBuffer.TryConsume(now, tuning.InputBufferTime))
             {
@@ -279,6 +294,11 @@ namespace ActionPlatformer.Player
                     ClearActions();
                     Motor.StopSlam();
                     deathStartedAt = now;
+                    if (observedDamage != health.DamageVersion)
+                    {
+                        observedDamage = health.DamageVersion;
+                        Feedback?.PlayDamage(new Vector2(-facing, .35f), Time.unscaledTimeAsDouble);
+                    }
                 }
                 if (now >= deathStartedAt + Mathf.Max(0f, deathDuration)) gameObject.SetActive(false);
                 return false;
@@ -290,6 +310,7 @@ namespace ActionPlatformer.Player
                 if (Combat != null && (Combat.IsDescending || Combat.IsPreparingSlam)) Motor.StopSlam();
                 Combat?.Interrupt(now);
                 Feedback?.Reset();
+                Feedback?.PlayDamage(new Vector2(-facing, .35f), Time.unscaledTimeAsDouble);
                 Glitch?.CancelUnderground();
                 pendingGlitch = pendingAttack = pendingCancel = false;
             }
@@ -299,6 +320,7 @@ namespace ActionPlatformer.Player
         protected override void OnUnitDisabled()
         {
             ClearActions();
+            Feedback?.Dispose();
             hitStartedAt = double.NegativeInfinity;
             if (health != null) observedDamage = health.DamageVersion;
             if (visual != null) visual.ResetActions();

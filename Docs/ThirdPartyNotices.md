@@ -53,3 +53,34 @@ Each frame is 34×28 pixels. Idle has 11 frames, Run 6, Attack 5, Hit 2 and Dead
 - Unity import: 50×37 pixels, Single Sprite, 18 PPU, Point filtering, uncompressed, no mipmaps, pivot `(25/50, 1/37)`. Physics dimensions and the Visual's existing foot position are preserved.
 - Project-authored clips and Animator integration are in `Assets/_Game/Animations/Player`. Ground attack 1/2/3 use their corresponding source frames. Ordinary air combo uses air-attack1, air-attack2, then air-attack1 again; air-attack3 is reserved for the slam's ready/loop/end sequence. Lift and emergence reuse the upward ground attack1 swing.
 - Attack clips sample preparation, impact and recovery according to combat's phase progress. This retiming is integration metadata; original image pixels are unchanged. The original archive and unused art are not included in Assets.
+
+
+## New enemy patterns — 2026-09-30
+
+All three archives were downloaded for free from their creators’ official itch.io pages. Each archive contains an explicit Creative Commons Zero (CC0) license; copies are retained as `License.txt` beside the imported PNGs. No source gameplay scripts, backgrounds, audio, or unused character art were imported. PNG bytes are unchanged. Unity slicing and animation/controller data are project-authored.
+
+### LuizMelo — Hero Knight 2
+
+- Official source: [LuizMelo — Hero Knight 2](https://luizmelo.itch.io/hero-knight-2).
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+- Downloaded archive: `knight.zip` (local filename), 26,855 bytes. SHA-256: `960213A89F1401F1B050432E9EC80E067A7A9EB9C3CC2BE1070C532860ED55DF`.
+- Source folder: `Hero Knight 2/Sprites/`. Used files: `Idle.png`, `Run.png`, `Dash.png`, `Death.png`.
+- Imported folder: `Assets/_Game/Art/Characters/ShieldKnight`.
+
+### Foozle — Sci-fi Lab Droids (art commissioned from Baldur)
+
+- Official source: [Foozle — Sci-fi Lab Droids (art commissioned from Baldur)](https://foozlecc.itch.io/sci-fi-lab-droids).
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+- Downloaded archive: `droids.zip` (local filename), 723,701 bytes. SHA-256: `D3B21180C6BEC2300A5CF8C73790C594958E6D61B4C4BB7CF22D70C777A8B840`.
+- Source folder: `Foozle_2DC0006_Sci_Fi_Lab_Droids_Pack/Droid01/Png/`. Used files: `Droid01Idle.png`, `Droid01Shoot.png`, `Droid01Death.png`.
+- Imported folder: `Assets/_Game/Art/Characters/SurveillanceDroid`.
+
+### Foozle — Mecha Boss + Exploding Drone (art commissioned from aimen23b)
+
+- Official source: [Foozle — Mecha Boss + Exploding Drone (art commissioned from aimen23b)](https://foozlecc.itch.io/sci-fi-lab-mecha-boss).
+- License: [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+- Downloaded archive: `drone.zip` (local filename), 98,871 bytes. SHA-256: `AD755AC11D83A99ECF2A14EF8FBCF1168ABCCB60F1BE9A5CB129AFA01FE1456D`.
+- Source folder: `Foozle_2DC0008_Sci_Fi_Lab_Mecha_Boss_Plus_Drone/exploding_drone/`. Used files: `drone idle_Sheet.png`, `drone run-Sheet.png`, `drone death explosion-Sheet.png`.
+- Imported folder: `Assets/_Game/Art/Characters/FlyingDrone`.
+
+Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / Dash 4 / Death 9 frames. Droid01 uses 32×32 cells at 23 PPU with foot pivot (0.5,2/32); Shoot uses 48×48 cells and matching foot pivot (0.5,10/48), Idle 4 / Shoot 12 / Death 9 frames. Exploding Drone uses 32×32 cells at 20 PPU, body pivot (16.5/32,15.5/32), Idle 8 / Run 10 / Death 12 frames. All textures use Point filtering, no mipmaps and no compression. Idle/Run use 10 FPS; action/death clips are sampled by gameplay phase timing.

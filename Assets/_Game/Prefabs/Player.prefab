@@ -123,6 +123,7 @@ MonoBehaviour:
   combatTuning: {fileID: 11400000, guid: 61f6a7c237e4f4f4ca4b50e440146d1a, type: 2}
   deathDuration: 0.7
   aimCamera: {fileID: 0}
+  damageScreenMaterial: {fileID: 2100000, guid: 2e8f5f35ce01f7946ad2ac545e81a363, type: 2}
 --- !u!114 &7290577179776929193
 MonoBehaviour:
   m_ObjectHideFlags: 0
