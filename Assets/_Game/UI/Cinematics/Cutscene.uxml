@@ -1,0 +1,15 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="Cutscene.uss" />
+    <ui:VisualElement name="cutscene-root" class="cutscene-root" picking-mode="Ignore">
+        <ui:VisualElement name="dialogue" class="dialogue" picking-mode="Ignore">
+            <ui:VisualElement name="portrait" class="portrait" picking-mode="Ignore" />
+            <ui:VisualElement class="dialogue-content" picking-mode="Ignore">
+                <ui:Label name="speaker" class="speaker" enable-rich-text="false" />
+                <ui:Label name="body" class="body" enable-rich-text="false" />
+                <ui:Label name="hint" class="hint" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="speech-layer" class="speech-layer" picking-mode="Ignore" />
+        <ui:VisualElement name="fade" class="fade" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

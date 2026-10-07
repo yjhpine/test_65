@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/_Game/Scenes/CoreLoopStage.unity
+    guid: 681a57197af75f44f9361c82e79353de
+  - enabled: 1
     path: Assets/_Game/Scenes/MovementLab.unity
     guid: 297677086e628f846808520991418834
   m_configObjects:

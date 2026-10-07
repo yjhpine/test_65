@@ -1,5 +1,5 @@
 {
   "name": "ActionPlatformer.PlayModeTests",
-  "references": ["ActionPlatformer.Runtime", "Unity.InputSystem"],
+  "references": ["ActionPlatformer.Runtime", "Unity.InputSystem", "Unity.Timeline", "Unity.Cinemachine"],
   "optionalUnityReferences": ["TestAssemblies"]
 }

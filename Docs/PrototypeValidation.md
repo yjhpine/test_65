@@ -481,3 +481,83 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 피드백 PlayMode 검사 15/15 통과. 최초 신규 검사에서 Unity의 fixedDeltaTime 내부 정밀도 때문에 소유 값 비교가 실패하는 문제를 발견했고, 실제 저장값을 읽어 보관하도록 수정 후 재검증했다.
 - PlayerGlitchCombatTests 119개 실행: 기존 118개 통과, 신규 실제 피격 검사 1개는 복원 간격 약 6e-9초 차이로 실패했다. 해당 비교에 1e-7초 허용 오차를 적용한 뒤 신규 검사만 재실행하여 1/1 통과했다. 실제 PlayerUnit/UnitHealth 피격, 슬로우 중 물리 이동, 정상 시간 복귀, 비활성화 복원을 확인했다.
 - 결과: Library/PrototypeValidation/PlayerSlowFeedback.xml, PlayerSlowCombat.xml(허용 오차 수정 전), PlayerSlowIntegration.xml(수정 후). 최종 컴파일 후 Console error 조회 0건. 관련 파일 git diff --check 통과. 전체 EditMode/빌드/수동 교전은 이번에 실행하지 않았다.
+
+## 코어루프 스테이지 검증 (2026-10-05)
+
+- 구현: CoreLoopStage, StageFlowController/StageGoal/StageCameraFollow/StageFlowView, UI Toolkit 완료·재시작 화면. Build Settings 첫 씬을 CoreLoopStage로 등록하고 MovementLab 유지.
+- Unity 6000.3.23f1에서 컴파일 성공. 새 씬 Missing Script 0개. 기존 MovementLab SHA-256은 작업 전후 동일(`5D84AE1ED5FFB836B6FF3235732D12A28DE57FD9CFC7DDC5CB753BB41C50EA5B`)하며 사용자의 활성화 변경 2건을 보존했다.
+- Edit Mode: **29/29 통과**. 결과 `Library/PrototypeValidation/CoreLoopEditMode.xml`, 2026-10-05 22:33:56 KST.
+- 전체 Play Mode: **203/204 통과**. 신규 StageFlowTests **9/9 통과**. 결과 `Library/PrototypeValidation/CoreLoopFullPlayMode.xml`, 2026-10-05 22:33:33 KST.
+- 기존 실패 1건: `UnitCombatFsmTests.InvalidTransitionSettingsAreRejected`(329행). 기존 검사는 attackRange=7을 잘못된 값으로 가정하지만 현재 PatrolEnemyFsm의 detectionRange=12여서 유효하다. 관련 테스트·런타임·FSM 에셋은 이번 변경에 포함하지 않았다. 코어루프 씬을 로드하지 않는 단독 실행에서도 동일하게 재현했다. 결과 `CoreLoopExistingFsmFailure.xml`, 22:34:19 KST.
+- 신규 테스트 범위: 즉시 이동·점프, 살아 있는 적의 비활성화로 완료 우회 불가, 마지막 처치와 출구 체류, 사망 연출 뒤 전체 초기화 2회, 사망/도달 동시 발생 우선순위, 정지 중 UI Submit 재시작 2회와 중복 요청 차단, 카메라 추적·경계·피격 오프셋 복원, 완료 중 씬 언로드의 시간 복원, 실제 이동/공격 명령으로 전체 코스 완료.
+- 최초 검사에서 카메라 테스트는 Rigidbody2D 위치가 Transform에 반영되기 전 조회해 실패했다. 물리 프레임을 기다리도록 수정 후 통과했다. 실제 전투 검사는 현재 적 체력 1000에서 45초 제한에 걸려 제한을 120초로 늘렸다. 능력치는 변경하지 않았다.
+- 실제 Play Mode 화면에서 잠긴 빨간 출구·처치 안내, 청록 출구·STAGE CLEAR·RESTART 표시를 확인했다. 완료 시 State=Completed, timeScale=0, PlayerInput 비활성, UI 표시를 조회했다.
+- 실제 입력 경로의 전체 코스 검증은 IPlayerInputSource 자동 명령으로 수행했다. 화면 검증에서는 위치 이동과 피해 주입을 사용했다. 수동 키보드 플레이나 플레이어 빌드를 수행한 것으로 보고하지 않는다.
+- 완료 화면: `Library/PrototypeValidation/CoreLoopComplete.png`. 종료 후 CoreLoopStage를 편집 모드로 열어두었고 timeScale=1, fixedDeltaTime≈0.02 복원을 확인했다.
+
+## 잠복 글리치 카메라 추적 수정 (2026-10-06)
+
+- 원인: StageCameraFollow가 Transform만 추적했으나 잠복 중에는 물리 루트가 고정되고 GroundMarkerPosition/UndergroundPosition만 이동한다.
+- 수정 전 Play Mode 재현: 잠복 표시 X=32.2인데 카메라 X=28로 유지되어 회귀 테스트 실패. 결과 `Library/PrototypeValidation/UndergroundCameraBefore.xml` (00:21:23 KST).
+- 수정: 기존 IPlayerActionState를 초기화 시 연결하고 잠복 중에는 GroundMarkerPosition.x를 추적한다. 종료 후에는 기존 Transform 추적으로 자동 복귀한다. Y 고정·화면 경계·자식 카메라 피격 연출은 유지한다.
+- Unity 컴파일 성공, 새 Console 경고/오류 없음. StageFlowTests **12/12 통과**, `Library/PrototypeValidation/UndergroundCameraPlayMode.xml` (00:22:28 KST).
+- 신규 3개 Play Mode 검사는 잠복 좌우 입력 중 몸체 고정과 카메라 이동, Space 취소 후 복귀, 시간 만료 후 복귀, 출현 후 몸체 추적을 검사한다. 기존 일반 이동 추적·경계·피격 효과·사망 재시작·완료 검사도 함께 통과했다.
+- 씬·프리팹·튜닝은 수정하지 않았다. 사용자가 변경한 Aim Assist Radius=1.25, 적 MaxHealth=50을 보존했다. 이번에는 전체 Edit/Play Mode 어셈블리를 재실행하지 않았다.
+
+## 코어루프 맵 3배 확장 (2026-10-06)
+
+- CoreLoopStage를 180유닛으로 확장하고 순찰병/방패병/공중 드론/감시 포탑 각 3마리, 총 12마리를 배치했다. 단방향 발판 9개, 출구 X=178, 카메라 오른쪽 경계 180, 완료 대상 참조 12개.
+- Unity 컴파일 성공. StageFlowTests **12/12 통과** (`Library/PrototypeValidation/ExpandedStagePlayMode.xml`, 00:32:08 KST), EnemyPatternTests **15/15 통과** (`ExpandedStageEnemyPatterns.xml`, 00:32:44 KST).
+- 스테이지 검사는 종류별 3마리·총 12마리·바닥 180·출구 위치, 새 화면 경계, 전원 처치 조건, 사망/버튼 재시작과 12마리 복원, 잠복 카메라를 확인한다.
+- 기존 실제 이동·근접 공격 검사는 순찰병 3마리에 집중하도록 다른 9마리를 테스트 준비 단계에서 처치하고 180유닛 코스를 통과한다. 혼합 적 12마리를 모두 실제 입력으로 공략한 자동 테스트로 보고하지 않는다. 방패/드론/포탑 패턴은 별도 EnemyPatternTests에서 검증했다.
+- 처음 시작한 검사는 이전 3마리 전제 수정이 누락된 부분을 발견해 취소 후 재실행했다. Console의 해당 테스트 중단 로그는 런타임 실패가 아니다.
+- 실제 Play Mode에서 중간 구간의 방패병·드론·포탑 표시를 확인했다. 12마리의 지형 침투(0.03유닛 초과)는 0건, Missing Script 0개. 출구 X=178에서 카메라 X≈168.444(16:9), 적이 남아 있을 때 출구 잠금 유지 확인.
+- 기존 MovementLab, GlitchTuning(조준 1.25), PatrolEnemyDefinition(체력 50)은 작업 전후 해시 동일. 새 스테이지 편집 상태로 종료했다.
+
+## 2026-10-07 — Timeline 연출 템플릿
+
+- Unity 6000.3.23f1, Cinemachine 3.1.7, Timeline 1.8.13.
+- EditMode: **31/31 통과**, `Library/PrototypeValidation/EditMode.xml`, 2026-10-07 22:09 KST.
+- 전체 PlayMode: **218/218 통과**, `Library/PrototypeValidation/PlayMode.xml`, 2026-10-07 22:22:44–22:24:55 KST.
+- 신규 검사: FSM 중첩 일시정지/멱등 해제, 독립 템플릿 생성, 진입 구역/재진입, 세계 정지와 두 줄 대화, 스킵, 조작 잠금 중 낙하와 피격 화면 효과, 비활성화/씬 종료 복원, 사망 후 스테이지 재시작, 외부 시간 배율/비활성 입력 보존, 가상 키보드 확인/스킵, 시간형 대화, 중첩 대화 설정 거부.
+- 수동 Play Mode: 카메라 이동 및 6.5→5.5 줌, 한글 타이핑·확인 대기·두 대사 진행, 종료 후 카메라 위치/줌/Brain/조작/시간 복원 확인.
+- Timeline 편집 미리보기: 1.6초에서 대사 전문·목표 카메라 표시, 0.15초로 역탐색 시 대화 숨김·페이드 alpha=.5 확인. Timeline 해제 후 원래 카메라 로컬 위치/회전/크기 6.5, Brain 비활성, UI 숨김, timeScale=1 복원을 확인했다.
+- 첫 전체 실행은 216/218이었다. 사망과 StageFlow LateUpdate 간 종료 사유 경쟁을 수정했다. 기존 FSM 설정 검사는 탐지 거리 6을 가정해 공격 거리 7을 오류로 취급했으나 실제 에셋은 12였다. 테스트가 현재 탐지 거리보다 큰 값을 사용하도록 수정했으며 게임 설정은 바꾸지 않았다.
+- 기존 StageFlow 이동 검사는 자동 연출 입력 대기로 멈추지 않도록 트리거를 끄고 검사한다. 전 구간 이동/실제 공격 검사는 트리거를 켜고 연출 스킵까지 실행한다.
+- 기존 UnitLifecycleTests의 설정 누락 오류 2건은 LogAssert.Expect를 사용하는 의도된 검증 로그다.
+- 사용자 승인에 따라 기존 삭제된 목표 적의 null 참조 2개만 제거했다. 현재 배치와 삭제 상태를 유지하며 목표 수는 10개다.
+- Player 빌드/배포는 실행하지 않았다. 검증을 위한 백그라운드 실행·입력 포커스 설정은 복원했다.
+
+- 최종 UI 보완 후 재컴파일 성공. 800×600(4:3) 실제 Game View에서 한글 본문·진행 안내가 대화창 안에 배치됨을 캡처로 확인했고, 1280×720 표시도 확인했다. 스킵 비허용 표시에서는 Esc 안내를 숨긴다.
+- 게임 진행형을 실제 순찰 적 근처에서 재생해 적 공격에 의한 피해와 종료 사유 `Damaged`를 확인했다. 확인 후 Play Mode를 종료하고 Game View 크기 선택과 임시 크기 항목, 백그라운드 실행을 복원했다.
+- 검증 캡처는 버전 관리 대상이 아닌 `Temp/Cinematics/`에 보관한다.
+
+## 2026-10-07 — 컷신 종료 후 카메라 추적 복원
+
+- 조사 시작 시 CoreLoopStage의 메모리 상태는 StageCameraFollow=false, CinemachineBrain=true였으나, 저장된 씬은 정상 설정이었다. 이 상태로 연출을 시작하면 종료 시에도 기존 false/true 상태를 복원하므로 추적이 재개되지 않는다. 메모리의 두 값을 저장된 씬 기준으로 복원했다.
+- Timeline 미리보기 해제 직후 카메라 제어 플래그가 다음 Editor update까지 남는 결함을 회귀 테스트로 재현했다. `CameraPreviewBeforeFix.xml` 0/1, 22:59:20 KST. 최초 잔류 상태가 만들어진 정확한 사용자 조작 순서까지 재현한 것은 아니다.
+- CutscenePreview가 변경하는 두 enabled 값을 AnimationMode 복원 대상으로 등록해 미리보기 종료와 동시에 복원한다. Play Mode 전환 중과 컴파일 중에는 미리보기를 다시 획득하지 않는다.
+- 컴파일 성공. EditMode **32/32 통과** (`EditMode.xml`, 23:00:46–23:00:48 KST). CutsceneTests + StageFlowTests PlayMode **24/24 통과** (`CameraFollowPlayMode.xml`, 23:01:26–23:02:24 KST).
+- 신규 PlayMode 검사는 정상 완료·스킵·취소 뒤 플레이어를 X=22/28로 이동시키고 출력 카메라의 실제 X좌표를 확인한다. 기존 잠복 추적·경계·피격 효과·사망 재시작 검사도 통과했다.
+- 이번 수정은 에디터 미리보기와 회귀 테스트에 한정한다. 저장된 씬·프리팹·게임 수치는 변경하지 않았으며 전체 PlayMode 어셈블리와 Player 빌드는 재실행하지 않았다.
+
+## 2026-10-07 — 말풍선 대화 분리
+
+- Unity 6000.3.23f1 컴파일 성공. 최종 EditMode **35/35 통과**, `Library/PrototypeValidation/EditMode.xml`, 23:44:19–23:44:22 KST.
+- 전체 PlayMode **223/223 통과**, `Library/PrototypeValidation/PlayMode.xml`, 23:44:48–23:47:22 KST. 중간 컷신 집중 검사는 16/16 통과했다.
+- 신규/확장 검증: 화자 트랙 추가·바인딩 보존, 전 트랙 대사 중첩/화자 누락 검사, 세 화자 순서(안내자→플레이어→안내자), 재사용 에셋의 클립별 타이핑 초기화, 결합 문자 경계, 미리보기 본문 수정, 비활성/삭제된 화자·기준점 취소, 대기 중 기준점 추적, 타이핑/줌 중 말풍선 크기 유지, 기존 하단 대화 Timeline의 무수정 호환.
+- Timeline 미리보기에서 1.9초 안내자 → 2.3초 플레이어 → 0.15초 대화 숨김 → 1.9초 안내자로 역탐색하고 전문·화자·Idle 상태를 확인했다. 종료 즉시 카메라 소유권 복원 회귀 검사도 통과했다.
+- 실제 CoreLoopStage 구역 진입으로 재생한 화면을 확인했다. 1280×720 안내자 첫 대사, 800×600 안내자 마지막 대사 및 긴 한글 대사(3문장 반복)의 줄바꿈·고정 크기·왼쪽 화면 밖 화자에 대한 가장자리 배치를 확인했다. UI 입력 안내와 말풍선 꼬리를 포함한 composited Game View로 검사했다.
+- 안내 NPC는 (9, 0.82), 두 화자의 SpeechAnchor는 루트 위 1.25다. 화자 바인딩 정상, 관련 루트의 Missing Script 0, 기존 목표 적 10개 검사 통과. 씬 dirty=false, StageCameraFollow=true, Brain=false, 미리보기/Play Mode 종료 상태를 확인했다.
+- 테스트 중 임시 본문, Game View 크기와 임시 항목, runInBackground 설정을 복원했다. Player 프리팹과 MovementLab에 이번 기능의 연결 변경을 하지 않았다.
+- 첫 확장 EditMode 실행의 트랙 추가 검사는 테스트 러너의 미저장 임시 씬에서 추가 씬을 만들 수 없어 실패했다. 격리된 PreviewScene을 사용하도록 테스트 준비만 수정한 뒤 전체 35개가 통과했다.
+- 전체 PlayMode의 설정 누락 오류 2건은 기존 UnitLifecycleTests가 LogAssert.Expect로 검증하는 의도된 로그다. 새 기능 관련 미해결 컴파일/콘솔 오류는 없다. Player 빌드/배포는 수행하지 않았다.
+
+## 2026-10-07~08 — CoreLoopStage 4종 각 1마리와 60유닛 맵
+
+- 순찰병 X=24, 방패병 X=34, 드론 X=42, 포탑 X=50으로 기존 인스턴스 각 1개를 유지하고 중복 6개를 제거했다. StageFlow 목표 참조도 4개로 갱신했다.
+- 바닥 180→60, 중심 X=30, 오른쪽 벽 X=60.5, 출구 X=58, 추적 경계 0~60. 기존 발판 중 3개를 X=20/36/52에 배치하고 나머지 4개를 제거했다. IntroConversation의 카메라 이동 종점 X=52→20.
+- 시작 위치·안내 NPC·진입 구역·세 대사와 적 프리팹/전투 수치는 유지했다. StageFlowTests의 기대 개수·맵 크기·발판·경계 검사를 갱신하고, 컷신 카메라 이동 검사는 전투 구역을 피한 X=12/16에서 수행하도록 조정했다.
+- Unity 컴파일 성공. 저장된 씬 정적 검사에서 네 종류 프리팹 인스턴스 각각 1개, 목표 참조 4개, 발판 3개, 카메라 오른쪽 경계 60을 확인했다. git diff --check 통과.
+- StageFlowTests + CutsceneTests 실행을 시작했으나 Unity 메인 스레드가 상태 조회와 포커스 요청에 60초 이상 응답하지 않았다. `Library/PrototypeValidation/CompactStagePlayMode.xml`이 생성되지 않아 이번 실행의 통과 여부는 미확인이다. 이전 223/223 기록을 이번 축소 맵의 통과 결과로 취급하지 않는다. 편집기 응답 복구 후 해당 두 테스트 클래스를 재실행해야 한다.
+- 변경 직전 씬과 Timeline 사본은 버전 관리 대상이 아닌 `Temp/CompactStageBackup/`에 보관했다. 맵 변경은 오류 발생 전에 저장 완료했다.

@@ -125,9 +125,12 @@ namespace ActionPlatformer.Player
             ApplySlowScale(Mathf.Lerp(tuning.DamageSlowTimeScale, 1f, Mathf.SmoothStep(0f, 1f, progress)));
         }
 
+        public bool CameraEffectsSuppressed { get; set; }
+
         public void LateTick(double unscaledNow)
         {
             RemoveCameraOffset();
+            if (CameraEffectsSuppressed) { damageScreen.Hide(); return; }
             float damageAge = (float)(unscaledNow - damageStartedAt);
             float flash = Fade(damageAge, tuning.DamageFlashDuration) * tuning.DamageFlashOpacity;
             float vignette = Fade(damageAge, tuning.DamageScreenDuration) * tuning.DamageVignetteOpacity;

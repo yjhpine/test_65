@@ -33,6 +33,28 @@ namespace ActionPlatformer.Player
         private UnitHealth health;
         private uint observedDamage;
         private float facing = 1f;
+        private int controlLocks;
+        public bool IsControlLocked => controlLocks > 0;
+        // Relinquish external camera control before applying a new damage presentation.
+        public event System.Action ControlInterrupted;
+        public System.IDisposable AcquireControlLock()
+        {
+            if (controlLocks++ == 0) { ClearActions(); Motor?.StopHorizontal(); }
+            return new ControlLock(this);
+        }
+        private sealed class ControlLock : System.IDisposable
+        {
+            private PlayerUnit owner;
+            public ControlLock(PlayerUnit owner) { this.owner = owner; }
+            public void Dispose()
+            {
+                if (owner == null) return;
+                owner.controlLocks--;
+                owner.ClearJumpState();
+                owner.pendingGlitch = owner.pendingAttack = owner.pendingCancel = false;
+                owner = null;
+            }
+        }
 
         public uint RepositionVersion { get; private set; }
         public CharacterMotor2D Motor { get; private set; }
@@ -102,7 +124,7 @@ namespace ActionPlatformer.Player
         {
             Feedback?.Tick(Time.unscaledTimeAsDouble);
             if (!UpdateReactions(Time.timeAsDouble)) return;
-            PlayerCommand command = input.Sample();
+            PlayerCommand command = IsControlLocked ? default : input.Sample();
             GlitchPreview = default;
             SetMovementInput(command.Move.x, command.JumpHeld);
             if (IsUnderground)
@@ -287,6 +309,8 @@ namespace ActionPlatformer.Player
         private bool UpdateReactions(double now)
         {
             if (health == null) return true;
+            if (observedDamage != health.DamageVersion || (!health.IsAlive && double.IsNegativeInfinity(deathStartedAt)))
+                ControlInterrupted?.Invoke();
             if (!health.IsAlive)
             {
                 if (double.IsNegativeInfinity(deathStartedAt))
@@ -319,6 +343,7 @@ namespace ActionPlatformer.Player
 
         protected override void OnUnitDisabled()
         {
+            ControlInterrupted?.Invoke();
             ClearActions();
             Feedback?.Dispose();
             hitStartedAt = double.NegativeInfinity;

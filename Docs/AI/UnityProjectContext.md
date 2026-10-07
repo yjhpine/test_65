@@ -1,6 +1,6 @@
 # Unity project context
 
-Updated: 2026-09-30. Implementation baseline commit: 8707898.
+Updated: 2026-10-05. Implementation baseline commit: 8707898.
 
 ## Environment
 - Project: `D:/test_65/test_65/test_65`.
@@ -35,13 +35,13 @@ Runtime depends only on Input System.
 - PlayerUnit exposes Hit/Die reaction presentation through IPlayerActionState. Hit uses the existing combat HitStun duration and restarts on damage, preserving walking; Die cancels actions, restores burrow physics, blocks input, retains gravity and deactivates after PlayerUnit.DeathDuration (0.7 seconds, zero supported). Player prefab UnitHealth.DeactivateOnDeath is false. Only PlayerVisual plays Hit (3 hurt frames)/Die (7 die frames) with higher priority than attacks. Re-enabling a finished dead player does not revive or restart it.
 - Blocked emergence now searches both directions on the same floor only on the attack request. GlitchUtility.TryNearestEmergence samples at 0.05 units and refines the first free boundary with 6 binary steps; narrow free intervals smaller than the sample spacing may be missed. The nearer refined candidate wins; ties prefer the last actual burrow movement, otherwise the original body's side. CanEmerge/marker color still describe the exact selected column. No valid nearby space or invalid target/floor restores the parked body. Successful correction updates the logical marker and uses the existing emergence/combat flow without restarting cooldown.
 - Overlapping bodies use the basic side attack; positional Lift requires target bottom >= player top minus 0.02 contact tolerance. Emergence uses the current burrow marker's body-center X and a centered hit area, never current target-side candidates. A/D and arrow Move input adjusts this logical marker in FixedUpdate via PlayerGlitch.MoveUnderground at GlitchTuning.UndergroundMoveSpeed (3 units/s), clamped inside the same floor with full-body edge clearance. The real body stays parked/Kinematic/immune. CanEmerge uses the execution checks and PlayerVisual colors the marker cyan/red. Space takes priority over movement/attack, moving does not extend duration or cooldown, and emergence restores the parked body only if the nearby fallback also fails. Normal target/floor validity checks still apply.
-- No session manager, camera controller, UI, global event bus or singleton. Combat uses UnitHealth and GroundMovement2D forced motion, with explicit invulnerability during underground.
+- MovementLab remains a standalone mechanics lab. CoreLoopStage adds scene-local flow, camera tracking and completion UI (see below); no global event bus or singleton. Combat uses UnitHealth and GroundMovement2D forced motion, with explicit invulnerability during underground.
 - Art: Assets/_Game/Art/Characters/Adventurer (rvros, creator custom license; no standalone redistribution); 50x37 frames, 18 PPU, pivot (25/50,1/37), Point filter, uncompressed. Visual local position (0,-0.8,0), unit scale, white tint. Physics collider remains 0.65x1.6. Previous VirtualGuy art is retained unused.
 - Animator: Assets/_Game/Animations/Player/Player.controller; Idle 4 frames, Run 6, Jump 4, Fall 2. Ground combo Attack1/2/3, ordinary air AirAttack1/2/3 (third reuses air1), Lift/Emergence upward swing, SlamHover/SlamFall/SlamLand use original air-attack3 ready/loop/end. PlayerCombat exposes read-only PlayerAttackPresentation via PlayerUnit/IPlayerActionState; only PlayerVisual writes ActionOverride/ActionTime and plays states. No animation events or root motion. Show Attack Area defaults off on the prefab and can be enabled for debugging.
 - Provenance and redistribution license: Docs/ThirdPartyNotices.md.
 
 ## Entry points
-- Scene: `Assets/_Game/Scenes/MovementLab.unity`.
+- Playable stage: `Assets/_Game/Scenes/CoreLoopStage.unity`. Mechanics lab: `Assets/_Game/Scenes/MovementLab.unity`.
 - Player prefab: `Assets/_Game/Prefabs/Player.prefab`.
 - Open the existing MovementLab scene directly from the Project window.
 - Tests: `Game > Prototype > Validate EditMode / Validate PlayMode`.
@@ -50,7 +50,7 @@ Runtime depends only on Input System.
 - Generated test results: `Library/PrototypeValidation/` (ignored by Git).
 
 ## Settings retained from initial implementation
-MovementLab is the only build scene and is also the templateDefaultScene path in Player Settings.
+CoreLoopStage is the first build scene; MovementLab remains enabled and is still the templateDefaultScene path in Player Settings.
 The running Unity Editor registered an App UI config object, added APP_UI_EDITOR_ONLY to Standalone defines and generated SceneTemplateSettings.json. Those existing editor-generated settings were retained.
 Cleanup removed six unused direct packages: com.unity.visualscripting, com.unity.timeline, com.unity.multiplayer.center, com.unity.2d.aseprite, com.unity.2d.psdimporter and com.unity.2d.spriteshape. Input System, URP, Sprite, Unity MCP and test dependencies are retained. Both input action assets and the fixed timestep are unchanged.
 Use local files for inspection. Use Unity MCP only for necessary scene changes, compilation, console and runtime validation.
@@ -74,3 +74,34 @@ Release platforms, save requirements, localization and performance budget. Initi
 - PlayerCombatTuning's Player Damage Feedback fields are independent of outgoing-hit feedback. No damage/invulnerability/movement balance changes.
 - PlayerDamageScreen owns a reusable camera-local quad/mesh/material instance. Explicit material on Player prefab references the URP PlayerDamageScreen shader; no pipeline asset or UI package changes. On disable PlayerImpactFeedback.Dispose restores camera/time and releases transient render resources; later activation lazily recreates them.
 - Input sampling restores both shake offset and zoom before camera aim conversion. Damage slow motion also scales and restores the physics timestep, refreshes on repeated damage, and respects external pauses/time-scale changes. Outgoing hitstop is suppressed during damage slow motion. Unscaled presentation fades through slow motion; ignored damage does not trigger a new effect.
+
+### Core loop stage (2026-10-05)
+- Added CoreLoopStage as the first build scene; MovementLab and its user-authored activation overrides are preserved.
+- ActionPlatformer.Flow contains scene-local StageFlowController, StageGoal, StageCameraFollow and StageFlowView. No singleton, persistent manager, Unit/FSM refactor or revival API.
+- Start immediately; defeat the twelve explicitly referenced enemies (three each of PatrolEnemy, ShieldSoldier, FlyingDrone and SurveillanceTurret) and overlap the right exit while alive and above ground to complete. Health zero counts as a kill; disabling a live enemy does not. Death wins over completion.
+- Existing player death presentation runs to deactivation, then the entire scene reloads. Completion disables input/player actions/damage, clears feedback, pauses time, and shows a UI Toolkit restart button. Reload/unload restores time and fixedDeltaTime.
+- A parent camera rig follows X within stage bounds; child camera feedback remains additive. Goal queries actual collider overlap, including glitch teleports.
+- The new scene has a continuous 180-unit floor, nine one-way ledges, twelve instances of unchanged enemy prefabs and a colored exit at X=178. No HUD/checkpoints/save/score/next-level flow.
+- 2026-10-06: StageCameraFollow reads the target IPlayerActionState; while underground it follows GroundMarkerPosition.x rather than the parked Transform. Cancel/timeout/emergence resumes Transform tracking. Existing camera bounds, fixed Y and child feedback are retained.
+
+### Cinematic templates (2026-10-07)
+- Cinemachine 3.1.7 / Timeline 1.8.13 are installed. ActionPlatformer.Cinematics implements a scene-local CutsceneCoordinator, CutsceneRunner, CutsceneCameraRig and CutsceneTrigger; no singleton or global event bus.
+- CoreLoopStage has IntroCutscene at X=6, with two Korean dialogue clips, camera move/zoom toward the first remaining platform at X=52, and a short fade. The user's existing deleted enemies/ledges are preserved; two null objective references were removed with approval (10 objectives remain).
+- Cutscenes use manual unscaled Timeline evaluation, custom Dialogue/Fade tracks and UI Toolkit. Confirm waits clamp Timeline time while UI typing continues; timed dialogue follows clip time. Completion/skip blends back for .35 seconds; damage/cancel returns immediately.
+- PlayerUnit.AcquireControlLock clears actions and buffers without disabling the unit. ControlInterrupted notifies the runner before damage feedback; FsmRuntime.Pause returns a counted disposable preserving current state. Pause mode sets timeScale=0 and pauses current scene FSMs; Continue leaves physics/combat running and cancels on damage.
+- Ordinary StageCameraFollow still owns gameplay tracking; CinemachineBrain is active only during cutscenes. Return pose uses current player/logical underground X and the original clamp. PlayerImpactFeedback camera presentation is suppressed while cutscene camera control is held.
+- Game > Cinematics > Create Cutscene creates an independent prefab + Timeline. Assign scene Coordinator/Player/Stage in the runner Inspector, inspect bindings, then edit Timeline. UI font: unmodified Noto Sans KR, OFL 1.1; provenance in ThirdPartyNotices.
+
+## 2026-10-07: 컷신 말풍선 대화
+
+- DialoguePlayback은 CutsceneRunner 소유의 일반 C# 객체다. 클립 배치별 타이핑/확인 상태와 한글 결합 문자 경계를 관리하고, CutsceneView/SpeechBubbleView는 표시만 담당한다.
+- 기존 DialogueTrack은 하단 창, SpeechBubbleTrack은 DialogueSpeaker 바인딩으로 말풍선을 표시한다. 두 종류 모두 DialogueClip을 사용하며 모든 활성 대화 트랙 간 중첩을 금지한다. BindOutputs는 화자 바인딩을 보존한다.
+- DialogueMixer는 수동 평가 구간 안에서 Runner에 대사를 제출한다. 평가 후 한 번만 표시를 결정하므로 비활성 트랙이 다른 트랙의 UI를 숨기지 않는다. 카메라 갱신 직후 말풍선 위치를 갱신한다.
+- CoreLoopStage는 IntroConversation.playable을 사용한다. 기존 IntroCutscene 프리팹/Timeline은 하단 안내 템플릿으로 보존한다. X=9의 Guide는 Unit(Npc, FSM 없음) + 모험가 Idle 외형 + DialogueSpeaker이며 체력/전투/물리 충돌이 없다. 목표 적 10개와 기존 배치는 유지한다.
+- CoreLoopStage 플레이어 인스턴스에만 DialogueSpeaker/자식 SpeechAnchor를 추가했다. Player 원본 프리팹·MovementLab에는 말풍선 연결을 추가하지 않았다.
+- Runner Inspector에서 화자 선택 후 말풍선 트랙을 추가할 수 있다. 일반 플레이 주변 대사·동시 대화·선택지·음성은 범위 밖이다.
+
+## 2026-10-07: 현재 CoreLoopStage 축소 배치
+
+- 맵 길이 60, 출구 X=58, 추적 경계 0~60. 순찰병 X=24, 방패병 X=34, 드론 X=42, 포탑 X=50 각 1마리(총 4마리)가 목표다. 이전 180유닛/목표 10개 기록을 대체한다.
+- 발판 X=20/36/52의 3개. IntroConversation의 전방 카메라 X 종점은 20이다. 플레이어·안내 NPC·진입 구역·대사·적 튜닝은 유지한다.

@@ -324,7 +324,7 @@ namespace ActionPlatformer.Tests
         {
             Assert.That(settings.TryValidate(out _), Is.True);
             var data = new SerializedObject(settings);
-            data.FindProperty("attackRange").floatValue = 7f;
+            data.FindProperty("attackRange").floatValue = data.FindProperty("detectionRange").floatValue + 1f;
             data.ApplyModifiedPropertiesWithoutUndo();
             Assert.That(settings.TryValidate(out _), Is.False);
             data.FindProperty("attackRange").floatValue = 1.2f;

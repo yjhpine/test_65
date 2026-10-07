@@ -1,6 +1,6 @@
 {
   "name": "ActionPlatformer.Editor",
   "rootNamespace": "ActionPlatformer.Editor",
-  "references": ["ActionPlatformer.Runtime", "UnityEditor.TestRunner", "UnityEngine.TestRunner"],
+  "references": ["ActionPlatformer.Runtime", "UnityEditor.TestRunner", "UnityEngine.TestRunner", "Unity.Cinemachine", "Unity.Timeline", "Unity.Timeline.Editor", "Unity.InputSystem"],
   "includePlatforms": ["Editor"]
 }

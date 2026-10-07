@@ -1,6 +1,6 @@
 {
   "name": "ActionPlatformer.EditModeTests",
-  "references": ["ActionPlatformer.Runtime"],
+  "references": ["ActionPlatformer.Runtime", "ActionPlatformer.Editor", "Unity.Timeline", "Unity.Timeline.Editor", "Unity.Cinemachine"],
   "includePlatforms": ["Editor"],
   "optionalUnityReferences": ["TestAssemblies"]
 }

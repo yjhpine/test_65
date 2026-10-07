@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: GlitchTuning
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.GlitchTuning
   maxDistance: 6
-  aimAssistRadius: 0.75
+  aimAssistRadius: 1.25
   centerRadius: 0.1
   clearance: 0.15
   cooldown: 0

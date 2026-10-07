@@ -7,6 +7,26 @@ namespace ActionPlatformer.Units.Fsm
         private readonly IFsmState initialState;
         private int generation;
         private bool ticking;
+        private int pauseCount;
+        public bool IsPaused => pauseCount > 0;
+
+        // Preserve the state graph, subscriptions and elapsed state time.
+        public IDisposable Pause()
+        {
+            pauseCount++;
+            return new PauseHandle(this);
+        }
+        private sealed class PauseHandle : IDisposable
+        {
+            private FsmRuntime owner;
+            public PauseHandle(FsmRuntime owner) { this.owner = owner; }
+            public void Dispose()
+            {
+                if (owner == null) return;
+                owner.pauseCount--;
+                owner = null;
+            }
+        }
 
         public IFsmState CurrentState { get; private set; }
         public bool IsRunning { get; private set; }
@@ -30,7 +50,7 @@ namespace ActionPlatformer.Units.Fsm
         {
             if (float.IsNaN(deltaTime) || float.IsInfinity(deltaTime) || deltaTime < 0f)
                 throw new ArgumentOutOfRangeException(nameof(deltaTime));
-            if (!IsRunning) return;
+            if (!IsRunning || IsPaused) return;
             if (ticking) throw new InvalidOperationException("An FSM cannot tick recursively.");
 
             ticking = true;

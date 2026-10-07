@@ -84,3 +84,14 @@ All three archives were downloaded for free from their creators’ official itch
 - Imported folder: `Assets/_Game/Art/Characters/FlyingDrone`.
 
 Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / Dash 4 / Death 9 frames. Droid01 uses 32×32 cells at 23 PPU with foot pivot (0.5,2/32); Shoot uses 48×48 cells and matching foot pivot (0.5,10/48), Idle 4 / Shoot 12 / Death 9 frames. Exploding Drone uses 32×32 cells at 20 PPU, body pivot (16.5/32,15.5/32), Idle 8 / Run 10 / Death 12 frames. All textures use Point filtering, no mipmaps and no compression. Idle/Run use 10 FPS; action/death clips are sampled by gameplay phase timing.
+
+## Noto Sans KR — cinematic dialogue font (2026-10-07)
+
+- Source: https://github.com/notofonts/noto-cjk/tree/main/Sans/SubsetOTF/KR
+- Original file: https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/SubsetOTF/KR/NotoSansKR-Regular.otf
+- Copyright: Adobe / Noto font contributors; the original font copyright metadata is preserved.
+- License: SIL Open Font License 1.1. The unchanged license is included at `Assets/_Game/UI/Cinematics/Fonts/OFL.txt`.
+- Local file: `Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular.otf`, unmodified.
+- SHA-256: `69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68`.
+
+- 2026-10-07: CoreLoopStage의 안내 NPC는 위 Adventurer의 기존 Idle 스프라이트/클립을 색상 변경하여 재사용한다. 새 외부 에셋이나 라이선스는 추가하지 않았다.

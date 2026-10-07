@@ -1,0 +1,35 @@
+.cutscene-root {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    -unity-font: url("Fonts/NotoSansKR-Regular.otf");
+    color: rgb(239, 243, 244);
+}
+.dialogue {
+    display: none; position: absolute; left: 7%; right: 7%; bottom: 5%;
+    min-height: 174px; padding: 20px 28px; flex-direction: row;
+    background-color: rgba(12, 22, 32, 0.96);
+    border-top-width: 2px; border-top-color: rgb(64, 218, 197);
+    border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+}
+.portrait { width: 116px; height: 128px; margin-right: 24px; flex-shrink: 0; -unity-background-scale-mode: scale-to-fit; }
+.dialogue-content { flex-grow: 1; flex-shrink: 1; }
+.speaker { font-size: 20px; color: rgb(105, 233, 216); margin-bottom: 8px; }
+.body { font-size: 25px; white-space: normal; min-height: 72px; flex-grow: 1; }
+.hint { font-size: 14px; color: rgb(156, 177, 191); -unity-text-align: middle-right; margin-top: 10px; }
+.fade { position: absolute; left: 0; right: 0; top: 0; bottom: 0; background-color: rgba(0,0,0,0); }
+
+.speech-layer, .speech-tail { position: absolute; left: 0; right: 0; top: 0; bottom: 0; }
+.speech-layer { overflow: hidden; }
+.speech-bubble {
+    position: absolute; padding: 14px 16px; background-color: rgba(12,22,32,0.97);
+    border-top-width: 2px; border-top-color: rgb(64,218,197);
+    border-top-left-radius: 10px; border-top-right-radius: 10px;
+    border-bottom-left-radius: 10px; border-bottom-right-radius: 10px;
+}
+.speech-content { position: relative; flex-grow: 1; }
+.speech-text { font-size: 24px; white-space: normal; margin: 0; padding: 0; }
+.speech-measure { opacity: 0; }
+.speech-visible { position: absolute; left: 0; right: 0; top: 0; }
+.speech-hint {
+    position: absolute; right: 5%; bottom: 4%; font-size: 16px; color: rgb(220,230,235);
+    background-color: rgba(12,22,32,0.85); padding: 8px 14px; border-bottom-left-radius: 6px;
+}
