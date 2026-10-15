@@ -95,3 +95,10 @@ Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / D
 - SHA-256: `69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68`.
 
 - 2026-10-07: CoreLoopStage의 안내 NPC는 위 Adventurer의 기존 Idle 스프라이트/클립을 색상 변경하여 재사용한다. 새 외부 에셋이나 라이선스는 추가하지 않았다.
+
+
+## Project-supplied player art — 2026-10-15
+
+- The user supplied the character PNGs and animation assets already present under `Assets/Art`; this integration downloaded no additional art and does not infer an author or license for those files.
+- Original image bytes and import settings are unchanged. Player-specific integration clips live in `Assets/_Game/Animations/Player/ArtCharacter` and reuse these sprites with gameplay-aligned timing.
+- These clips replace the player's Adventurer presentation. The original Adventurer assets and their notices remain because the guide NPC still uses its Idle clip.

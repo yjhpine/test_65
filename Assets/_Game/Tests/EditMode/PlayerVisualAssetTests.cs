@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace ActionPlatformer.Tests
 {
-    public sealed class PlayerAdventurerAssetTests
+    public sealed class PlayerVisualAssetTests
     {
         [Test] public void PlayerActionsHaveCompleteSpriteOnlyClipsAndGuardedLocomotion()
         {
@@ -18,6 +18,11 @@ namespace ActionPlatformer.Tests
             var visual = prefab.transform.Find("Visual");
             var animator = visual.GetComponent<Animator>();
             Assert.That(animator.applyRootMotion, Is.False);
+            var sprite = visual.GetComponent<SpriteRenderer>().sprite;
+            Assert.That(sprite.name, Is.EqualTo("idle_v4_01"));
+            float feetY = visual.localPosition.y + (17f - sprite.pivot.y) / sprite.pixelsPerUnit;
+            var collider = prefab.GetComponent<CapsuleCollider2D>();
+            Assert.That(feetY, Is.EqualTo(collider.offset.y - collider.size.y * .5f).Within(.001f));
             Assert.That(new SerializedObject(visual.GetComponent<PlayerVisual>()).FindProperty("showAttackArea").boolValue, Is.False);
             var controller = (AnimatorController)animator.runtimeAnimatorController;
             var machine = controller.layers[0].stateMachine;
@@ -26,6 +31,7 @@ namespace ActionPlatformer.Tests
             {
                 var state = machine.states.Single(s => s.state.name == name).state;
                 var clip = state.motion as AnimationClip; Assert.That(clip, Is.Not.Null, name);
+                Assert.That(clip.isLooping, Is.EqualTo(new[] { "Idle", "Run", "SlamFall" }.Contains(name)), name);
                 Assert.That(AnimationUtility.GetCurveBindings(clip), Is.Empty, "No transform or gameplay curves: " + name);
                 Assert.That(AnimationUtility.GetAnimationEvents(clip), Is.Empty);
                 var bindings = AnimationUtility.GetObjectReferenceCurveBindings(clip);
@@ -36,7 +42,7 @@ namespace ActionPlatformer.Tests
                 {
                     Assert.That(key.value, Is.TypeOf<Sprite>(), name);
                     string path = AssetDatabase.GetAssetPath(key.value);
-                    Assert.That(path, Does.StartWith("Assets/_Game/Art/Characters/Adventurer/"));
+                    Assert.That(path, Does.StartWith("Assets/Art/"));
                     var importer = (TextureImporter)AssetImporter.GetAtPath(path);
                     Assert.That(importer.spritePixelsPerUnit, Is.EqualTo(18f));
                     Assert.That(importer.filterMode, Is.EqualTo(FilterMode.Point));
@@ -49,6 +55,11 @@ namespace ActionPlatformer.Tests
             }
             foreach (var transition in machine.anyStateTransitions)
                 Assert.That(transition.conditions.Any(c => c.parameter == "ActionOverride" && c.mode == AnimatorConditionMode.IfNot), Is.True);
+            var guide = AssetDatabase.LoadAssetAtPath<AnimatorController>("Assets/_Game/Cinematics/GuideIdle.controller");
+            Assert.That(AssetDatabase.GetAssetPath(guide.animationClips[0]), Is.EqualTo("Assets/_Game/Animations/Player/Idle.anim"));
+            var guideBinding = AnimationUtility.GetObjectReferenceCurveBindings(guide.animationClips[0]).Single();
+            Assert.That(AssetDatabase.GetAssetPath(AnimationUtility.GetObjectReferenceCurve(guide.animationClips[0], guideBinding)[0].value),
+                Does.StartWith("Assets/_Game/Art/Characters/Adventurer/"));
         }
     }
 }

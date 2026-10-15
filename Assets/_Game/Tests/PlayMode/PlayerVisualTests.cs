@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 
 namespace ActionPlatformer.Tests
 {
-    public sealed class PlayerAdventurerVisualTests
+    public sealed class PlayerVisualTests
     {
         private readonly List<Object> created = new List<Object>();
         private sealed class State : IPlayerActionState, ICharacterMotionState
@@ -32,7 +32,7 @@ namespace ActionPlatformer.Tests
         private PlayerVisual Visual(State state, Vector3 position = default)
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");
-            var holder = new GameObject("Adventurer visual test"); holder.SetActive(false); created.Add(holder);
+            var holder = new GameObject("Player visual test"); holder.SetActive(false); created.Add(holder);
             var go = Object.Instantiate(prefab.transform.Find("Visual").gameObject, holder.transform);
             go.transform.localPosition = Vector3.zero;
             holder.transform.position = position;
@@ -51,7 +51,7 @@ namespace ActionPlatformer.Tests
         private static void AssertFrame(PlayerVisual visual, string animation, string sprite)
         {
             Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName(animation), Is.True, animation);
-            Assert.That(visual.GetComponent<SpriteRenderer>().sprite.name, Is.EqualTo("adventurer-" + sprite));
+            Assert.That(visual.GetComponent<SpriteRenderer>().sprite.name, Is.EqualTo(sprite));
         }
         [TearDown] public void Cleanup()
         {
@@ -66,19 +66,19 @@ namespace ActionPlatformer.Tests
             for (int strike = 1; strike <= 3; strike++)
             {
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Windup);
-                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack" + strike + "-00");
+                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack_v7_ready_01");
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Active);
-                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack" + strike + (strike == 2 ? "-03" : "-02"));
+                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack_v7_punch_02");
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Recovery, .99f);
-                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack" + strike + (strike == 1 ? "-04" : "-05"));
+                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack_v7_punch_08");
                 state.Velocity = new Vector2(8f, -4f);
                 Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Windup);
-                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, strike == 2 ? "air-attack1-03" : "air-attack1-00");
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, "attack_v7_ready_01");
                 Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Active);
-                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, strike == 2 ? "air-attack2-00" : "air-attack1-01");
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, "attack_v7_punch_02");
                 Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Recovery, .99f);
                 state.IsGrounded = true; // Landing cannot restart the swing as a ground animation.
-                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, strike == 2 ? "air-attack2-02" : "air-attack1-03");
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, "attack_v7_punch_08");
                 state.AttackPhase = PlayerAttackPhase.Ready;
                 yield return RenderFrame();
                 Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Run"), Is.True);
@@ -92,7 +92,7 @@ namespace ActionPlatformer.Tests
         {
             var state = new State(); var visual = Visual(state); var animator = visual.GetComponent<Animator>();
             Attack(state, PlayerAttack.Slam, 1, true, PlayerAttackPhase.Windup, .8f);
-            yield return RenderFrame(); AssertFrame(visual, "SlamHover", "air-attack3-rdy-00");
+            yield return RenderFrame(); AssertFrame(visual, "SlamHover", "stomp_v2_03");
             Attack(state, PlayerAttack.Slam, 1, true, PlayerAttackPhase.Descending);
             yield return RenderFrame();
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("SlamFall"), Is.True);
@@ -101,17 +101,17 @@ namespace ActionPlatformer.Tests
             for (int i=0; i<15; i++) { yield return new WaitForFixedUpdate(); changed |= visual.GetComponent<SpriteRenderer>().sprite != first; }
             Assert.That(changed, Is.True, "The descending pose should loop.");
             Attack(state, PlayerAttack.Slam, 1, false, PlayerAttackPhase.Active);
-            yield return RenderFrame(); AssertFrame(visual, "SlamLand", "air-attack-3-end-00");
+            yield return RenderFrame(); AssertFrame(visual, "SlamLand", "stomp_v2_05");
             Attack(state, PlayerAttack.Slam, 1, false, PlayerAttackPhase.Recovery, .8f);
-            yield return RenderFrame(); AssertFrame(visual, "SlamLand", "air-attack-3-end-02");
+            yield return RenderFrame(); AssertFrame(visual, "SlamLand", "stomp_v2_08");
             Attack(state, PlayerAttack.Slam, 1, true, PlayerAttackPhase.Recovery);
             yield return RenderFrame();
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Fall"), Is.True, "No landing pose when descent timed out in midair.");
             Assert.That(animator.GetBool("ActionOverride"), Is.False);
             Attack(state, PlayerAttack.Emergence, 2, false, PlayerAttackPhase.Active);
-            yield return RenderFrame(); AssertFrame(visual, "Emergence", "attack1-02");
+            yield return RenderFrame(); AssertFrame(visual, "Emergence", "uppercut_v5_04");
             Attack(state, PlayerAttack.Lift, 3, false, PlayerAttackPhase.Active);
-            yield return RenderFrame(); AssertFrame(visual, "Lift", "attack1-02");
+            yield return RenderFrame(); AssertFrame(visual, "Lift", "uppercut_v5_04");
             state.IsUnderground = true;
             yield return RenderFrame(); Assert.That(visual.GetComponent<SpriteRenderer>().enabled, Is.False);
             Assert.That(animator.GetBool("ActionOverride"), Is.False);
@@ -120,7 +120,7 @@ namespace ActionPlatformer.Tests
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Recovery, .9f);
             yield return RenderFrame();
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Windup);
-            yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack1-00");
+            yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_ready_01");
             visual.gameObject.SetActive(false); state.AttackPhase = PlayerAttackPhase.Ready;
             visual.gameObject.SetActive(true); yield return RenderFrame();
             Assert.That(animator.GetBool("ActionOverride"), Is.False);
@@ -134,14 +134,14 @@ namespace ActionPlatformer.Tests
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Active);
             foreach (var kind in new[] { PlayerReaction.Hit, PlayerReaction.Die })
             {
-                int count = kind == PlayerReaction.Hit ? 3 : 7;
-                string prefix = kind == PlayerReaction.Hit ? "hurt" : "die";
+                int count = kind == PlayerReaction.Hit ? 8 : 4;
+                string prefix = "hurt_v1_";
                 for (int i = 0; i < count; i++)
                 {
                     state.ReactionPresentation = new PlayerReactionPresentation { Kind = kind, Version = 1,
                         Progress = (i + .1f) / count };
                     yield return RenderFrame();
-                    AssertFrame(visual, kind.ToString(), prefix + "-" + i.ToString("00"));
+                    AssertFrame(visual, kind.ToString(), prefix + (i + 1).ToString("00"));
                 }
             }
             visual.gameObject.SetActive(false);
@@ -154,13 +154,13 @@ namespace ActionPlatformer.Tests
         [UnityTest] public IEnumerator CapturePlayerHitAndDieFrames()
         {
             if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) Assert.Ignore("Graphics device required.");
-            for (int i=0; i<10; i++)
+            for (int i=0; i<12; i++)
             {
-                bool hit = i < 3; int frame = hit ? i : i-3;
+                bool hit = i < 8; int frame = hit ? i : i-8;
                 var state = new State { ReactionPresentation = new PlayerReactionPresentation {
                     Kind = hit ? PlayerReaction.Hit : PlayerReaction.Die, Version = 1,
-                    Progress = (frame + .1f) / (hit ? 3f : 7f) } };
-                Visual(state,new Vector3(frame*2.1f-6.3f,hit?103f:100f,0f));
+                    Progress = (frame + .1f) / (hit ? 8f : 4f) } };
+                Visual(state,new Vector3(frame*1.8f-6.3f,hit?103f:100f,0f));
             }
             yield return RenderFrame();
             var go = new GameObject("Reaction capture camera"); created.Add(go);
@@ -179,7 +179,7 @@ namespace ActionPlatformer.Tests
             finally { RenderTexture.active=previous; camera.targetTexture=null; target.Release(); }
         }
 
-        [UnityTest] public IEnumerator CaptureAdventurerAttackPresentation()
+        [UnityTest] public IEnumerator CapturePlayerAttackPresentation()
         {
             if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) Assert.Ignore("Graphics device required.");
             var kinds = new[]{PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Side,PlayerAttack.Air,PlayerAttack.Emergence,PlayerAttack.Slam,PlayerAttack.Slam,PlayerAttack.Slam};
@@ -191,7 +191,7 @@ namespace ActionPlatformer.Tests
                 Visual(state,new Vector3((i%4)*3.2f-4.8f,102f-(i/4)*3f,0f));
             }
             yield return RenderFrame();
-            var go = new GameObject("Adventurer capture camera"); created.Add(go);
+            var go = new GameObject("Player capture camera"); created.Add(go);
             var camera = go.AddComponent<Camera>(); camera.enabled=false; camera.orthographic=true;
             camera.orthographicSize=3.5f; camera.transform.position=new Vector3(.25f,101.5f,-10f);
             camera.clearFlags=CameraClearFlags.SolidColor; camera.backgroundColor=new Color(.08f,.1f,.15f);
@@ -202,7 +202,7 @@ namespace ActionPlatformer.Tests
                 camera.targetTexture=target; camera.Render(); RenderTexture.active=target;
                 texture.ReadPixels(new Rect(0,0,1200,600),0,0); texture.Apply();
                 System.IO.Directory.CreateDirectory("Library/PrototypeValidation");
-                System.IO.File.WriteAllBytes("Library/PrototypeValidation/AdventurerAttacks.png",texture.EncodeToPNG());
+                System.IO.File.WriteAllBytes("Library/PrototypeValidation/PlayerArtAttacks.png",texture.EncodeToPNG());
             }
             finally { RenderTexture.active=previous; camera.targetTexture=null; target.Release(); }
         }

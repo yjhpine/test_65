@@ -385,3 +385,22 @@ CoreLoopStage의 IntroCutscene 인스턴스는 별도 `IntroConversation.playabl
 | 감시 포탑 | 50 | 1 |
 
 네 적을 모두 처치한 뒤 출구에 도착하면 완료한다. 발판은 X=20/36/52의 3개이며, 안내 컷신은 첫 발판 X=20을 보여준다. 카메라 추적 경계는 0~60이다. 시작 대화와 첫 전투 사이에 여유를 두었으며 적 프리팹·전투 수치는 바꾸지 않았다.
+
+
+## 2026-10-15 — Assets/Art 플레이어 외형 연결
+
+- Player 프리팹의 Visual과 기존 Player.controller의 17개 상태를 `Assets/Art` 캐릭터로 교체했다. 런타임 이동·점프·공격 코드, 콤보 순번, 공격 판정/단계 시간, 루트 물리·콜라이더·씬 배치는 유지한다.
+- 통합 클립은 `Assets/_Game/Animations/Player/ArtCharacter`의 11개다. 원본 PNG·임포트 설정·Art 안의 개별 클립/컨트롤러는 보존한다. 기존 Adventurer 클립도 남겨 안내 NPC의 GuideIdle 참조를 유지한다.
+
+| 기존 상태 | 사용 프레임 |
+|---|---|
+| Idle / Run | Idle / Walk |
+| Jump / Fall | JumpUP / JumpDown; 끝 프레임 유지 |
+| Attack1~3 / AirAttack1~3 | AttackWaiting 준비 + AttackNomerl 타격·복귀; 한 종류를 3타에 공통 사용 |
+| Lift / Emergence | AttackUP의 uppercut |
+| SlamHover / SlamFall / SlamLand | AttackDown의 stomp 1~3 준비 / 3~4 하강 반복 / 5~8 착지·복귀 |
+| Hit | EnemyHit 8프레임 |
+| Die | 별도 사망 원본이 없어 EnemyHit 1~4 사용 후 마지막 피격 자세 유지 |
+
+- 준비·타격·복귀는 기존 PlayerVisual의 정규화 시간 0~0.35 / 0.35~0.6 / 0.6~1에 맞췄다. Idle·Run·SlamFall만 반복한다. 공격/피격/사망은 ActionTime으로 평가하며 실제 피해·사망 처리는 기존 코드가 담당한다.
+- 새 프레임은 64×64, 18 PPU, 중앙 피벗이며 서 있는 발은 아래에서 17픽셀이다. Visual의 Y를 `-0.8 + (32-17)/18 = 0.0333333`으로 조정해 기존 콜라이더 하단에 맞췄다. 크기는 1, 좌우 반전은 SpriteRenderer.flipX, Root Motion은 꺼진 상태다.

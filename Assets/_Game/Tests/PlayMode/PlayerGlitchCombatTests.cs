@@ -1276,6 +1276,7 @@ namespace ActionPlatformer.Tests
 
         [Test] public void TargetLossAndDisableRestoreUndergroundAndCooldown()
         {
+            Vector3 originalVisualPosition = player.transform.Find("Visual").localPosition;
             Set(glitchSettings, "cooldown", 2f); EnterUnderground();
             enemy.gameObject.SetActive(false); Glitch.Tick(0.1); AssertRestored();
             Assert.That(Glitch.CooldownRemaining(0.1), Is.GreaterThan(0));
@@ -1283,7 +1284,7 @@ namespace ActionPlatformer.Tests
             player.enabled = false; AssertRestored();
             Assert.That(Glitch.CooldownRemaining(3), Is.Zero);
             player.enabled = true;
-            Assert.That(player.transform.Find("Visual").localPosition.y, Is.EqualTo(-0.8f).Within(0.001f));
+            Assert.That(player.transform.Find("Visual").localPosition, Is.EqualTo(originalVisualPosition));
         }
 
         [Test] public void ZeroCooldownOverridesAndClearsPreviouslyRunningTimer()
@@ -1394,7 +1395,7 @@ namespace ActionPlatformer.Tests
             yield return Step; yield return null; yield return null;
             Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);
-            Assert.That(sprite.sprite.name, Is.EqualTo("adventurer-hurt-00"));
+            Assert.That(sprite.sprite.name, Is.EqualTo("hurt_v1_01"));
             Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f), "Hit keeps existing walking rules.");
             uint version = player.ReactionPresentation.Version;
             yield return new WaitForSeconds(0.11f);
@@ -1403,7 +1404,7 @@ namespace ActionPlatformer.Tests
             yield return Step; yield return null; yield return null;
             Assert.That(player.ReactionPresentation.Version, Is.GreaterThan(version));
             Assert.That(player.ReactionPresentation.Progress, Is.LessThan(0.3f));
-            Assert.That(sprite.sprite.name, Is.EqualTo("adventurer-hurt-00"));
+            Assert.That(sprite.sprite.name, Is.EqualTo("hurt_v1_01"));
             yield return new WaitForSeconds(combatSettings.HitStun + 0.05f);
             yield return null; yield return null;
             Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
@@ -1441,7 +1442,7 @@ namespace ActionPlatformer.Tests
                 yield return null;
             }
             Assert.That(player.gameObject.activeSelf, Is.False);
-            for (int i = 0; i < 7; i++) Assert.That(frames, Does.Contain("adventurer-die-" + i.ToString("00")));
+            for (int i = 1; i <= 4; i++) Assert.That(frames, Does.Contain("hurt_v1_" + i.ToString("00")));
             Assert.That(enemy.DamageVersion, Is.Zero);
             player.gameObject.SetActive(true);
             yield return null; yield return Step; yield return null;
@@ -2040,6 +2041,7 @@ namespace ActionPlatformer.Tests
         [UnityTest] public IEnumerator VisualShowsAttackAreaAndUndergroundMarkerAndRestores()
         {
             var visual = player.transform.Find("Visual");
+            Vector3 originalVisualPosition = visual.localPosition;
             Set(combatSettings, "activeDuration", 0.4f);
             PlacePlayer(new Vector2(-0.975f, 61.32f));
             Assert.That(Combat.TryAttack(enemy, 1f, false, Time.timeAsDouble), Is.True);
@@ -2058,7 +2060,7 @@ namespace ActionPlatformer.Tests
             Glitch.CancelUnderground(); yield return null; yield return null;
             Assert.That(visual.GetComponent<SpriteRenderer>().enabled, Is.True);
             Assert.That(visual.Find("Underground marker").GetComponent<SpriteRenderer>().enabled, Is.False);
-            Assert.That(visual.localPosition.y, Is.EqualTo(-0.8f).Within(0.001f));
+            Assert.That(visual.localPosition, Is.EqualTo(originalVisualPosition));
         }
 
         private IEnumerator Capture(string name, Vector2? aimWorld = null)

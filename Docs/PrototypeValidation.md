@@ -561,3 +561,16 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - Unity 컴파일 성공. 저장된 씬 정적 검사에서 네 종류 프리팹 인스턴스 각각 1개, 목표 참조 4개, 발판 3개, 카메라 오른쪽 경계 60을 확인했다. git diff --check 통과.
 - StageFlowTests + CutsceneTests 실행을 시작했으나 Unity 메인 스레드가 상태 조회와 포커스 요청에 60초 이상 응답하지 않았다. `Library/PrototypeValidation/CompactStagePlayMode.xml`이 생성되지 않아 이번 실행의 통과 여부는 미확인이다. 이전 223/223 기록을 이번 축소 맵의 통과 결과로 취급하지 않는다. 편집기 응답 복구 후 해당 두 테스트 클래스를 재실행해야 한다.
 - 변경 직전 씬과 Timeline 사본은 버전 관리 대상이 아닌 `Temp/CompactStageBackup/`에 보관했다. 맵 변경은 오류 발생 전에 저장 완료했다.
+
+
+## 2026-10-15 — Assets/Art 플레이어 외형 교체
+
+- Unity 6000.3.23f1 컴파일 성공. 런타임 C#과 게임 수치는 수정하지 않았다. Player.controller의 17개 Motion 참조, Player/Visual의 기본 Sprite·로컬 Y, 새 통합 클립 11개, 기존 외형 관련 테스트를 갱신했다.
+- 최종 플레이어 관련 PlayMode **154/154 통과**. 필터 `Player`, `Library/PrototypeValidation/PlayerArtPlayMode.xml`, **09:58:28–09:59:30 KST**. 실제 MovementLab 이동·좌우 반전·대기·상승·하강·착지, 지상/공중 콤보, 띄우기/출현, 내려찍기 준비/하강 반복/착지, 피격 재시작·사망, 잠복·중단·비활성화 후 외형 복원을 확인했다.
+- 첫 PlayMode는 150/154였다. 이전 Adventurer의 피격/사망 파일명과 Visual Y=-0.8을 하드코딩한 기대값 4건을 새 프레임과 실행 전 위치 복원 기준으로 갱신했다. 동작 검사를 제거하지 않았다. 첫 결과는 `PlayerArtPlayModeInitial.xml`에 보존했다.
+- 최종 전체 EditMode는 **34/35 통과**. `Library/PrototypeValidation/PlayerArtEditModeFinal.xml`. 플레이어 에셋·Missing Script·프레임 출처·반복/비반복·ActionTime·발 위치·NPC 기존 Idle 보존 검사는 통과했다.
+- 미해결: `CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership`, `CutsceneAuthoringTests.cs:53`에서 `IsBubbleVisible`이 false로 실패했다. 최초/재실행 동일하며 이번 외형 변경과의 인과관계는 확인하지 않았다. 컷신 코드/씬은 변경하지 않았다. 전체 EditMode 통과로 보고하지 않는다.
+- CoreLoopStage에서 실제 Play Mode로 새 Idle 프레임, 접지, Visual Y=0.0333333, Root Motion=false, 플레이어/Visual Missing Script 0을 확인했다. 화면에서 바닥과 발 위치 및 기존 안내 NPC의 외형을 확인했다. `Library/PrototypeValidation/PlayerArtCoreLoopStage.png`, 공격/피격 캡처 `PlayerArtAttacks.png`, `PlayerReactions.png`.
+- 콘솔의 `Player tuning is missing.` 1건은 Player 필터에 포함된 UnitLifecycleTests가 LogAssert.Expect로 검증한 의도된 오류다. 이후 현재 씬 플레이 검증에서 새 오류는 없었다.
+- 종료 상태: 원래 CoreLoopStage, 씬 dirty=false, Timeline preview=false, Play Mode 정지. 원본 Assets/Art, 물리 설정, 입력·전투 수치와 씬 배치를 유지했다. Player 빌드와 전체 PlayMode 어셈블리는 실행하지 않았다.
+- 일반 공격 원본은 한 종류여서 지상/공중 3타가 같은 프레임을 재사용한다. 별도 사망 원본이 없어 피격 1~4프레임 후 마지막 자세를 유지한다.
