@@ -429,3 +429,19 @@ CoreLoopStage의 IntroCutscene 인스턴스는 별도 `IntroConversation.playabl
 - 방향별 정지 시간/반회전 길이는 `SurveillanceTurretFsm.asset`의 `Idle Turn Interval`(3초) / `Idle Turn Duration`(0.5초)에서 조절한다. 이전 Visual의 독립 타이머는 제거했다. 사망 외형은 마지막 표시 방향을 유지하고, 비활성화·재활성화는 FSM의 초기 방향과 일반 대기로 복귀한다. 드론·방패병·순찰 돼지의 기존 제어 경로는 유지한다.
 - **전방 감지:** 대기 중 플레이어 몸체 중심이 현재 방향의 반평면에 있을 때만 새 대상으로 선택한다. 뒤에 있으면 대기·반회전을 계속하며, 회전 중에는 새로 감지하지 않는다. 기존 거리 12·장애물 시야 검사는 유지한다. 한번 감지한 대상은 앞뒤 이동에도 기존 추적을 유지하고, 조준 고정·발사 중에는 방향이 고정된다.
 - **포구 발사:** 포탑 루트의 EnemyCombat2D에 `Aim Pivot Offset=(0,-0.1625)`, `Muzzle Distance=0.75`를 연결했다. 원본의 회전 축 (32,27), 포구 (8,27), 32 PPU와 Visual Y=-0.6에 맞춘 값이다. 조준은 총열 회전 축에서 계산하고, 예고선·실제 발사·피해 영역은 회전한 포구에서 시작한다. 총열 축과 포구 사이가 벽으로 막히면 발사 판정도 차단한다. 빔 길이 22와 폭 0.16은 유지한다.
+
+## 2026-10-21 — CoreLoopStage 벽·바닥과 배경
+
+- 바탕화면 `벽,바닥`의 `terrain_tiles.zip`(32장)과 `Background_runtime.zip`(3장)을 `Assets/_Game/Art/Environment/Industrial`에 가져왔다. 원본 PNG를 보존하고 Point 필터·무압축·Mip Map 없음·Full Rect로 설정했다. 지형은 128 PPU, 배경은 64 PPU이며 최대 8192 크기의 원본 배경 해상도를 유지한다.
+- `CoreLoopStage/Terrain`의 Floor, Left/Right Boundary, Ledge 1/2/3에 `Industrial Visual` 자식을 추가했다. 기존 단색 SpriteRenderer만 비활성화하고 Transform, BoxCollider2D, PlatformEffector2D 및 게임플레이 연결은 유지한다. 바닥·벽은 1유닛 패널을 반복하며 일부 변형 타일을 섞었다.
+- 발판은 원본 128×128 중 상단 40픽셀만 불투명하다. 이 부분이 기존 5×0.4 충돌체와 일치하도록 4개의 타일을 배치했다. 투명 영역을 포함한 전체 스프라이트 사각형과 실제 보이는 발판 영역은 다르다.
+- `Environment Background`에 Base/Far/Mid를 정적으로 겹쳤다. Sorting Order는 -30/-20/-10, 중심은 (30,3.4), 높이는 16이다. Base는 가로 80으로 반복하고 Far/Mid는 원본 비율의 폭 68/128을 사용한다. 카메라·시차 이동 로직을 추가하지 않았다.
+- 변경 범위는 CoreLoopStage의 외형이다. MovementLab, 캐릭터 프리팹, 이동·전투 수치 및 프로젝트 설정은 변경하지 않았다.
+
+### 배경 패럴랙스
+
+- Unity의 Perspective 카메라와 Z축 거리로도 시차를 만들 수 있다([공식 설명](https://learn.unity.com/article/2d-in-unity-tech-art-essentials)). 이 프로젝트는 기존 Orthographic 카메라·조준·대화 연출을 유지하고 배경별 `ParallaxLayer2D`로 시차를 적용한다. 위의 정적 배경 배치는 이 동작으로 확장됐다.
+- Hierarchy의 `Environment Background/01 Base`, `02 Far`, `03 Mid`에서 **Parallax Layer 2D > Scroll Speed**를 조절한다. 현재 설정은 각각 **0.05 / 0.1 / 0.25**다. 고정된 지형의 화면상 스크롤을 1로 볼 때 먼 배경일수록 작은 값을 사용한다. 0은 카메라를 완전히 따라가 화면에 고정되고, 1은 지형처럼 월드에 고정된다. X/Y에 같은 비율을 적용하며 Z 위치·크기·Sorting Order는 유지한다.
+- 각 레이어의 **View Camera**는 최종 출력 Camera다. StageCameraFollow, Cinemachine, PlayerImpactFeedback의 처리가 끝난 뒤 URP `beginCameraRendering`에서 실제 카메라 위치를 읽는다. 다른 카메라의 렌더 콜백은 무시하고, 대화·히트스톱의 Time.timeScale=0에서도 카메라를 따라간다.
+- 첫 활성화의 카메라 위치와 배경 로컬 위치를 기준으로 절대 변위를 계산한다. 카메라가 되돌아오거나 글리치·화면 흔들림이 반복돼도 이동량이 누적되지 않는다. 비활성화하면 원래 배치와 구독을 정리하고, 재활성화하면 같은 기준 위치에서 이어간다. 새로 로드한 씬은 새 기준을 사용한다.
+- 현 CoreLoopStage의 이동·대화 카메라 범위는 기존 배경 이미지의 폭/높이로 덮는다. 이 컴포넌트는 무한 반복 맵 생성기가 아니므로 레벨이나 카메라 범위를 넓힐 때는 배경 크기도 확인한다. 새 패키지, 카메라 투영 방식, 지형/캐릭터 동작은 변경하지 않았다.

@@ -628,3 +628,10 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 최초 PlayMode 실행은 18/19였다. 방향 일치 검사에서 `Vector2.Angle`의 acos 반올림으로 0.0198도가 발생해 정규화 벡터 거리 <0.0001 비교로 바꾸고 재실행했다. 해당 검사로 게임 코드를 추가 수정하지 않았다. 최초 결과는 `TurretFacingPlayModeInitial.xml`에 보존했다.
 - 실제 Play Mode에서 오른쪽(포탑 뒤)에 플레이어를 배치해 18초, 60 FPS로 녹화했다. 0~3초 대기, 3~3.5초 반회전, 3.5167초 첫 감지, 4.5333초 조준 고정, 4.9333초 포구 발사, 5.1000초 재추적을 확인했다. 총 5회 발사했고 조준/발사 프레임의 포구와 계산한 빔 시작점 차이는 최대 0.000061 유닛이었다. 영상의 뒤쪽 대기·포구 발사·반대편 재추적 프레임을 직접 검토했다.
 - 영상은 `Library/PrototypeValidation/TurretFacingVideo/TurretFacing.mp4`, 상태 측정은 같은 폴더 `timeline.csv`/`summary.json`이다. 플레이어 이동·점프 입력만 자동 공급했고 실제 FSM/물리/프리팹을 사용했다. MP4 1,080프레임 전체 디코딩 검사 통과. 임시 오브젝트와 시간 설정을 복원했으며 Play Mode 종료, CoreLoopStage dirty=false를 확인했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 배경 패럴랙스
+
+- `ParallaxLayer2D`를 CoreLoopStage의 Base/Far/Mid에 연결하고 화면상 스크롤 비율 0.05/0.2/0.5를 설정했다. URP의 카메라 렌더 직전 콜백에서 최종 출력 카메라의 위치만 읽는다. 이번 변경 전 씬과 비교했을 때 기존 레이어 GameObject 3개의 컴포넌트 목록과 신규 컴포넌트 3개만 달라졌다. 지형·충돌·플레이어/적·카메라 설정은 동일하다.
+- Unity 재컴파일 성공. PlayMode `ParallaxLayerTests` **5/5 통과**, 16:37:19 KST, 결과 `Library/PrototypeValidation/ParallaxPlayMode.xml`. 실제 URP 카메라를 렌더링하며 정지 시간의 레이어별 속도, 왕복/줌/반복 렌더의 누적 오차, 비활성화 복원과 재활성화, 다른 카메라 무시, LateUpdate 이동의 같은 프레임 반영을 검사했다.
+- 실제 레벨을 자동 입력으로 23.4초/702프레임/30 FPS 플레이했다. 대화 카메라 전환·이동·점프·글리치·전투·적 4종 처치·클리어를 확인했다. 카메라 X 7.5~48.55416 범위에서 레이어 이동량과 설정 비율의 최대 차이는 0.000009346 유닛이었다. 모든 프레임에서 배경 3장의 경계가 카메라 화면을 덮었으며 빈틈 검출은 0건이었다.
+- 영상 `Exports/Environment/Parallax-20261021/Parallax-Gameplay.mp4`, 계측 `parallax.csv` 및 `timeline.csv`. 대화·전투 이동·출구 구간 캡처를 검토했고 MP4 전체 디코딩도 통과했다. 전체 테스트와 Player 빌드는 실행하지 않았다.

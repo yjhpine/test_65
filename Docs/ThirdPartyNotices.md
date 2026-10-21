@@ -140,3 +140,10 @@ Archive SHA-256:
 - Each sheet has 16 frames, 128×128 cells, 8 columns, left-to-right/top-to-bottom order, centered anchor. Unity uses Multiple Sprite, 128 PPU, full rectangle, Bilinear, no mipmaps/compression. The provided HD artwork matches the reference's smooth edges.
 - Project-authored presentation retimes the slash to the existing basic attack Active/Recovery phases. Spark plays once at the source 30 FPS at successful glitch departure/arrival points. No gameplay timing or damage values are changed.
 - Project-authored `PlayerActionTwoTone.shader` / `PlayerActionTealRed.mat` recolor the rendered effects with teal `#79D9DF` and red `#D84255`, plus a subdued white highlight. This is a presentation modification; the original PNG files, frame geometry, and transparency remain unchanged.
+
+## User-supplied industrial terrain and background (2026-10-21)
+
+- Source: the user's Desktop `벽,바닥` folder. `terrain_tiles.zip` contains 32 terrain PNGs; `Background_runtime.zip` contains `01_base.png`, `02_far.png`, and `03_mid.png`. Imported into `Assets/_Game/Art/Environment/Industrial` for CoreLoopStage.
+- All PNG bytes are preserved. Import settings and scene placement are project-authored. The archives contain no creator or license document; no third-party license has been inferred.
+- `terrain_tiles.zip` SHA-256: `6fd1f72204b2bf21aa8c506ca98bbe7d90899ba504bbe6640b2dd22726de5f56`.
+- `Background_runtime.zip` SHA-256: `4bf229103940edfaff5d8f932f3c1f33548aef7ba71d6b432dc9c13c2af6d200`.
