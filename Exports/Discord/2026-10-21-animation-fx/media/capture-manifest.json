@@ -1,0 +1,205 @@
+{
+  "output": "D:\\test_65\\test_65\\test_65\\Exports\\Discord\\2026-10-21-animation-fx",
+  "captures": [
+    {
+      "actor": "Player",
+      "state": "Idle",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Idle.anim",
+      "sprite": "Assets/Art/Idle/idle_v4_01.png",
+      "frames": 8,
+      "file": "Player-Idle.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Run",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Run.anim",
+      "sprite": "Assets/Art/Walk/walk_v3_05.png",
+      "frames": 10,
+      "file": "Player-Run.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Jump",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Jump.anim",
+      "sprite": "Assets/Art/Jump/JumpUP/jump_forward_v3_rise_04.png",
+      "frames": 8,
+      "file": "Player-Jump.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Fall",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Fall.anim",
+      "sprite": "Assets/Art/Jump/JumpDown/jump_forward_v3_fall_04.png",
+      "frames": 8,
+      "file": "Player-Fall.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Attack1",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/SideAttack.anim",
+      "sprite": "Assets/Art/Attack/AttackNomerl/attack_v7_punch_04.png",
+      "frames": 15,
+      "file": "Player-Attack1.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Lift",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Uppercut.anim",
+      "sprite": "Assets/Art/Attack/AttackUP/uppercut_v5_05.png",
+      "frames": 8,
+      "file": "Player-Lift.png"
+    },
+    {
+      "actor": "Player",
+      "state": "SlamHover",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/SlamHover.anim",
+      "sprite": "Assets/Art/Attack/AttackDown/stomp_v2_03.png",
+      "frames": 3,
+      "file": "Player-SlamHover.png"
+    },
+    {
+      "actor": "Player",
+      "state": "SlamFall",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/SlamFall.anim",
+      "sprite": "Assets/Art/Attack/AttackDown/stomp_v2_03.png",
+      "frames": 2,
+      "file": "Player-SlamFall.png"
+    },
+    {
+      "actor": "Player",
+      "state": "SlamLand",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/SlamLand.anim",
+      "sprite": "Assets/Art/Attack/AttackDown/stomp_v2_06.png",
+      "frames": 4,
+      "file": "Player-SlamLand.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Hit",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Hit.anim",
+      "sprite": "Assets/Art/EnemyHit/hurt_v1_04.png",
+      "frames": 8,
+      "file": "Player-Hit.png"
+    },
+    {
+      "actor": "Player",
+      "state": "Die",
+      "clip": "Assets/_Game/Animations/Player/ArtCharacter/Die.anim",
+      "sprite": "Assets/Art/EnemyHit/hurt_v1_04.png",
+      "frames": 4,
+      "file": "Player-Die.png"
+    },
+    {
+      "actor": "SurveillanceTurret",
+      "state": "Idle",
+      "clip": "Assets/_Game/Animations/Enemies/SurveillanceTurret/Idle.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster1/Idle/01.png",
+      "frames": 1,
+      "file": "SurveillanceTurret-Idle.png"
+    },
+    {
+      "actor": "SurveillanceTurret",
+      "state": "IdleTurn",
+      "clip": "Assets/_Game/Animations/Enemies/SurveillanceTurret/IdleTurn.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster1/Idle/03.png",
+      "frames": 5,
+      "file": "SurveillanceTurret-IdleTurn.png"
+    },
+    {
+      "actor": "SurveillanceTurret",
+      "state": "IdleOpposite",
+      "clip": "Assets/_Game/Animations/Enemies/SurveillanceTurret/IdleOpposite.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster1/Idle/05.png",
+      "frames": 1,
+      "file": "SurveillanceTurret-IdleOpposite.png"
+    },
+    {
+      "actor": "SurveillanceTurret",
+      "state": "AngryIdle",
+      "clip": "Assets/_Game/Animations/Enemies/SurveillanceTurret/AngryIdle.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster1/AngryIdle/01.png",
+      "frames": 1,
+      "file": "SurveillanceTurret-AngryIdle.png"
+    },
+    {
+      "actor": "SurveillanceTurret",
+      "state": "Attack",
+      "clip": "Assets/_Game/Animations/Enemies/SurveillanceTurret/Attack.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster1/Attack/05.png",
+      "frames": 10,
+      "file": "SurveillanceTurret-Attack.png"
+    },
+    {
+      "actor": "SurveillanceTurret",
+      "state": "Death",
+      "clip": "Assets/_Game/Animations/Enemies/SurveillanceTurret/Death.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster1/AngryDeath/06.png",
+      "frames": 10,
+      "file": "SurveillanceTurret-Death.png"
+    },
+    {
+      "actor": "FlyingDrone",
+      "state": "Idle",
+      "clip": "Assets/_Game/Animations/Enemies/FlyingDrone/Idle.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster2/Idle/01.png",
+      "frames": 32,
+      "file": "FlyingDrone-Idle.png"
+    },
+    {
+      "actor": "FlyingDrone",
+      "state": "Attack",
+      "clip": "Assets/_Game/Animations/Enemies/FlyingDrone/Attack.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster2/Attack/05.png",
+      "frames": 10,
+      "file": "FlyingDrone-Attack.png"
+    },
+    {
+      "actor": "FlyingDrone",
+      "state": "Death",
+      "clip": "Assets/_Game/Animations/Enemies/FlyingDrone/Death.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster2/Death/05.png",
+      "frames": 8,
+      "file": "FlyingDrone-Death.png"
+    },
+    {
+      "actor": "ShieldSoldier",
+      "state": "Idle",
+      "clip": "Assets/_Game/Animations/Enemies/ShieldSoldier/Idle.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster3/Idle/01.png",
+      "frames": 10,
+      "file": "ShieldSoldier-Idle.png"
+    },
+    {
+      "actor": "ShieldSoldier",
+      "state": "Run",
+      "clip": "Assets/_Game/Animations/Enemies/ShieldSoldier/Run.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster3/Run/07.png",
+      "frames": 16,
+      "file": "ShieldSoldier-Run.png"
+    },
+    {
+      "actor": "ShieldSoldier",
+      "state": "Attack",
+      "clip": "Assets/_Game/Animations/Enemies/ShieldSoldier/Attack.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster3/Attack/07.png",
+      "frames": 16,
+      "file": "ShieldSoldier-Attack.png"
+    },
+    {
+      "actor": "ShieldSoldier",
+      "state": "Death",
+      "clip": "Assets/_Game/Animations/Enemies/ShieldSoldier/Death.anim",
+      "sprite": "Assets/_Game/Art/Characters/Monster3/Death/05.png",
+      "frames": 8,
+      "file": "ShieldSoldier-Death.png"
+    },
+    {
+      "actor": "PatrolEnemy",
+      "state": "Idle",
+      "clip": "Assets/_Game/Animations/Enemies/PatrolEnemy/Idle.anim",
+      "sprite": "Assets/_Game/Art/Characters/Pig/Idle.png",
+      "frames": 11,
+      "file": "PatrolEnemy-Idle.png"
+    }
+  ]
+}
