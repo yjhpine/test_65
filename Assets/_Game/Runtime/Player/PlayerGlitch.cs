@@ -25,6 +25,7 @@ namespace ActionPlatformer.Player
         public Vector2 UndergroundPosition { get; private set; }
         public Vector2 GroundMarkerPosition { get; private set; }
         public uint SuccessVersion { get; private set; }
+        public PlayerGlitchPresentation Presentation { get; private set; }
         public float CooldownRemaining(double now) => tuning.Cooldown == 0f ? 0f : (float)System.Math.Max(0, nextUseAt - now);
 
         public PlayerGlitch(Unit owner, UnitHealth health, CharacterMotor2D motor, CapsuleCollider2D body, GlitchTuning tuning)
@@ -70,6 +71,8 @@ namespace ActionPlatformer.Player
         {
             var preview = Evaluate(request, now, out var support);
             if (!preview.CanExecute) return false;
+            Vector2 from = body.bounds.center;
+            Vector2 bodyOffset = from - motor.Position;
             if (!preview.IsUnderground) motor.Relocate(preview.Destination, Vector2.zero);
             else
             {
@@ -87,6 +90,7 @@ namespace ActionPlatformer.Player
             ArrivalTarget = request.Target;
             nextUseAt = now + tuning.Cooldown;
             unchecked { SuccessVersion++; }
+            Present(from, IsUnderground ? GroundMarkerPosition : preview.Destination + bodyOffset);
             return true;
         }
 
@@ -129,6 +133,8 @@ namespace ActionPlatformer.Player
         public bool TryEmerge()
         {
             if (!IsUnderground) return false;
+            Vector2 from = GroundMarkerPosition;
+            Vector2 bodyOffset = (Vector2)body.bounds.center - motor.Position;
             bool valid = TryGetEmergencePoint(out var destination, true);
             if (valid)
             {
@@ -139,7 +145,13 @@ namespace ActionPlatformer.Player
             EndUnderground();
             if (!valid) { ArrivalTarget = null; return false; }
             motor.Relocate(destination, Vector2.zero);
+            Present(from, destination + bodyOffset);
             return true;
+        }
+
+        private void Present(Vector2 from, Vector2 to)
+        {
+            Presentation = new PlayerGlitchPresentation { Version = unchecked(Presentation.Version + 1), From = from, To = to };
         }
 
         public void CancelUnderground() { EndUnderground(); ArrivalTarget = null; }

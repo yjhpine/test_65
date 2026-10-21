@@ -136,6 +136,130 @@ namespace ActionPlatformer.Tests
             MoveTarget(Combat.Center+Vector2.left*3);Tick(.2f);Assert.That(target.CurrentHealth,Is.EqualTo(1000));
             Tick(1.31f);Tick();Tick(1.01f);Tick(.41f);Assert.That(target.CurrentHealth,Is.EqualTo(990));Tick(.3f);Assert.That(target.CurrentHealth,Is.EqualTo(990));
         }
+        [UnityTest] public IEnumerator SurveillanceTracksAgainAfterBeamWhileKeepingScanLockAndRecoveryTimes()
+        {
+            yield return Spawn("SurveillanceTurret",Vector2.left*3);
+            Tick(); MoveTarget(Combat.Center+new Vector2(3,2)); Tick(.5f);
+            Assert.That(Vector2.Distance(Combat.State.Aim,(Combat.TargetCenter-Combat.AimOrigin).normalized),Is.LessThan(.0001f));
+            Tick(.51f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Locked)); var locked=Combat.State.Aim;
+            MoveTarget(Combat.Center+new Vector2(-3,1)); Tick(.39f);
+            Assert.That(Combat.State.Aim,Is.EqualTo(locked)); Assert.That(Combat.ShotVersion,Is.Zero);
+            Tick(.02f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Recovery)); Assert.That(Combat.ShotVersion,Is.EqualTo(1));
+            Assert.That(Vector2.Distance((Combat.LastShot.End-Combat.LastShot.Start).normalized,locked),Is.LessThan(.0001f));
+            Tick(.15f); Assert.That(Combat.State.Aim,Is.EqualTo(locked));
+            Tick(.02f); Assert.That(Vector2.Distance(Combat.State.Aim,(Combat.TargetCenter-Combat.AimOrigin).normalized),Is.LessThan(.0001f));
+            Assert.That(Combat.State.Facing,Is.EqualTo(-1)); Assert.That(Phase,Is.EqualTo(EnemyPhase.Recovery));
+            Assert.That(Vector2.Distance((Combat.LastShot.End-Combat.LastShot.Start).normalized,locked),Is.LessThan(.0001f));
+            Tick(1.32f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Recovery)); Assert.That(Combat.ShotVersion,Is.EqualTo(1));
+            Tick(.02f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle));
+            Tick(); Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
+        }
+
+        private sealed class TurretViewState : IEnemyActionState
+        {
+            public EnemyPhase Phase {get;set;}
+            public float Elapsed => 0;
+            public float Progress => 0;
+            public float Facing {get;set;} = -1;
+            public Vector2 Aim {get;set;} = Vector2.left;
+            public bool Vertical => false;
+        }
+        [UnityTest] public IEnumerator SurveillanceIgnoresRearTargetUntilHalfTurnCompletesWithoutVisualUpdates()
+        {
+            yield return Spawn("SurveillanceTurret",Vector2.right*3);
+            enemy.GetComponentInChildren<EnemyVisual2D>().enabled=false;
+            Tick(2.99f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle)); Assert.That(Combat.Target,Is.Null);
+            Tick(.02f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Turning));
+            Tick(.49f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Turning)); Assert.That(Combat.Target,Is.Null);
+            Tick(.02f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle)); Assert.That(Combat.Facing,Is.EqualTo(1));
+            Tick(); Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing)); Assert.That(Combat.Target,Is.SameAs(target));
+            MoveTarget(Combat.Center+Vector2.right*20); Tick(); Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle));
+            MoveTarget(Combat.Center+Vector2.left*3);
+            Tick(2.99f); Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle)); Assert.That(Combat.Target,Is.Null);
+            Tick(.02f); Tick(.51f); Assert.That(Combat.Facing,Is.EqualTo(-1));
+            Tick(); Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing)); Assert.That(Combat.ShotVersion,Is.Zero);
+            enemy.gameObject.SetActive(false); enemy.gameObject.SetActive(true);
+            MoveTarget(Combat.Center+Vector2.right*3); Tick(2.99f);
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle)); Assert.That(Combat.Facing,Is.EqualTo(-1)); Assert.That(Combat.Target,Is.Null);
+        }
+        [UnityTest] public IEnumerator SurveillanceMuzzleMatchesRotatedHeadAndDamageStartsAtTheBarrel()
+        {
+            yield return Spawn("SurveillanceTurret",Vector2.left*20);
+            var visual=enemy.GetComponentInChildren<EnemyVisual2D>(); visual.enabled=false;
+            var view=visual.GetComponent<SurveillanceTurretVisual>();
+            var head=visual.transform.Find("Turret head").GetComponent<SpriteRenderer>();
+            var state=new TurretViewState {Phase=EnemyPhase.Preparing};
+            Vector2[] directions={Vector2.left,Vector2.right,new Vector2(-1,.7f),new Vector2(1,.7f),Vector2.up};
+            foreach(var value in directions)
+            {
+                Vector2 direction=value.normalized; state.Aim=direction;
+                view.Render(state,false,false,0);
+                Vector2 muzzle=head.transform.TransformPoint(new Vector3(head.flipX?.75f:-.75f,0,0));
+                var ray=Combat.CalculateBeam(direction,false);
+                Assert.That(Vector2.Distance(ray.Start,muzzle),Is.LessThan(.001f),"Beam begins at the rendered barrel in each facing/elevation.");
+                MoveTarget(muzzle+direction*3); int hp=target.CurrentHealth;
+                Combat.Fire(direction,false);
+                Assert.That(target.CurrentHealth,Is.EqualTo(hp-10));
+                Assert.That(Vector2.Distance(Combat.LastShot.Start,ray.Start),Is.LessThan(.001f));
+                view.Render(state,true,false,0,direction);
+                muzzle=head.transform.TransformPoint(new Vector3(head.flipX?.75f:-.75f,0,0));
+                Assert.That(Vector2.Distance(Combat.LastShot.Start,muzzle),Is.LessThan(.001f));
+            }
+            MoveTarget(Combat.AimOrigin); int behindHealth=target.CurrentHealth;
+            Combat.Fire(Vector2.right,false);
+            Assert.That(target.CurrentHealth,Is.EqualTo(behindHealth),"Bodies behind the muzzle do not take beam damage.");
+            MoveTarget(Combat.AimOrigin+Vector2.right*3);
+            Block(Combat.AimOrigin+Vector2.right*.6f,new Vector2(.1f,2));
+            Combat.Fire(Vector2.right,false);
+            Assert.That(target.CurrentHealth,Is.EqualTo(behindHealth),"A wall between pivot and muzzle blocks the shot.");
+            Assert.That(Combat.LastShot.Start,Is.EqualTo(Combat.LastShot.End));
+        }
+        [UnityTest] public IEnumerator SurveillanceVisualHoldsOppositeFacingsForThreeSecondsBetweenHalfTurns()
+        {
+            yield return Spawn("SurveillanceTurret",Vector2.left*20);
+            var visual=enemy.GetComponentInChildren<EnemyVisual2D>(); visual.enabled=false;
+            var view=visual.GetComponent<SurveillanceTurretVisual>();
+            view.enabled=false;view.enabled=true;
+            var renderer=visual.GetComponent<SpriteRenderer>();var animator=visual.GetComponent<Animator>();
+            var head=visual.transform.Find("Turret head").GetComponent<SpriteRenderer>();
+            var pedestal=visual.transform.Find("Turret pedestal").GetComponent<SpriteRenderer>();
+            var state=new TurretViewState();
+            Tick(2.99f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Idle"),Is.True);
+            Assert.That(renderer.sprite.name,Is.EqualTo("01"));Assert.That(head.flipX,Is.False);
+            Tick(.02f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("IdleTurn"),Is.True);
+            Tick(.35f); view.Render(Combat.State,false,false,0); Assert.That(renderer.sprite.name,Is.EqualTo("04"));
+            Tick(.16f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("IdleOpposite"),Is.True);
+            Assert.That(renderer.sprite.name,Is.EqualTo("05"));Assert.That(head.flipX,Is.False);
+            Tick(2.99f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("IdleOpposite"),Is.True);
+            Assert.That(renderer.sprite.name,Is.EqualTo("05"));
+            Tick(.02f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("IdleTurnBack"),Is.True);
+            Tick(.35f); view.Render(Combat.State,false,false,0); Assert.That(renderer.sprite.name,Is.EqualTo("02"));
+            Tick(.16f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Idle"),Is.True);
+            Assert.That(renderer.sprite.name,Is.EqualTo("01"));
+            Tick(2.99f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Idle"),Is.True);
+            Tick(.02f); view.Render(Combat.State,false,false,0); Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("IdleTurn"),Is.True);
+            state.Phase=EnemyPhase.Preparing;state.Facing=1;state.Aim=new Vector2(1,1).normalized;
+            view.Render(state,false,false,0);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("AngryIdle"),Is.True);
+            Assert.That(AssetDatabase.GetAssetPath(renderer.sprite),Does.Contain("/AngryIdle/"));
+            Assert.That(head.flipX,Is.True); Assert.That(Mathf.DeltaAngle(head.transform.localEulerAngles.z,45),Is.EqualTo(0).Within(.01f));
+            Assert.That(pedestal.transform.localRotation,Is.EqualTo(Quaternion.identity)); Assert.That(renderer.forceRenderingOff,Is.True);
+            state.Phase=EnemyPhase.Recovery;
+            view.Render(state,true,false,.4f,Vector2.left);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Attack"),Is.True); Assert.That(head.flipX,Is.False);
+            Assert.That(head.transform.localRotation,Is.EqualTo(Quaternion.identity));
+            view.Render(state,false,false,0);
+            Assert.That(Mathf.DeltaAngle(head.transform.localEulerAngles.z,45),Is.EqualTo(0).Within(.01f));
+            view.Render(state,false,true,.5f);
+            Assert.That(AssetDatabase.GetAssetPath(renderer.sprite),Does.Contain("/AngryDeath/"));
+            enemy.gameObject.SetActive(false);Assert.That(head.enabled||pedestal.enabled,Is.False);
+            enemy.gameObject.SetActive(true);state.Phase=EnemyPhase.Idle;
+            view.Render(state,false,false,0);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("IdleOpposite"),Is.True);
+            Assert.That(head.transform.localRotation,Is.EqualTo(Quaternion.identity));
+            Assert.That(renderer.sprite.name,Is.EqualTo("05"),"Reactivation shows the current FSM facing.");
+            Assert.That(head.flipX,Is.False,"The native opposite pose already faces right.");
+        }
         [UnityTest] public IEnumerator RayGeometryMatchesDamageAndStopsAtTerrainButNotOneWayPlatforms()
         {
             yield return Spawn("SurveillanceTurret",Vector2.left*3);
@@ -143,7 +267,7 @@ namespace ActionPlatformer.Tests
             var ray=Combat.CalculateBeam(Vector2.left,false);Assert.That(ray.End.x,Is.EqualTo(-1.4f).Within(.01));
             Combat.Fire(Vector2.left,false);Assert.That(target.CurrentHealth,Is.EqualTo(1000));
             wall.AddComponent<PlatformEffector2D>();wall.GetComponent<BoxCollider2D>().usedByEffector=true;Physics2D.SyncTransforms();
-            ray=Combat.CalculateBeam(Vector2.left,false);Assert.That(ray.End.x,Is.EqualTo(-22).Within(.01));
+            ray=Combat.CalculateBeam(Vector2.left,false);Assert.That(Vector2.Distance(ray.Start,ray.End),Is.EqualTo(settings.BeamLength).Within(.01));
             Combat.Fire(Vector2.left,false);Assert.That(target.CurrentHealth,Is.EqualTo(990));
             Assert.That(Combat.LastShot.Start,Is.EqualTo(ray.Start));Assert.That(Combat.LastShot.End,Is.EqualTo(ray.End));
             target.SetDamageEnabled(false);Combat.Fire(Vector2.left,false);Assert.That(target.CurrentHealth,Is.EqualTo(990));

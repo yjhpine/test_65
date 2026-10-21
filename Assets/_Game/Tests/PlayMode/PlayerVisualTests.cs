@@ -25,7 +25,8 @@ namespace ActionPlatformer.Tests
             public PlayerAttackPhase AttackPhase { get; set; }
             public PlayerAttackPresentation AttackPresentation { get; set; }
             public PlayerReactionPresentation ReactionPresentation { get; set; }
-            public Bounds AttackBounds => new Bounds(Vector3.right, Vector3.one);
+            public PlayerGlitchPresentation GlitchPresentation { get; set; }
+            public Bounds AttackBounds { get; set; } = new Bounds(Vector3.right, Vector3.one);
             public PlayerShockwave Shockwave => default;
         }
 
@@ -57,6 +58,77 @@ namespace ActionPlatformer.Tests
         {
             for (int i = created.Count - 1; i >= 0; i--) if (created[i] != null) Object.DestroyImmediate(created[i]);
             created.Clear();
+        }
+
+        [UnityTest] public IEnumerator BasicSlashFollowsAttackTimingDirectionAndInterruptions()
+        {
+            var state = new State(); var visual = Visual(state);
+            yield return RenderFrame();
+            var slash = visual.transform.Find("Basic attack slash").GetComponent<SpriteRenderer>();
+            foreach (float facing in new[] { -1f, 1f })
+            foreach (var kind in new[] { PlayerAttack.Side, PlayerAttack.Air })
+            for (int strike = 1; strike <= 3; strike++)
+            {
+                state.Facing = facing;
+                state.AttackBounds = new Bounds(new Vector3(facing, 2f, 0), Vector3.one);
+                Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Windup);
+                yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+                Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Active, .3f);
+                yield return RenderFrame();
+                Assert.That(slash.enabled, Is.True);
+                Assert.That(slash.flipX, Is.EqualTo(facing < 0f));
+                Assert.That(slash.transform.position, Is.EqualTo(state.AttackBounds.center));
+                Assert.That(slash.sprite.name, Does.StartWith("white_slash_"));
+                var impactFrame = slash.sprite;
+                Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Recovery, .5f);
+                yield return RenderFrame(); Assert.That(slash.sprite, Is.Not.EqualTo(impactFrame));
+                state.AttackPhase = PlayerAttackPhase.Ready;
+                yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+            }
+            Attack(state, PlayerAttack.Lift, 1, false, PlayerAttackPhase.Active);
+            yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+            Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Active);
+            state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1 };
+            yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+            state.ReactionPresentation = default; state.IsUnderground = true;
+            yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+        }
+
+        [UnityTest] public IEnumerator GlitchSparksStayAtWorldPointsReuseAndDoNotReplayAfterDisable()
+        {
+            var state = new State(); var visual = Visual(state);
+            yield return RenderFrame();
+            var first = visual.transform.Find("Glitch spark 0").GetComponent<SpriteRenderer>();
+            var second = visual.transform.Find("Glitch spark 1").GetComponent<SpriteRenderer>();
+            Assert.That(first.enabled, Is.False);
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 1, From = new Vector2(-3, 2), To = new Vector2(4, 2) };
+            yield return RenderFrame();
+            Assert.That(first.enabled && second.enabled, Is.True);
+            Assert.That(first.sprite.name, Does.StartWith("white_spark_"));
+            state.IsUnderground = true;
+            visual.transform.parent.position = new Vector3(20, 10, 0);
+            yield return RenderFrame();
+            Assert.That((Vector2)first.transform.position, Is.EqualTo(state.GlitchPresentation.From));
+            Assert.That((Vector2)second.transform.position, Is.EqualTo(state.GlitchPresentation.To));
+            yield return new WaitForSeconds(.6f);
+            Assert.That(first.enabled || second.enabled, Is.False);
+            for (uint version = 2; version <= 8; version++)
+            {
+                state.GlitchPresentation = new PlayerGlitchPresentation { Version = version, From = Vector2.left, To = Vector2.right };
+                yield return RenderFrame();
+            }
+            int count = 0;
+            foreach (var renderer in visual.GetComponentsInChildren<SpriteRenderer>())
+                if (renderer.name.StartsWith("Glitch spark ")) count++;
+            Assert.That(count, Is.EqualTo(4), "Repeated glitches reuse a bounded set of renderers.");
+            visual.gameObject.SetActive(false); visual.gameObject.SetActive(true);
+            yield return RenderFrame();
+            foreach (var renderer in visual.GetComponentsInChildren<SpriteRenderer>())
+                if (renderer.name.StartsWith("Glitch spark ")) Assert.That(renderer.enabled, Is.False);
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 9, From = Vector2.left, To = Vector2.right };
+            yield return RenderFrame(); Assert.That(first.enabled, Is.True);
+            state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Die, Version = 1 };
+            yield return RenderFrame(); Assert.That(first.enabled || second.enabled, Is.False);
         }
 
         [UnityTest] public IEnumerator GroundComboAndOrdinaryAirAttacksSampleImpactAndRecovery()

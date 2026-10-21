@@ -33,6 +33,13 @@ namespace ActionPlatformer.Player
         public float Progress;
     }
 
+    public struct PlayerGlitchPresentation
+    {
+        public uint Version;
+        public Vector2 From;
+        public Vector2 To;
+    }
+
     public struct GlitchPreview
     {
         public bool Visible;
@@ -53,6 +60,7 @@ namespace ActionPlatformer.Player
         PlayerAttackPhase AttackPhase { get; }
         PlayerAttackPresentation AttackPresentation { get; }
         PlayerReactionPresentation ReactionPresentation { get; }
+        PlayerGlitchPresentation GlitchPresentation { get; }
         Bounds AttackBounds { get; }
         PlayerShockwave Shockwave { get; }
     }

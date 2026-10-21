@@ -404,3 +404,28 @@ CoreLoopStage의 IntroCutscene 인스턴스는 별도 `IntroConversation.playabl
 
 - 준비·타격·복귀는 기존 PlayerVisual의 정규화 시간 0~0.35 / 0.35~0.6 / 0.6~1에 맞췄다. Idle·Run·SlamFall만 반복한다. 공격/피격/사망은 ActionTime으로 평가하며 실제 피해·사망 처리는 기존 코드가 담당한다.
 - 새 프레임은 64×64, 18 PPU, 중앙 피벗이며 서 있는 발은 아래에서 17픽셀이다. Visual의 Y를 `-0.8 + (32-17)/18 = 0.0333333`으로 조정해 기존 콜라이더 하단에 맞췄다. 크기는 1, 좌우 반전은 SpriteRenderer.flipX, Root Motion은 꺼진 상태다.
+
+## 2026-10-21 — 기본 공격·글리치 효과
+
+- `Combat FX Free`의 `white_slash`를 지상/일반 공중 기본 3타에 연결했다. 준비 중에는 숨기고 Active에서 베기 본체, Recovery에서 잔상을 표시한다. 기존 AttackBounds를 따라가고 Facing에 맞춰 좌우 반전한다. 띄우기·출현 공격·내려찍기에는 기본 베기를 추가하지 않는다.
+- `white_spark`는 성공한 글리치의 출발·도착 위치에서 30 FPS로 한 번 재생한다. 잠복 진입은 지면 표시 위치, 성공한 출현은 현재 잠복 표시와 실제 출현 위치를 사용한다. 실패·쿨타임 차단·취소/시간 만료에는 새 효과를 발생시키지 않는다.
+- PlayerGlitch가 성공한 위치와 표현 번호를 `PlayerGlitchPresentation`으로 공개하고 PlayerUnit의 `IPlayerActionState`가 전달한다. PlayerVisual이 일반 C# 객체 PlayerActionEffects를 소유해 렌더링을 처리한다. 이동·전투 판정/수치·애니메이션 상태 전환은 기존 시스템이 계속 담당한다.
+- 효과는 Player/Visual의 **Action effects**에서 설정한다. Basic Attack Effect Size와 Glitch Effect Size는 전체 프레임의 월드 크기(Player 프리팹은 2.5, 최초 2에서 1.25배 확대), Glitch Effect FPS는 기본 30이다. Sprite 배열은 각각 순서가 고정된 16프레임이다. 배열이 비어 있으면 해당 효과를 생략한다.
+- 베기 1개·스파크 4개의 SpriteRenderer를 초기화 때 만들고 재사용한다. 출발·도착 스파크는 플레이어 이동과 무관하게 기록한 월드 위치를 유지한다. 피격·사망·비활성화/ResetActions 시 효과를 정리하며 효과에 Collider나 피해 판정은 없다.
+- 사용 조건과 크레딧은 `Docs/ThirdPartyNotices.md`, 원본 라이선스는 `Assets/_Game/Art/Effects/CombatFxFree/LICENSE.txt`를 따른다.
+
+### 청록·붉은색 효과 팔레트
+
+- Player/Visual의 **Action Effect Material**에 `Assets/_Game/Art/Effects/PlayerActionTealRed.mat`를 연결했다. 캐릭터의 지직이는 프레임에서 확인한 청록 `#79D9DF`와 붉은색 `#D84255`를 사용한다. 검격은 청록 본체·붉은 끝부분, 스파크는 청록·붉은 파편으로 표시한다.
+- `PlayerActionTwoTone.shader`가 원본 텍스처의 음영·알파·프레임 배치를 유지하면서 색을 적용한다. 머티리얼의 Teal / Red로 색, Red boundary / Boundary diagonal로 두 색의 영역, White core strength로 밝은 중심광을 조절한다. 분할은 스프라이트 로컬 좌표를 사용해 프레임 간 고정되며 좌우 공격과 함께 반전한다.
+- 이 머티리얼은 베기 1개·스파크 4개만 공유한다. 미지정 시 기존 캐릭터 머티리얼을 사용한다. 크기 2.5, 프레임·재생 시점·피해 판정은 유지한다.
+
+## 2026-10-21 — 고정형 포탑 대기 분리와 조준 외형
+
+- SurveillanceTurret는 왼쪽에서 `Idle`(일반 01), 오른쪽에서 `IdleOpposite`(일반 05)을 사용한다. 3초 대기 → `IdleTurn`(01→05, 0.5초) → 오른쪽으로 3초 대기 → `IdleTurnBack`(05→01, 0.5초)을 반복한다. FSM의 Idle/Turning 상태가 시간과 방향을 소유하고 외형은 이를 표시한다. 반회전 완료 후 방향을 바꾸고 다음 FSM 갱신부터 새 방향에서 감지한다. 평상시 대기로 돌아오면 마지막 전투 방향에서 3초를 다시 센다.
+- 감지·조준·발사 후 회복 중에는 `AngryIdle`의 분노 대기 측면 포즈를 사용한다. 조준 중 360도 대기 회전을 재생하지 않아 총열이 목표를 계속 바라본다. `Attack`은 기존 분노 왼쪽 공격 10프레임, `Death`는 새 분노 기본 사망 10프레임이다. 기존 `Run` 상태는 일반 대기 정지 포즈로 남겨두었다.
+- 선택적 `SurveillanceTurretVisual`을 포탑 Visual에만 연결했다. EnemyVisual2D가 상태와 발사 표시 시간을 전달하며, 이 컴포넌트는 Animator/외형만 관리한다. 원본 64×64 PNG를 수정하지 않고 초기화 때 사용 프레임 31장의 상부·받침대 Sprite를 생성해 재사용한다. 상부만 FSM의 Aim에 맞춰 좌우/상하 조준하고 받침대·물리 루트는 회전하지 않는다.
+- 기존 1초 스캔 → 0.4초 방향 고정 → 발사 → 1.5초 회복을 유지한다. 포탑만 회복 경과가 발사 표시 시간 0.16초를 지나면 유효한 기존 타깃을 다시 추적한다. 다음 공격 시각·피해·사거리·시야·글리치 감지 초기화는 동일하다. 발사 외형은 LastShot 방향을 사용하므로 그동안 타깃이 움직여도 고정된다.
+- 방향별 정지 시간/반회전 길이는 `SurveillanceTurretFsm.asset`의 `Idle Turn Interval`(3초) / `Idle Turn Duration`(0.5초)에서 조절한다. 이전 Visual의 독립 타이머는 제거했다. 사망 외형은 마지막 표시 방향을 유지하고, 비활성화·재활성화는 FSM의 초기 방향과 일반 대기로 복귀한다. 드론·방패병·순찰 돼지의 기존 제어 경로는 유지한다.
+- **전방 감지:** 대기 중 플레이어 몸체 중심이 현재 방향의 반평면에 있을 때만 새 대상으로 선택한다. 뒤에 있으면 대기·반회전을 계속하며, 회전 중에는 새로 감지하지 않는다. 기존 거리 12·장애물 시야 검사는 유지한다. 한번 감지한 대상은 앞뒤 이동에도 기존 추적을 유지하고, 조준 고정·발사 중에는 방향이 고정된다.
+- **포구 발사:** 포탑 루트의 EnemyCombat2D에 `Aim Pivot Offset=(0,-0.1625)`, `Muzzle Distance=0.75`를 연결했다. 원본의 회전 축 (32,27), 포구 (8,27), 32 PPU와 Visual Y=-0.6에 맞춘 값이다. 조준은 총열 회전 축에서 계산하고, 예고선·실제 발사·피해 영역은 회전한 포구에서 시작한다. 총열 축과 포구 사이가 벽으로 막히면 발사 판정도 차단한다. 빔 길이 22와 폭 0.16은 유지한다.

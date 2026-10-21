@@ -7,6 +7,15 @@ namespace ActionPlatformer.Player
     {
         [Tooltip("Overlay the actual hit area while attacking (debug display).")]
         [SerializeField] private bool showAttackArea = true;
+        [Header("Action effects")]
+        [SerializeField] private Sprite[] basicAttackEffectFrames;
+        [SerializeField] private Sprite[] glitchEffectFrames;
+        [Tooltip("Optional shared material for attack and glitch effects only.")]
+        [SerializeField] private Material actionEffectMaterial;
+        [SerializeField, Min(0.01f)] private float basicAttackEffectSize = 2f;
+        [SerializeField, Min(0.01f)] private float glitchEffectSize = 2f;
+        [SerializeField, Min(1f)] private float glitchEffectFps = 30f;
+        private PlayerActionEffects actionEffects;
         private ICharacterMotionState motionState;
         private SpriteRenderer spriteRenderer;
         private Animator animator;
@@ -43,6 +52,7 @@ namespace ActionPlatformer.Player
         {
             this.motionState = motionState ?? throw new System.ArgumentNullException(nameof(motionState));
             this.actions = actions;
+            actionEffects?.Reset(actions?.GlitchPresentation.Version ?? 0);
         }
 
         private void Awake()
@@ -70,6 +80,9 @@ namespace ActionPlatformer.Player
             }
             if (actions != null)
             {
+                actionEffects = new PlayerActionEffects(transform, spriteRenderer, basicAttackEffectFrames,
+                    glitchEffectFrames, basicAttackEffectSize, glitchEffectSize, glitchEffectFps, actionEffectMaterial);
+                actionEffects.Reset(actions.GlitchPresentation.Version);
                 shapeSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
                 attackShape = CreateShape("Attack area", new Color(1f, 0.8f, 0.2f, 0.4f));
                 groundMarker = CreateShape("Underground marker", new Color(0.15f, 1f, 1f, 0.9f));
@@ -120,6 +133,7 @@ namespace ActionPlatformer.Player
             }
             UpdateGlitchPreview(underground);
             UpdateShockwave(underground);
+            actionEffects?.Tick(actions, Time.deltaTime);
         }
 
         private void UpdateAttackAnimation(bool underground, bool moving, bool rising)
@@ -243,6 +257,7 @@ namespace ActionPlatformer.Player
             currentAction = 0;
             previousAttackVersion = 0;
             previousReactionVersion = 0;
+            actionEffects?.Reset(actions?.GlitchPresentation.Version ?? 0);
             if (hasActionAnimations)
             {
                 animator.SetBool(ActionOverride, false);

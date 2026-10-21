@@ -156,6 +156,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   initiallyFacesRight: 0
+  aimPivotOffset: {x: 0, y: -0.1625}
+  muzzleDistance: 0.75
 --- !u!1 &8744170187927682516
 GameObject:
   m_ObjectHideFlags: 0
@@ -168,6 +170,7 @@ GameObject:
   - component: {fileID: 6100259166436371960}
   - component: {fileID: 8192644708314790036}
   - component: {fileID: 4459152879235059906}
+  - component: {fileID: 1947489459692036995}
   m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
@@ -239,9 +242,9 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -771251465, guid: fb225873ed10a334e950e8f82a8f2a75, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 55c1daf35717a9f43858291ce8749d60, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 1
+  m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
   m_Size: {x: 1.3913044, y: 1.3913044}
@@ -285,4 +288,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.EnemyVisual2D
   stateSource: {fileID: 2325045042644251499}
   shapeSprite: {fileID: 2537882373423050008, guid: 388ad2e908298d04bad8c352166b49ad, type: 3}
-  spriteFacesRight: 1
+  spriteFacesRight: 0
+--- !u!114 &1947489459692036995
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8744170187927682516}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c95b8b2dfd8f5f1479c69ccd172c68c5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.SurveillanceTurretVisual
+  sourceFrames:
+  - {fileID: 21300000, guid: 55c1daf35717a9f43858291ce8749d60, type: 3}
+  - {fileID: 21300000, guid: 28a736f8bb1fa0543ad1e8c840a67cfb, type: 3}
+  - {fileID: 21300000, guid: a12a63b89804f0d4396300f83dec83a9, type: 3}
+  - {fileID: 21300000, guid: 46687ceba229edf47872346b772da949, type: 3}
+  - {fileID: 21300000, guid: c6719dcfd9c0d5f4fa9da7ecef8790c5, type: 3}
+  - {fileID: 21300000, guid: 1692aead7521c6847976c807c86614ce, type: 3}
+  - {fileID: 21300000, guid: e42dbce9262989e449d3e17d91f22c29, type: 3}
+  - {fileID: 21300000, guid: fa48d9dd48e9c6646a22b00566528ca2, type: 3}
+  - {fileID: 21300000, guid: 06a69c82f62ffa444974f7d1462c1286, type: 3}
+  - {fileID: 21300000, guid: a3cd38d62a3679a4f81fec222647914e, type: 3}
+  - {fileID: 21300000, guid: 5224e9fd900269e4ba96c88bb8dcb11c, type: 3}
+  - {fileID: 21300000, guid: 394800da05482ea4ba9ac62727ef6d07, type: 3}
+  - {fileID: 21300000, guid: cfe56f67d325b334c98dfa56b3353123, type: 3}
+  - {fileID: 21300000, guid: 6e77b8960488d304e8b349c3c0215665, type: 3}
+  - {fileID: 21300000, guid: dc0ca35db8b9fb74b809474971ef511e, type: 3}
+  - {fileID: 21300000, guid: 89e9606993c71594bb977e38b15215d1, type: 3}
+  - {fileID: 21300000, guid: ef1f8565a912a7a4bb092fbdd0cb19b4, type: 3}
+  - {fileID: 21300000, guid: 8c8b484714112dd4dad78756bac06054, type: 3}
+  - {fileID: 21300000, guid: 591098dc38887914ab43884cb4ef1089, type: 3}
+  - {fileID: 21300000, guid: d45560a94bc680840b27c123ddf1c3cd, type: 3}
+  - {fileID: 21300000, guid: 2ed85bbcbcb0cc649acad2e264b4d31a, type: 3}
+  - {fileID: 21300000, guid: 26659444b87a4ff4d87c658976ac0744, type: 3}
+  - {fileID: 21300000, guid: 0ad8230cd3e8d5649868dd63dca61f6b, type: 3}
+  - {fileID: 21300000, guid: e8e825cb57aaa6f4e9dbbe2854b5fd9b, type: 3}
+  - {fileID: 21300000, guid: 14591026f474d1b478cea902eabcba2f, type: 3}
+  - {fileID: 21300000, guid: 10e085bb0e3a0e2469634e68b51e3caf, type: 3}
+  - {fileID: 21300000, guid: 67731458018d12f4e868625141012fe4, type: 3}
+  - {fileID: 21300000, guid: 6a446e748d5b8d147b78728041e6fa39, type: 3}
+  - {fileID: 21300000, guid: 859ecc4a089213145a39111033822171, type: 3}
+  - {fileID: 21300000, guid: c562852d27472cc4190621179e7500ea, type: 3}
+  - {fileID: 21300000, guid: 62020e34dcd58664baac36f351611e72, type: 3}
+  pedestalHeight: 19
+  headPivot: {x: 32, y: 27}

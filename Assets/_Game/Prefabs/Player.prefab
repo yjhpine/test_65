@@ -111,7 +111,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c84bfbdfda73d8240b6714121e8a244e, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerUnit
   definition: {fileID: 11400000, guid: b1b1737ace515f940bc28ff9e8a6991a, type: 2}
   tuning: {fileID: 11400000, guid: 84ae79176d3819745868ad425efd6989, type: 2}
@@ -121,9 +121,9 @@ MonoBehaviour:
   visual: {fileID: 4686364939294004042}
   glitchTuning: {fileID: 11400000, guid: 02b1c065fba76494e9afafc4082aec86, type: 2}
   combatTuning: {fileID: 11400000, guid: 61f6a7c237e4f4f4ca4b50e440146d1a, type: 2}
-  deathDuration: 0.7
   aimCamera: {fileID: 0}
   damageScreenMaterial: {fileID: 2100000, guid: 2e8f5f35ce01f7946ad2ac545e81a363, type: 2}
+  deathDuration: 0.7
 --- !u!114 &7290577179776929193
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -134,7 +134,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 62899f850307741f2a39c98a8b639597, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Unity.InputSystem::UnityEngine.InputSystem.PlayerInput
   m_Actions: {fileID: -944628639613478452, guid: c0c050e3f7798c442b6b1a75f4389623, type: 3}
   m_NotificationBehavior: 3
@@ -150,7 +150,7 @@ MonoBehaviour:
       m_Calls: []
   m_ActionEvents: []
   m_NeverAutoSwitchControlSchemes: 0
-  m_DefaultControlScheme:
+  m_DefaultControlScheme: 
   m_DefaultActionMap: Player
   m_SplitScreenIndex: -1
   m_Camera: {fileID: 0}
@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 019b6dc34cd2c8f42b28945ec31d005f, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitHealth
   deactivateOnDeath: 0
   preserveHealthOnDamage: 0
@@ -278,7 +278,7 @@ Animator:
   m_LinearVelocityBlending: 0
   m_StabilizeFeet: 0
   m_AnimatePhysics: 0
-  m_WarningMessage:
+  m_WarningMessage: 
   m_HasTransformHierarchy: 1
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
@@ -293,6 +293,44 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: cc6a58d0d341be84eb097ea293269ec1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerVisual
   showAttackArea: 0
+  basicAttackEffectFrames:
+  - {fileID: 593589843, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: -1128318936, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 2054381382, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 1148273597, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: -1105911208, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: -1973505728, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 770211074, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 796812261, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 1819895602, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 1650651132, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 8586418696436754587, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: -8975856296395430227, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 959743285589234281, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: -3604989180583348394, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 3012627756306751091, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  - {fileID: 8290099524988671646, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
+  glitchEffectFrames:
+  - {fileID: 2112256109, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -37386870, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 389439993, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 249156834, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -382572648, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 751585459, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -1932180155, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 250196589, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 1001742312, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 1576805918, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -6576013197693214916, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 2482088511146837554, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -292515966485922187, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -5479663247036965447, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: 2662799152390058004, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  - {fileID: -7573759715938626397, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
+  actionEffectMaterial: {fileID: 2100000, guid: b3eaeace8aea28b4fa1750ee5e110d59, type: 2}
+  basicAttackEffectSize: 2.5
+  glitchEffectSize: 2.5
+  glitchEffectFps: 30

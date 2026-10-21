@@ -16,11 +16,14 @@ namespace ActionPlatformer.Units.Features
         private float hurtUntil, blockUntil, shotUntil;
         private string animationName;
         private Color originalColor;
+        private SurveillanceTurretVisual turretVisual;
         private void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>(); animator = GetComponent<Animator>();
             health = stateSource.GetComponent<UnitHealth>(); body = stateSource.GetComponent<Rigidbody2D>();
             originalColor = spriteRenderer.color;
+            turretVisual = GetComponent<SurveillanceTurretVisual>();
+            if (turretVisual != null) turretVisual.Initialize(spriteRenderer, animator);
             shield = Shape("Energy shield"); scan = Shape("Scan progress"); beam = Shape("Attack telegraph");
         }
         private SpriteRenderer Shape(string label)
@@ -42,10 +45,16 @@ namespace ActionPlatformer.Units.Features
             spriteRenderer.color = !dead && Time.time < hurtUntil ? new Color(1f, .45f, .45f) : originalColor;
             string desired = dead ? "Death" : state.Phase == EnemyPhase.Dash || Time.time < shotUntil ? "Attack" :
                 state.Phase == EnemyPhase.Idle && body.linearVelocity.sqrMagnitude > .04f ? "Run" : "Idle";
-            if (desired != animationName) { animationName = desired; animator.Play(desired, 0, 0f); }
             float actionTime = dead ? (settings.DeathDuration <= 0f ? 1f : state.Elapsed / settings.DeathDuration) :
                 state.Phase == EnemyPhase.Dash ? state.Progress : 1f - (shotUntil - Time.time) / settings.BeamDisplayDuration;
-            animator.SetFloat("ActionTime", Mathf.Clamp01(actionTime));
+            if (turretVisual != null && settings.Pattern == EnemyPattern.Surveillance)
+                turretVisual.Render(state, Time.time < shotUntil, dead, actionTime,
+                    stateSource.LastShot.End - stateSource.LastShot.Start);
+            else
+            {
+                if (desired != animationName) { animationName = desired; animator.Play(desired, 0, 0f); }
+                animator.SetFloat("ActionTime", Mathf.Clamp01(actionTime));
+            }
             Hide(); if (dead) return;
             Vector2 center = stateSource.Center;
             if (settings.Pattern == EnemyPattern.Shield)

@@ -22,7 +22,7 @@ namespace ActionPlatformer.Tests
             Assert.That(((EnemyFsmDefinition)definition.Fsm).TryValidate(out error),Is.True,error);
             Assert.That(go.GetComponent<BoxCollider2D>().size,Is.EqualTo(new Vector2(1,height)));
             Assert.That(go.GetComponent<EnemyCombat2D>(),Is.Not.Null);Assert.That(go.GetComponentInChildren<EnemyVisual2D>(),Is.Not.Null);
-            var animator=go.GetComponentInChildren<Animator>();Assert.That(animator.applyRootMotion,Is.False);Assert.That(animator.runtimeAnimatorController.animationClips.Length,Is.EqualTo(4));
+            var animator=go.GetComponentInChildren<Animator>();Assert.That(animator.applyRootMotion,Is.False);Assert.That(animator.runtimeAnimatorController.animationClips.Length,Is.EqualTo(name=="SurveillanceTurret"?8:4));
             foreach(var clip in animator.runtimeAnimatorController.animationClips)Assert.That(AnimationUtility.GetObjectReferenceCurveBindings(clip)[0].propertyName,Is.EqualTo("m_Sprite"));
         }
         [Test] public void InvalidTimingAndNonFiniteSettingsAreRejected()

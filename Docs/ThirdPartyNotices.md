@@ -102,3 +102,41 @@ Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / D
 - The user supplied the character PNGs and animation assets already present under `Assets/Art`; this integration downloaded no additional art and does not infer an author or license for those files.
 - Original image bytes and import settings are unchanged. Player-specific integration clips live in `Assets/_Game/Animations/Player/ArtCharacter` and reuse these sprites with gameplay-aligned timing.
 - These clips replace the player's Adventurer presentation. The original Adventurer assets and their notices remain because the guide NPC still uses its Idle clip.
+
+## Project-supplied monster art — 2026-10-21
+
+- Supplied by the user in the desktop `몬스터 애님` folder. No additional art was downloaded; author and license are not inferred from the filenames. Original PNG bytes are unchanged.
+- Monster1 replaces SurveillanceTurret, Monster2 replaces FlyingDrone, and Monster3 replaces ShieldSoldier. Existing Pig art and all gameplay settings remain unchanged. Previous enemy art and its notices are retained.
+- Imported 130 individual 64×64 PNGs into `Assets/_Game/Art/Characters/Monster1`, `Monster2`, and `Monster3`. Import settings: Single Sprite, Point, uncompressed, no mipmaps, full rectangle mesh. Monster1 uses 32 PPU and pivot `(32/64,13/64)`; Monster2 uses 32 PPU and pivot `(32/64,32/64)`; Monster3 uses 30 PPU and pivot `(32/64,7/64)`. Source frames face left; the existing visual component mirrors them for right-facing actions.
+- Existing Idle/Run/Attack/Death clips and controllers retain their GUIDs. Idle/Run loop at 10 FPS. Attack/Death retain the existing FSM-driven normalized playback and timing; clips change only the SpriteRenderer sprite and contain no animation events.
+
+| Enemy | Idle / Run | Attack | Death |
+|---|---|---|---|
+| SurveillanceTurret | `Monster1_PNG.zip: PNG/normal/Idle` (frame 1 held for Idle/Run; frames 1→5 in IdleTurn; frame 5 held in IdleOpposite; frames 5→1 in IdleTurnBack); `PNG/angry/Idle` (frame 1 for aimed AngryIdle) | `PNG/angry/Attack_Left` (10) | `Monster1Death_PNG.zip: PNG/angry/Death_Base` (10) |
+| FlyingDrone | `Monster2_Idle.zip: Monster2_Idle/Monster2_Idle/Idle_Normal` (32, shared for Run) | `Monster2AttackPNG.zip: PNG/Attack_Angry_Left` (10) | `Monster2Death_PNG.zip: PNG/Death` (8) |
+| ShieldSoldier | `Monster3Left_Idle+Walk_PNG.zip: PNG/Normal/Idle` (10) / `PNG/Normal/Walk` (16) | `PNG/Angry/Walk` (16), used for the existing shield dash | `PNG/Angry/WalkStopB` (8), stop/hold fallback until the existing death timer deactivates the enemy |
+
+`Monster3Hit_PNG.zip` was visually inspected and contains UFO/drone frames despite its name, so it is not used for ShieldSoldier. The supplied shield character has no dedicated death sequence. The right-facing archive, pose banks, duplicate Monster2 death archive, and bundled scripts/shader were not imported.
+
+The turret follow-up imported 20 additional unchanged PNGs into `Monster1/AngryIdle` and `Monster1/AngryDeath` (32 PPU, original 64×64 layout, pivot 32/64,13/64). The previous normal death frames remain available. Project-authored `SurveillanceTurretVisual` slices the referenced textures into a stationary pedestal and aiming upper part at runtime; source image bytes are unchanged. The source package's Unity scripts/shader and its variable frame timing were not imported.
+
+Archive SHA-256:
+
+| Archive | SHA-256 |
+|---|---|
+| Monster1_PNG.zip | `de58e355917a550f6c65ec95d4131360d2a564eeab9f3da1c1617c76adcaae1d` |
+| Monster1Death_PNG.zip | `bd84ef94957397f2faf2a887836c6a54fdbf31dff6ee11769c043ed37d94bd2c` |
+| Monster2_Idle.zip | `5881cfdb3ac689d589c613ecc12f48daefd1f1436826d4a666e7822d701c2185` |
+| Monster2AttackPNG.zip | `1e52ea5ae55d9aa8375fc51b1cbf3cabb66f74365f3962b273cdb01fde9ece7b` |
+| Monster2Death_PNG.zip | `7592c171cff7ae22b90afabecbc8565c63d1292486347a1155f001097f6dac1b` |
+| Monster3Left_Idle+Walk_PNG.zip | `929032f0105d1ea84a33a4283768868922c831a18ef58b469813ce305e133610` |
+
+## Combat FX Free — player slash and glitch spark (2026-10-21)
+
+- Creator/source: [heyheythere — Combat FX Free](https://heyheythere.itch.io/combat-fx-free), version 1.1.1. This is the pack matching the user's reference image and `white slash` / `white spark` names. The supplied ParticleFX Digital Explosion URL describes a different effect and was not imported.
+- License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Original `LICENSE.txt` is retained beside the sheets. Credit: **Combat FX Free by heyheythere - https://heyheythere.itch.io/combat-fx-free - CC BY 4.0**. Retain this attribution in distributed game credits.
+- Downloaded archive: `combat-fx-free-assets.zip`, 1,661,356 bytes, SHA-256 `fead596e08728bf69ab1385ca2822dac7da93160aec07dc5e31fea69d43c0755`.
+- Only `sheets/128/white/white_slash.png` and `white_spark.png` were imported into `Assets/_Game/Art/Effects/CombatFxFree`. Original PNG bytes are unchanged. No bundled Godot scripts or unrelated effects were imported.
+- Each sheet has 16 frames, 128×128 cells, 8 columns, left-to-right/top-to-bottom order, centered anchor. Unity uses Multiple Sprite, 128 PPU, full rectangle, Bilinear, no mipmaps/compression. The provided HD artwork matches the reference's smooth edges.
+- Project-authored presentation retimes the slash to the existing basic attack Active/Recovery phases. Spark plays once at the source 30 FPS at successful glitch departure/arrival points. No gameplay timing or damage values are changed.
+- Project-authored `PlayerActionTwoTone.shader` / `PlayerActionTealRed.mat` recolor the rendered effects with teal `#79D9DF` and red `#D84255`, plus a subdued white highlight. This is a presentation modification; the original PNG files, frame geometry, and transparency remain unchanged.

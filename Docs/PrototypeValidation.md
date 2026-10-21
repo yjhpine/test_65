@@ -574,3 +574,57 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 콘솔의 `Player tuning is missing.` 1건은 Player 필터에 포함된 UnitLifecycleTests가 LogAssert.Expect로 검증한 의도된 오류다. 이후 현재 씬 플레이 검증에서 새 오류는 없었다.
 - 종료 상태: 원래 CoreLoopStage, 씬 dirty=false, Timeline preview=false, Play Mode 정지. 원본 Assets/Art, 물리 설정, 입력·전투 수치와 씬 배치를 유지했다. Player 빌드와 전체 PlayMode 어셈블리는 실행하지 않았다.
 - 일반 공격 원본은 한 종류여서 지상/공중 3타가 같은 프레임을 재사용한다. 별도 사망 원본이 없어 피격 1~4프레임 후 마지막 자세를 유지한다.
+
+## 2026-10-21 — 몬스터 1·2·3 외형 교체
+
+- Monster1 → SurveillanceTurret, Monster2 → FlyingDrone, Monster3 → ShieldSoldier. 원본 PNG 130장의 바이트 보존을 SHA-256으로 확인했다. 순찰 돼지, 런타임 C#, Animator Controller, FSM·정의 수치, 충돌체·물리 설정, 씬 배치는 변경하지 않았다.
+- 기존 12개 Idle/Run/Attack/Death 클립의 GUID와 ActionTime 연결을 유지했다. Sprite 곡선만 존재하고 Animation Event/Transform 곡선이 없으며 프레임 누락, Missing Script, Root Motion 활성화가 없음을 Unity API로 확인했다. 새 원본의 왼쪽 방향에 맞춰 기존 좌우 반전 설정을 연결했다.
+- EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 13:22:00–13:22:01 KST, `Library/PrototypeValidation/MonsterArtEditMode.xml`.
+- PlayMode `EnemyPatternTests` **15/15 통과**, 13:22:12 KST, `Library/PrototypeValidation/MonsterArtPlayMode.xml`. 방패 앞뒤 방어·회전·돌진·벽/발판 정지, 포탑 탐색·조준 고정·사격 판정, 드론 비행·강제 이동·수직 공격, 사망·비활성화 취소를 확인했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+- 현재 CoreLoopStage의 해당 적 3개가 새 Sprite를 상속함을 확인했다. 실제 프리팹을 별도 PreviewScene에 렌더링해 대기·공격·사망 외형을 검토했다. 캡처: `Library/PrototypeValidation/MonsterArt-20261021.png` (열: 포탑/드론/방패병, 행: 대기/공격/사망).
+- 방패병의 공격은 Angry/Walk로 돌진을 표현한다. 전용 사망 프레임이 없어 Angry/WalkStopB 후 기존 사망 시간에 비활성화한다. `Monster3Hit_PNG.zip`은 실제로 드론 이미지가 들어 있어 사용하지 않았다. 출처·가져온 프레임은 `Docs/ThirdPartyNotices.md`에 기록했다.
+- 게임/테스트 오류는 없었다. 첫 임시 캡처 도구의 RenderTexture 정리 순서 오류 1건을 수정하고 재캡처했다. 프로젝트 런타임 오류가 아니며 검증 도구는 Assets 밖에 있다. 종료 상태: Unity ready, Play Mode 정지, CoreLoopStage dirty=false.
+
+## 2026-10-21 — 플레이어 white slash·white spark 연결
+
+- Unity 6000.3.23f1 재컴파일 성공, 컴파일 오류 0. 기존 몬스터 교체 변경을 보존했다. 플레이어 Animator Controller·클립·전투/글리치 수치·물리 설정·씬 배치는 변경하지 않았다.
+- EditMode `PlayerVisualAssetTests` **2/2 통과**, 13:32:12–13:32:13 KST, `Library/PrototypeValidation/PlayerEffectsEditMode.xml`. 기존 캐릭터 연결과 효과 16프레임 순서·피벗·크기·출처·Root Motion/Collider 분리를 확인했다.
+- PlayMode 필터 `Player` **157/157 통과**, 13:33:02–13:34:04 KST, `Library/PrototypeValidation/PlayerEffectsPlayMode.xml`. 기존 이동·전투·글리치 회귀 검사에 기본 지상/공중 3타 효과 시점·좌우 반전·중단, 스파크 월드 위치·종료·반복 재사용·비활성화 후 재생 방지, 성공/실패·잠복 진입·출현의 표현 위치 검사를 추가했다.
+- 실제 Play Mode에서 Player 프리팹의 Combat을 실행해 양방향 베기를 확인했다. TrainingDummy를 대상으로 Glitch.TryExecute를 실행해 출발/도착 스파크 2개를 확인하고 렌더링을 검토했다. 캡처: `Library/PrototypeValidation/PlayerEffects-SlashRight.png`, `PlayerEffects-SlashLeft.png`, `PlayerEffects-Glitch.png`.
+- 캡처용 플레이어·허수아비·바닥·카메라는 런타임에만 만들고 정리했다. Time.timeScale을 복원하고 Play Mode를 종료했다. 원래 CoreLoopStage를 유지하며 씬 저장은 하지 않았다.
+- 콘솔의 `Player tuning is missing.` 1건은 통과한 UnitLifecycleTests의 의도된 LogAssert 검증이다. 이후 실제 효과 검증에서 새 오류는 없었다. 전체 EditMode/전체 PlayMode 어셈블리와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 공격·글리치 청록/붉은색 팔레트
+
+- 전용 공유 머티리얼과 현재 URP Sprite-Unlit 경로를 따르는 셰이더를 추가했다. C# 재컴파일 성공, 셰이더 지원 및 컴파일 메시지 0건, 검증 후 콘솔 오류 0건을 확인했다.
+- PlayMode `PlayerVisualTests` **7/7 통과**, 13:51:55–13:51:56 KST. 결과: `Library/PrototypeValidation/PlayerEffectsColorPlayMode.xml`. 기본 지상/공중 공격·좌우 반전·피격 중단, 스파크 위치·재사용·종료와 기존 액션 애니메이션을 재검증했다.
+- 실제 Player/TrainingDummy 프리팹을 Play Mode에서 실행했다. 양방향 공격과 성공한 글리치 출발/도착 스파크가 새 공유 머티리얼을 쓰고 캐릭터 본체의 머티리얼은 별도임을 확인했다. 크기 2.5도 런타임 SerializedObject로 확인했다.
+- 렌더 캡처를 직접 검토했다: `Library/PrototypeValidation/PlayerEffectsColor-SlashRight.png`, `PlayerEffectsColor-SlashLeft.png`, `PlayerEffectsColor-Glitch.png`. 청록 검격·붉은 끝부분, 두 색의 글리치 파편이 정상 표시된다.
+- 임시 검증 오브젝트를 정리하고 Time.timeScale=1, runInBackground=false로 복원했다. 종료 상태: CoreLoopStage dirty=false, Play Mode 정지. 전체 테스트와 Player 빌드는 이번 색상 작업에서 실행하지 않았다.
+
+## 2026-10-21 — 고정형 포탑 대기·조준·분노 애니메이션
+
+- Unity C# 컴파일 성공, 검증 후 콘솔 오류 0건. 포탑 프리팹 Visual에만 SurveillanceTurretVisual을 추가했다. 물리·피해·범위·공격 간격 에셋과 씬 배치는 변경하지 않았다.
+- EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 14:11:41 KST. `Library/PrototypeValidation/TurretTrackingEditMode.xml`. 포탑 6개/나머지 적 4개 클립, 기존 정의·물리 설정·Sprite 곡선 연결을 확인했다.
+- PlayMode `EnemyPatternTests` **17/17 통과**, 14:12:15 KST. `Library/PrototypeValidation/TurretTrackingPlayMode.xml`. 새 검사 2개가 3초 간격 회전 시작, 감지 시 분노 대기, 총열의 좌우/상하 방향과 고정 받침대, 발사 방향 유지·표시 종료 후 재추적, 기존 스캔/고정/회복 시간, 분노 사망·비활성화 후 초기화를 검증했다. 기존 방패병·드론·포탑 행동 검사 15개도 통과했다.
+- Play Mode에서 실제 포탑/플레이어 프리팹을 사용해 일반 대기·회전·추적·조준 고정·발사·재추적·분노 사망을 렌더링하고 직접 검토했다. 캡처는 `Library/PrototypeValidation/TurretTracking-Idle.png`, `IdleTurn.png`, `Tracking.png`, `Locked.png`, `Firing.png`, `Retracking.png`, `Death.png`이며 각각 동일한 `TurretTracking-` 접두사를 사용한다.
+- 캡처는 시간을 제어하고 플레이어를 지정 위치로 이동한 재현이다. 실제 발사 1회, Locked Aim 보존, 회복 중 반대 방향 추적, 받침대 회전 0, 사망 시 AngryDeath/06 Sprite를 확인했다. 임시 오브젝트·입력·시간 설정은 정리했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 포탑 반회전과 방향별 3초 대기
+
+- 일반 대기 원본의 01→05만 사용하는 0.5초 `IdleTurn`, 05를 유지하는 `IdleOpposite`, 05→01의 0.5초 `IdleTurnBack`을 연결했다. 양쪽 방향에서 각각 3초 대기한다. 이전 한 바퀴 회전 규칙을 대체하며, 이번 변경은 외형·클립·컨트롤러·프리팹 회전 길이에 한정했다. 전투 FSM과 수치는 유지했다.
+- Unity 재컴파일 성공. EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 14:29:20 KST, `Library/PrototypeValidation/TurretHalfTurnEditMode.xml`. 포탑의 8개 클립과 기존 적 설정을 검사했다.
+- PlayMode `EnemyPatternTests` **17/17 통과**, 14:29:57~14:29:58 KST, `Library/PrototypeValidation/TurretHalfTurnPlayMode.xml`. 3초 대기·양방향 반회전·반대 방향 유지·복귀·다음 반복과 감지 중단, 조준·발사·사망·비활성화 초기화를 검사했다. 관련 검증만 재실행했으며 전체 테스트와 Player 빌드는 실행하지 않았다.
+- 실제 포탑/플레이어 프리팹을 Play Mode에서 18초, 60 FPS, 960×540으로 녹화했다. 임시 바닥과 카메라를 사용하고 플레이어 이동·점프 입력만 자동 공급했다. FSM·물리·외형은 실제 프레임 갱신으로 동작했다. 영상: `Library/PrototypeValidation/TurretHalfTurnVideo/TurretHalfTurn.mp4`, 측정: 같은 폴더의 `timeline.csv`와 `summary.json`.
+- 녹화에서 첫 반회전 3.000초, 오른쪽 대기 3.500초, 복귀 반회전 6.483초, 왼쪽 대기 6.983초를 확인했다(60 FPS 한 프레임 이내 오차). 오른쪽 대기·좌측 복귀·회전 중간 원본 캡처를 직접 검토했다. 7.200초 감지 이후 첫 조준 고정 8.217초 → 발사 8.617초 → 재추적 8.783초, 총 4회 발사를 확인했다. MP4 전체 1,080프레임 디코딩 검사도 통과했다.
+- 녹화 후 콘솔 오류 0건. 임시 오브젝트를 정리하고 Play Mode를 종료했다. CoreLoopStage dirty=false, Time.timeScale=1, Time.captureDeltaTime=0, runInBackground=false로 복원했다.
+
+## 2026-10-21 — 포탑 전방 감지와 포구 발사
+
+- 반회전 시간·방향을 EnemyFsmDefinition의 Idle/Turning 상태로 옮겼다. SurveillanceTurret만 새 대상 선택 시 좌우 전방 반평면을 검사하고, 3초 대기와 0.5초 반회전 완료 후 새 방향에서 탐색한다. 기존 추적·조준 고정·발사·회복 규칙과 드론/방패병 동작은 유지했다. 외형은 FSM 상태를 읽으며 독립 회전 타이머를 제거했다.
+- 포탑 EnemyCombat2D의 조준 축 (0,-0.1625), 포구 거리 0.75를 원본 스프라이트의 총열에 맞췄다. 예고선과 실제 빔·피해 판정의 시작점이 같으며, 축과 포구 사이 장애물도 발사를 차단한다. 씬·프로젝트 설정은 이번 작업에서 변경하지 않았다.
+- Unity C# 재컴파일 성공, 콘솔 오류 0건. EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 14:39:31 KST, `Library/PrototypeValidation/TurretFacingEditMode.xml`.
+- PlayMode `EnemyPatternTests` **19/19 통과**, 14:40:18~14:40:19 KST, `Library/PrototypeValidation/TurretFacingPlayMode.xml`. 외형 갱신 없이도 뒤쪽 무시·반회전 완료 후 감지·좌우 복귀·비활성화 초기화가 동작함을 확인했다. 좌우/대각선/수직 조준의 포구 일치, 포구 뒤의 대상 제외, 가까운 벽 차단과 기존 전투 검사도 통과했다.
+- 최초 PlayMode 실행은 18/19였다. 방향 일치 검사에서 `Vector2.Angle`의 acos 반올림으로 0.0198도가 발생해 정규화 벡터 거리 <0.0001 비교로 바꾸고 재실행했다. 해당 검사로 게임 코드를 추가 수정하지 않았다. 최초 결과는 `TurretFacingPlayModeInitial.xml`에 보존했다.
+- 실제 Play Mode에서 오른쪽(포탑 뒤)에 플레이어를 배치해 18초, 60 FPS로 녹화했다. 0~3초 대기, 3~3.5초 반회전, 3.5167초 첫 감지, 4.5333초 조준 고정, 4.9333초 포구 발사, 5.1000초 재추적을 확인했다. 총 5회 발사했고 조준/발사 프레임의 포구와 계산한 빔 시작점 차이는 최대 0.000061 유닛이었다. 영상의 뒤쪽 대기·포구 발사·반대편 재추적 프레임을 직접 검토했다.
+- 영상은 `Library/PrototypeValidation/TurretFacingVideo/TurretFacing.mp4`, 상태 측정은 같은 폴더 `timeline.csv`/`summary.json`이다. 플레이어 이동·점프 입력만 자동 공급했고 실제 FSM/물리/프리팹을 사용했다. MP4 1,080프레임 전체 디코딩 검사 통과. 임시 오브젝트와 시간 설정을 복원했으며 Play Mode 종료, CoreLoopStage dirty=false를 확인했다. 전체 테스트와 Player 빌드는 실행하지 않았다.

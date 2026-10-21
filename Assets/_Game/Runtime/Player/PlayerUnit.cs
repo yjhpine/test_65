@@ -69,6 +69,7 @@ namespace ActionPlatformer.Player
         public float Facing => Combat != null && Combat.IsAttacking ? Combat.Facing : facing;
         public PlayerAttackPhase AttackPhase => Combat == null ? PlayerAttackPhase.Ready : Combat.Phase;
         public PlayerAttackPresentation AttackPresentation => Combat == null ? default : Combat.GetPresentation(Time.timeAsDouble);
+        public PlayerGlitchPresentation GlitchPresentation => Glitch == null ? default : Glitch.Presentation;
         public Bounds AttackBounds => Combat == null ? default : Combat.AttackBounds;
         public PlayerShockwave Shockwave => Combat == null ? default : Combat.GetShockwave(Time.timeAsDouble);
         public void SetAimCamera(Camera camera)

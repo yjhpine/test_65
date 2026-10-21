@@ -27,6 +27,8 @@ namespace ActionPlatformer.Units.Fsm
         [SerializeField, Min(0)] private float guardFrontThreshold = .16f;
         [SerializeField, Min(0)] private float guardHeight = .68f;
         [Header("Ranged")]
+        [SerializeField, Min(.1f)] private float idleTurnInterval = 3f;
+        [SerializeField, Min(.01f)] private float idleTurnDuration = .5f;
         [SerializeField, Min(.01f)] private float scanDuration = 1f;
         [SerializeField, Min(0)] private float lockDuration = .4f;
         [SerializeField, Min(.01f)] private float beamLength = 22f;
@@ -54,7 +56,7 @@ namespace ActionPlatformer.Units.Fsm
         {
             float[] positive = { detectionRange, firstPreparation, preparation, detectionHeight, approachHeight, approachDistance,
                 approachSpeed, dashSpeed, dashMinDistance, dashMaxDistance, scanDuration, beamLength, beamWidth, beamDisplayDuration,
-                horizontalSpeed, verticalSpeed, verticalAttackDistance, verticalBeamWidth };
+                horizontalSpeed, verticalSpeed, verticalAttackDistance, verticalBeamWidth, idleTurnInterval, idleTurnDuration };
             float[] nonnegative = { recovery, deathDuration, turnDuration, dashOvershoot, guardFrontThreshold, guardHeight, lockDuration, cruiseRadius, cruiseAmplitude };
             foreach (float value in positive) if (!(value > 0f) || float.IsInfinity(value)) { error = "Enemy speeds, ranges and preparation durations must be positive and finite."; return false; }
             foreach (float value in nonnegative) if (!(value >= 0f) || float.IsInfinity(value)) { error = "Enemy durations and amplitudes must be nonnegative and finite."; return false; }
@@ -101,7 +103,7 @@ namespace ActionPlatformer.Units.Fsm
             public void Track()
             {
                 if (Combat.Target == null || !Combat.Target.CanReceiveDamage) return;
-                Vector2 delta = Combat.TargetCenter - Combat.Center;
+                Vector2 delta = Combat.TargetCenter - Combat.AimOrigin;
                 Aim = delta.sqrMagnitude > .00001f ? delta.normalized : Vector2.right * Facing;
                 if (S.pattern != EnemyPattern.Shield && Mathf.Abs(delta.x) > .01f) Facing = Mathf.Sign(delta.x);
             }
@@ -117,7 +119,10 @@ namespace ActionPlatformer.Units.Fsm
                 switch (phase)
                 {
                     case EnemyPhase.Idle: c.Flying?.Cruise(true); break;
-                    case EnemyPhase.Turning: c.TurnTo = -c.Facing; c.Duration = S.turnDuration; break;
+                    case EnemyPhase.Turning:
+                        c.TurnTo = -c.Facing;
+                        c.Duration = S.pattern == EnemyPattern.Surveillance ? S.idleTurnDuration : S.turnDuration;
+                        break;
                     case EnemyPhase.Preparing:
                         c.Track(); c.ObservedReposition = c.Combat.TargetReposition;
                         c.Duration = S.pattern == EnemyPattern.Surveillance ? S.scanDuration : (c.First ? S.firstPreparation : S.preparation);
@@ -141,7 +146,12 @@ namespace ActionPlatformer.Units.Fsm
                 switch (phase)
                 {
                     case EnemyPhase.Idle:
-                        if (!c.Combat.RefreshTarget(S.detectionRange, S.pattern == EnemyPattern.Shield ? S.detectionHeight : float.PositiveInfinity)) { c.Ground?.Stop(); return null; }
+                        if (!c.Combat.RefreshTarget(S.detectionRange, S.pattern == EnemyPattern.Shield ? S.detectionHeight : float.PositiveInfinity,
+                            S.pattern == EnemyPattern.Surveillance ? c.Facing : 0f))
+                        {
+                            c.Ground?.Stop();
+                            return S.pattern == EnemyPattern.Surveillance && c.Elapsed >= S.idleTurnInterval ? c.Turn : null;
+                        }
                         if (S.pattern != EnemyPattern.Shield) return c.Prepare;
                         if (c.Ground.IsForcedMoving) return null;
                         Vector2 delta = c.Combat.TargetCenter - c.Combat.Center;
@@ -174,7 +184,11 @@ namespace ActionPlatformer.Units.Fsm
                         c.PreviousCenter = c.Combat.Center;
                         if (c.Ground.IsForcedMoving || !c.Ground.IsGrounded || c.Ground.IsBlocked || c.Ground.HasArrived || c.Elapsed >= c.Duration) return c.Recover;
                         return null;
-                    case EnemyPhase.Recovery: return c.Elapsed >= c.Duration ? c.Idle : null;
+                    case EnemyPhase.Recovery:
+                        // The turret holds its shot pose through the beam, then tracks during its existing cooldown.
+                        if (S.pattern == EnemyPattern.Surveillance && c.Elapsed >= S.beamDisplayDuration &&
+                            c.Combat.ValidTarget(c.Combat.Target, S.detectionRange)) c.Track();
+                        return c.Elapsed >= c.Duration ? c.Idle : null;
                     case EnemyPhase.Death:
                         if (c.Elapsed >= c.Duration) c.Owner.gameObject.SetActive(false);
                         return null;

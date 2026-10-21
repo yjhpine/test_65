@@ -28,6 +28,9 @@ namespace ActionPlatformer.Units.Features
         [SerializeField] private LayerMask targetMask = 4;
         [SerializeField] private LayerMask obstacleMask = 1;
         [SerializeField] private bool initiallyFacesRight;
+        [Tooltip("Turret head rotation pivot, relative to the unit root. Other patterns use the body center.")]
+        [SerializeField] private Vector2 aimPivotOffset;
+        [SerializeField, Min(0f)] private float muzzleDistance;
         private UnitHealth health;
         private Collider2D body;
         private readonly List<Collider2D> overlaps = new List<Collider2D>(32);
@@ -41,6 +44,8 @@ namespace ActionPlatformer.Units.Features
         public EnemyBeam LastShot { get; private set; }
         public float InitialFacing => initiallyFacesRight ? 1f : -1f;
         public Vector2 Center => body == null ? (Vector2)transform.position : (Vector2)body.bounds.center;
+        public Vector2 AimOrigin => Settings != null && Settings.Pattern == EnemyPattern.Surveillance ?
+            (Vector2)transform.TransformPoint(aimPivotOffset) : Center;
         public float Facing => State == null ? InitialFacing : State.Facing;
         public bool Alive => health != null && health.IsAlive && health.Owner.isActiveAndEnabled && isActiveAndEnabled;
         private void Awake() { health = GetComponent<UnitHealth>(); body = GetComponent<Collider2D>(); }
@@ -63,7 +68,7 @@ namespace ActionPlatformer.Units.Features
             Vector2 delta = (Vector2)collider.bounds.center - Center;
             return delta.sqrMagnitude <= range * range && Mathf.Abs(delta.y) <= height && HasSight(Center, collider.bounds.center);
         }
-        public bool RefreshTarget(float range, float height = float.PositiveInfinity)
+        public bool RefreshTarget(float range, float height = float.PositiveInfinity, float facing = 0f)
         {
             Physics2D.OverlapCircle(Center, range, UnitPhysics2D.Filter(targetMask), overlaps);
             UnitHealth best = null; float bestDistance = float.PositiveInfinity;
@@ -71,7 +76,10 @@ namespace ActionPlatformer.Units.Features
             {
                 var candidate = collider.GetComponentInParent<UnitHealth>();
                 if (!ValidTarget(candidate, range, height)) continue;
-                float distance = ((Vector2)UnitPhysics2D.Body(candidate).bounds.center - Center).sqrMagnitude;
+                Vector2 delta = (Vector2)UnitPhysics2D.Body(candidate).bounds.center - Center;
+                // Facing is only an acquisition filter; an acquired target can still be tracked behind us.
+                if (facing != 0f && delta.x * facing < 0f) continue;
+                float distance = delta.sqrMagnitude;
                 if (distance < bestDistance || (distance == bestDistance && best != null && candidate.GetInstanceID() < best.GetInstanceID()))
                 { best = candidate; bestDistance = distance; }
             }
@@ -103,6 +111,12 @@ namespace ActionPlatformer.Units.Features
             Vector2 origin = Center;
             if (vertical) return new EnemyBeam(BeamEnd(origin, Vector2.up, Settings.BeamLength), BeamEnd(origin, Vector2.down, Settings.BeamLength), width);
             Vector2 direction = aim.sqrMagnitude > .00001f ? aim.normalized : Vector2.right * Facing;
+            if (Settings.Pattern == EnemyPattern.Surveillance)
+            {
+                origin = AimOrigin + direction * muzzleDistance;
+                // A muzzle protruding through nearby terrain must not shoot through that terrain.
+                if (!HasSight(AimOrigin, origin)) return new EnemyBeam(origin, origin, width);
+            }
             return new EnemyBeam(origin, BeamEnd(origin, direction, Settings.BeamLength), width);
         }
         public void Fire(Vector2 aim, bool vertical)
@@ -111,13 +125,15 @@ namespace ActionPlatformer.Units.Features
             LastShot = CalculateBeam(aim, vertical); unchecked { ShotVersion++; }
             struck.Clear();
             Vector2 delta = LastShot.End - LastShot.Start;
+            if (delta.sqrMagnitude <= .000001f) return;
             Physics2D.OverlapBox((LastShot.Start + LastShot.End) * .5f,
                 new Vector2(delta.magnitude, LastShot.Width), Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg,
                 UnitPhysics2D.Filter(targetMask), overlaps);
             foreach (var collider in overlaps)
             {
                 var target = collider.GetComponentInParent<UnitHealth>();
-                Damage(target, vertical ? Settings.VerticalDamage : Settings.Damage);
+                Damage(target, vertical ? Settings.VerticalDamage : Settings.Damage,
+                    Settings.Pattern == EnemyPattern.Surveillance ? LastShot.Start : Center);
             }
         }
         public void BeginDash() => struck.Clear();
@@ -128,13 +144,13 @@ namespace ActionPlatformer.Units.Features
             Vector2 size = body.bounds.size;
             size += new Vector2(Mathf.Abs(delta.x), Mathf.Abs(delta.y));
             Physics2D.OverlapBox((Center + previousCenter) * .5f, size, 0f, UnitPhysics2D.Filter(targetMask), overlaps);
-            foreach (var collider in overlaps) Damage(collider.GetComponentInParent<UnitHealth>(), Settings.Damage);
+            foreach (var collider in overlaps) Damage(collider.GetComponentInParent<UnitHealth>(), Settings.Damage, Center);
         }
-        private void Damage(UnitHealth target, int amount)
+        private void Damage(UnitHealth target, int amount, Vector2 origin)
         {
             if (!UnitPhysics2D.IsAvailable(target) || !target.CanReceiveDamage || target.Owner.Kind != UnitKind.Player || struck.Contains(target)) return;
             var collider = UnitPhysics2D.Body(target);
-            if (collider == null || !HasSight(Center, collider.ClosestPoint(Center))) return;
+            if (collider == null || !HasSight(origin, collider.ClosestPoint(origin))) return;
             struck.Add(target); target.ApplyDamage(amount);
         }
         private void OnDisable() => ClearAttack();

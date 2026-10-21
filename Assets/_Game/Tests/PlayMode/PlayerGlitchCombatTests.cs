@@ -119,6 +119,32 @@ namespace ActionPlatformer.Tests
             Assert.That(Glitch.IsUnderground, Is.True);
         }
 
+        [UnityTest] public IEnumerator GlitchPresentationRecordsOnlySuccessfulMovesAndEmergence()
+        {
+            Set(glitchSettings, "cooldown", .5f);
+            Assert.That(Glitch.TryExecute(default, 0), Is.False);
+            Assert.That(player.GlitchPresentation.Version, Is.Zero);
+            Vector2 origin = player.GetComponent<CapsuleCollider2D>().bounds.center;
+            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.True);
+            Physics2D.SyncTransforms();
+            Assert.That(player.GlitchPresentation.Version, Is.EqualTo(1));
+            Assert.That(player.GlitchPresentation.From, Is.EqualTo(origin));
+            Assert.That(Vector2.Distance(player.GlitchPresentation.To, player.GetComponent<CapsuleCollider2D>().bounds.center), Is.LessThan(.001f));
+            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Left), .1), Is.False);
+            Assert.That(player.GlitchPresentation.Version, Is.EqualTo(1));
+            EnterUnderground(1);
+            Assert.That(player.GlitchPresentation.Version, Is.EqualTo(2));
+            Assert.That(player.GlitchPresentation.To, Is.EqualTo(Glitch.GroundMarkerPosition));
+            Glitch.MoveUnderground(.5f, .1f);
+            Vector2 marker = Glitch.GroundMarkerPosition;
+            Assert.That(Glitch.TryEmerge(), Is.True);
+            Physics2D.SyncTransforms();
+            Assert.That(player.GlitchPresentation.Version, Is.EqualTo(3));
+            Assert.That(player.GlitchPresentation.From, Is.EqualTo(marker));
+            Assert.That(Vector2.Distance(player.GlitchPresentation.To, player.GetComponent<CapsuleCollider2D>().bounds.center), Is.LessThan(.001f));
+            yield return null;
+        }
+
         private void RebuildPlayer(bool withGlitch, bool withCombat)
         {
             Object.DestroyImmediate(player.gameObject);

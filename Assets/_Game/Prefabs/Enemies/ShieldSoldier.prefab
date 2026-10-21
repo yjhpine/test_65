@@ -259,9 +259,9 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: -106798410, guid: 07532d07174de454e88aec22045cbc4d, type: 3}
+  m_Sprite: {fileID: 21300000, guid: aa883d3857ea0e6429e2ea53858d0785, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 1
+  m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
   m_Size: {x: 5.6, y: 5.6}
@@ -305,4 +305,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.EnemyVisual2D
   stateSource: {fileID: 2157661488461133436}
   shapeSprite: {fileID: 2537882373423050008, guid: 388ad2e908298d04bad8c352166b49ad, type: 3}
-  spriteFacesRight: 1
+  spriteFacesRight: 0

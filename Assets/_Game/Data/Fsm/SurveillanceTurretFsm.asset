@@ -31,6 +31,8 @@ MonoBehaviour:
   guardFrontThreshold: 0.16
   guardHeight: 0.68
   scanDuration: 1
+  idleTurnInterval: 3
+  idleTurnDuration: 0.5
   lockDuration: 0.4
   beamLength: 22
   beamWidth: 0.16

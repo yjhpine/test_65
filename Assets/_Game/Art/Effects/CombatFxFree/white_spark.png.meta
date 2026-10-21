@@ -1,0 +1,812 @@
+fileFormatVersion: 2
+guid: 34f1722206b4d1b459b1edc347afd564
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -6188178747017113829
+    second: white_spark_0
+  - first:
+      213: -9206098797318461643
+    second: white_spark_1
+  - first:
+      213: -3232406496765060383
+    second: white_spark_2
+  - first:
+      213: 2120748033830479734
+    second: white_spark_3
+  - first:
+      213: 2248466868148863272
+    second: white_spark_4
+  - first:
+      213: -2934011871153663861
+    second: white_spark_5
+  - first:
+      213: 949196724475082438
+    second: white_spark_6
+  - first:
+      213: 8551632839338642881
+    second: white_spark_7
+  - first:
+      213: 3362815685766544958
+    second: white_spark_8
+  - first:
+      213: -3983424804876030115
+    second: white_spark_9
+  - first:
+      213: -6576013197693214916
+    second: white_spark_10
+  - first:
+      213: 2482088511146837554
+    second: white_spark_11
+  - first:
+      213: -292515966485922187
+    second: white_spark_12
+  - first:
+      213: -5479663247036965447
+    second: white_spark_13
+  - first:
+      213: 2662799152390058004
+    second: white_spark_14
+  - first:
+      213: -7573759715938626397
+    second: white_spark_15
+  - first:
+      213: 152611980933764742
+    second: white_spark_16
+  - first:
+      213: 4004011127518562513
+    second: white_spark_17
+  - first:
+      213: 2496909986364771415
+    second: white_spark_18
+  - first:
+      213: -4424535146441883385
+    second: white_spark_19
+  - first:
+      213: 6190447118691660866
+    second: white_spark_20
+  - first:
+      213: 5090907993606636884
+    second: white_spark_21
+  - first:
+      213: 3721011776066887540
+    second: white_spark_22
+  - first:
+      213: 3010904285916084600
+    second: white_spark_23
+  - first:
+      213: -887309817778995322
+    second: white_spark_24
+  - first:
+      213: -1310086908401759108
+    second: white_spark_25
+  - first:
+      213: 5268356778859799352
+    second: white_spark_26
+  - first:
+      213: 5184267658955641206
+    second: white_spark_27
+  - first:
+      213: 8891673149761672161
+    second: white_spark_28
+  - first:
+      213: 7421353173861241011
+    second: white_spark_29
+  - first:
+      213: -169358246011805151
+    second: white_spark_30
+  - first:
+      213: -9001662417666379801
+    second: white_spark_31
+  - first:
+      213: -7638408447831628613
+    second: white_spark_32
+  - first:
+      213: -6382549870724967927
+    second: white_spark_33
+  - first:
+      213: 2612148147797876877
+    second: white_spark_34
+  - first:
+      213: 3114119923944045088
+    second: white_spark_35
+  - first:
+      213: -6023973407884142286
+    second: white_spark_36
+  - first:
+      213: -7994651599459302039
+    second: white_spark_37
+  - first:
+      213: -8233649184057039104
+    second: white_spark_38
+  - first:
+      213: 6208612145475186800
+    second: white_spark_39
+  - first:
+      213: -3437422357528905887
+    second: white_spark_40
+  - first:
+      213: 4414814871803845963
+    second: white_spark_41
+  - first:
+      213: 7949934398840130668
+    second: white_spark_42
+  - first:
+      213: 504954674674498734
+    second: white_spark_43
+  - first:
+      213: 3240822604954883457
+    second: white_spark_44
+  - first:
+      213: -4227397975553361566
+    second: white_spark_45
+  - first:
+      213: 263410169760546607
+    second: white_spark_46
+  - first:
+      213: 6639631235668685004
+    second: white_spark_47
+  - first:
+      213: 4968350655887735906
+    second: white_spark_48
+  - first:
+      213: 4260989076355845572
+    second: white_spark_49
+  - first:
+      213: 1164922542873071959
+    second: white_spark_50
+  - first:
+      213: -5460196665121241961
+    second: white_spark_51
+  - first:
+      213: 516189662178654912
+    second: white_spark_52
+  - first:
+      213: -8329949879845967442
+    second: white_spark_53
+  - first:
+      213: 4021920210077276737
+    second: white_spark_54
+  - first:
+      213: 4768847244795235611
+    second: white_spark_55
+  - first:
+      213: -2203920783829651692
+    second: white_spark_56
+  - first:
+      213: -1547596237010337550
+    second: white_spark_57
+  - first:
+      213: -566110927647424847
+    second: white_spark_58
+  - first:
+      213: -1111253409718208788
+    second: white_spark_59
+  - first:
+      213: 8985955553451217399
+    second: white_spark_60
+  - first:
+      213: 3248865072037662922
+    second: white_spark_61
+  - first:
+      213: -417275605583732747
+    second: white_spark_62
+  - first:
+      213: -1143266332287934292
+    second: white_spark_63
+  - first:
+      213: 4076834035245932292
+    second: white_spark_64
+  - first:
+      213: 8292676545876206370
+    second: white_spark_65
+  - first:
+      213: -7453023817294866905
+    second: white_spark_66
+  - first:
+      213: -1398324087197501636
+    second: white_spark_67
+  - first:
+      213: -219359336694088888
+    second: white_spark_68
+  - first:
+      213: -1343106879806588916
+    second: white_spark_69
+  - first:
+      213: 2415676247617080441
+    second: white_spark_70
+  - first:
+      213: -2654108474642149590
+    second: white_spark_71
+  - first:
+      213: -5278623004408297130
+    second: white_spark_72
+  - first:
+      213: -1997128738481574903
+    second: white_spark_73
+  - first:
+      213: 853267234545048204
+    second: white_spark_74
+  - first:
+      213: -4029528326869942540
+    second: white_spark_75
+  - first:
+      213: 6413132654183143513
+    second: white_spark_76
+  - first:
+      213: -849730905234052543
+    second: white_spark_77
+  - first:
+      213: 5848393664810085335
+    second: white_spark_78
+  - first:
+      213: 4217744047357492421
+    second: white_spark_79
+  - first:
+      213: -5665222462380444188
+    second: white_spark_80
+  - first:
+      213: 1921353795530568023
+    second: white_spark_81
+  - first:
+      213: 7694004797819865905
+    second: white_spark_82
+  - first:
+      213: 2904628463991594446
+    second: white_spark_83
+  - first:
+      213: 7707622255240348498
+    second: white_spark_84
+  - first:
+      213: 8564954617115518467
+    second: white_spark_85
+  - first:
+      213: 6647651048558552606
+    second: white_spark_86
+  - first:
+      213: -4479672380412237078
+    second: white_spark_87
+  - first:
+      213: -9106288283471021679
+    second: white_spark_88
+  - first:
+      213: 3147058440778423764
+    second: white_spark_89
+  - first:
+      213: 1264838536215329794
+    second: white_spark_90
+  - first:
+      213: 955531749644015748
+    second: white_spark_91
+  - first:
+      213: 7225962357911516157
+    second: white_spark_92
+  - first:
+      213: -7827835655413958652
+    second: white_spark_93
+  - first:
+      213: -4135465513105473797
+    second: white_spark_94
+  - first:
+      213: 7939581453087795212
+    second: white_spark_95
+  - first:
+      213: -4181474995310650191
+    second: white_spark_96
+  - first:
+      213: 1868253673618189331
+    second: white_spark_97
+  - first:
+      213: -2148554328778237255
+    second: white_spark_98
+  - first:
+      213: 5457425398618040130
+    second: white_spark_99
+  - first:
+      213: -8528797002407347961
+    second: white_spark_100
+  - first:
+      213: -8678263083439847777
+    second: white_spark_101
+  - first:
+      213: -8777624112641363283
+    second: white_spark_102
+  - first:
+      213: 2882405333265643120
+    second: white_spark_103
+  - first:
+      213: -3596100557097793327
+    second: white_spark_104
+  - first:
+      213: 4321158754182810899
+    second: white_spark_105
+  - first:
+      213: -5548494831525052765
+    second: white_spark_106
+  - first:
+      213: -6252473780986422492
+    second: white_spark_107
+  - first:
+      213: -577812251056817833
+    second: white_spark_108
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 128
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 0
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: white_spark_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c6f2427cddf3d6043998b004b4fd6f33
+      internalID: 2112256109
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_01
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 529bf92c2c19edb479ba347fa9501223
+      internalID: -37386870
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_02
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cdb224d68f4df51408c6a4bcd8cef1f9
+      internalID: 389439993
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_03
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 83b20cb637ce81f4e8dea90df4444934
+      internalID: 249156834
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_04
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0233dbaea1c5233469d9078ac0128c1f
+      internalID: -382572648
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_05
+      rect:
+        serializedVersion: 2
+        x: 640
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 945280f8e6eef2240875c87a0242f97c
+      internalID: 751585459
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_06
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: af2ea791446f1144f9e215128a3d6b3e
+      internalID: -1932180155
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_07
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 128
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 75d2d846ddfb4ed4a930a1f39b502e29
+      internalID: 250196589
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_08
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: dd2dbc1b9f17e714c83d99a44bcccf93
+      internalID: 1001742312
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_09
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9060894ac34c6c04a8afc6a1da7fc07e
+      internalID: 1576805918
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_10
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9273903f3d95f3e4d97580f0f0870fa5
+      internalID: -6576013197693214916
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_11
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4959127cb7d2e2c4697ef51d9cc99d3a
+      internalID: 2482088511146837554
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_12
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3392aa8c26aeb014885dc3c05de084fa
+      internalID: -292515966485922187
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_13
+      rect:
+        serializedVersion: 2
+        x: 640
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: cfb45d299db6b8748919dd5d524a74f0
+      internalID: -5479663247036965447
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_14
+      rect:
+        serializedVersion: 2
+        x: 768
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ec3e4e1735b28d04f8c84265bcf14319
+      internalID: 2662799152390058004
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: white_spark_15
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 0
+        width: 128
+        height: 128
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 563ab64190ddc604f828aa6ded12f521
+      internalID: -7573759715938626397
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 4cae066771916374eb20a836ee923c47
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      white_spark_00: 2112256109
+      white_spark_01: -37386870
+      white_spark_02: 389439993
+      white_spark_03: 249156834
+      white_spark_04: -382572648
+      white_spark_05: 751585459
+      white_spark_06: -1932180155
+      white_spark_07: 250196589
+      white_spark_08: 1001742312
+      white_spark_09: 1576805918
+      white_spark_10: -6576013197693214916
+      white_spark_11: 2482088511146837554
+      white_spark_12: -292515966485922187
+      white_spark_13: -5479663247036965447
+      white_spark_14: 2662799152390058004
+      white_spark_15: -7573759715938626397
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

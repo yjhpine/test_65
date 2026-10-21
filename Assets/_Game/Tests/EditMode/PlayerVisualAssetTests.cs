@@ -9,6 +9,28 @@ namespace ActionPlatformer.Tests
 {
     public sealed class PlayerVisualAssetTests
     {
+        [Test] public void PlayerEffectsHaveAllOrderedFramesAndDoNotAddGameplayComponents()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");
+            var visual = prefab.GetComponentInChildren<PlayerVisual>();
+            var data = new SerializedObject(visual);
+            foreach (var pair in new[] { new[] { "basicAttackEffectFrames", "white_slash" }, new[] { "glitchEffectFrames", "white_spark" } })
+            {
+                var frames = data.FindProperty(pair[0]); Assert.That(frames.arraySize, Is.EqualTo(16));
+                for (int i = 0; i < frames.arraySize; i++)
+                {
+                    var frame = (Sprite)frames.GetArrayElementAtIndex(i).objectReferenceValue;
+                    Assert.That(frame, Is.Not.Null);
+                    Assert.That(frame.name, Is.EqualTo(pair[1] + "_" + i.ToString("D2")));
+                    Assert.That(frame.rect.size, Is.EqualTo(new Vector2(128,128)));
+                    Assert.That(frame.pivot, Is.EqualTo(new Vector2(64,64)));
+                    Assert.That(frame.pixelsPerUnit, Is.EqualTo(128f));
+                    Assert.That(AssetDatabase.GetAssetPath(frame), Does.StartWith("Assets/_Game/Art/Effects/CombatFxFree/"));
+                }
+            }
+            Assert.That(visual.GetComponentsInChildren<Collider2D>(true), Is.Empty);
+            Assert.That(visual.GetComponent<Animator>().applyRootMotion, Is.False);
+        }
         [Test] public void PlayerActionsHaveCompleteSpriteOnlyClipsAndGuardedLocomotion()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");
