@@ -14,6 +14,8 @@ namespace ActionPlatformer.Tests
         private GameObject root;
         private Camera camera;
         private RenderTexture target;
+        private Texture2D beltTexture;
+        private Sprite beltSprite;
         private float savedTimeScale;
         private readonly Vector3 cameraOrigin = new Vector3(4f, 3f, -10f);
 
@@ -38,9 +40,11 @@ namespace ActionPlatformer.Tests
             Object.DestroyImmediate(root);
             target.Release();
             Object.DestroyImmediate(target);
+            if (beltSprite != null) Object.DestroyImmediate(beltSprite);
+            if (beltTexture != null) Object.DestroyImmediate(beltTexture);
         }
 
-        private ParallaxLayer2D Layer(float speed)
+        private ParallaxLayer2D Layer(float speed, bool repeat = false)
         {
             var go = new GameObject("Background " + speed);
             go.SetActive(false);
@@ -50,6 +54,22 @@ namespace ActionPlatformer.Tests
             var data = new SerializedObject(layer);
             data.FindProperty("viewCamera").objectReferenceValue = camera;
             data.FindProperty("scrollSpeed").floatValue = speed;
+            if (repeat)
+            {
+                if (beltSprite == null)
+                {
+                    beltTexture = new Texture2D(32, 16);
+                    beltSprite = Sprite.Create(beltTexture, new Rect(0, 0, 32, 16), new Vector2(.5f, .5f), 1, 0, SpriteMeshType.FullRect);
+                }
+                var primary = go.AddComponent<SpriteRenderer>();
+                primary.sprite = beltSprite;
+                var copy = new GameObject("Repeat").AddComponent<SpriteRenderer>();
+                copy.transform.SetParent(go.transform, false);
+                copy.transform.localPosition = Vector3.right * 32;
+                copy.sprite = beltSprite;
+                copy.flipX = true;
+                data.FindProperty("repeatImage").objectReferenceValue = copy;
+            }
             data.ApplyModifiedPropertiesWithoutUndo();
             go.SetActive(true);
             return layer;
@@ -150,6 +170,98 @@ namespace ActionPlatformer.Tests
             mover.Position = cameraOrigin + Vector3.right * 12;
             yield return RenderFrame(camera);
             PositionIs(layer.transform, new Vector3(26, 5, 2));
+        }
+
+        private void BeltCoversCamera(ParallaxLayer2D layer)
+        {
+            var images = layer.GetComponentsInChildren<SpriteRenderer>();
+            Assert.That(images.Length, Is.EqualTo(2), "The belt must reuse exactly two images.");
+            var a = images[0].bounds;
+            var b = images[1].bounds;
+            if (a.min.x > b.min.x) { var swap = a; a = b; b = swap; }
+            float halfWidth = camera.orthographicSize * camera.aspect;
+            Assert.That(a.min.x, Is.LessThanOrEqualTo(camera.transform.position.x - halfWidth + .002f));
+            Assert.That(b.max.x, Is.GreaterThanOrEqualTo(camera.transform.position.x + halfWidth - .002f));
+            Assert.That(a.max.x, Is.EqualTo(b.min.x).Within(.002f), "Image edges must meet without a gap or overlap.");
+            Assert.That(images[0].flipX, Is.False);
+            Assert.That(images[1].flipX, Is.True);
+        }
+
+        [UnityTest] public IEnumerator TwoImagesCoverBothDirectionsAndMultiWidthTeleportsWhilePaused()
+        {
+            Time.timeScale = 0;
+            foreach (float speed in new[] { 0f, .1f, .25f, 1f })
+            {
+                camera.transform.position = cameraOrigin;
+                var layer = Layer(speed, true);
+                foreach (float x in new[] { 4f, 43f, 110f, -60f, -180f, 10004f, -10004f, 4f })
+                {
+                    camera.transform.position = new Vector3(x, 3, -10);
+                    yield return RenderFrame(camera);
+                    BeltCoversCamera(layer);
+                }
+                Object.DestroyImmediate(layer.gameObject);
+            }
+        }
+
+        [UnityTest] public IEnumerator OnlyTheOffscreenImageRecyclesAndVisibleImageDoesNotJump()
+        {
+            var layer = Layer(1, true);
+            var primary = layer.GetComponent<SpriteRenderer>();
+            var copy = layer.transform.Find("Repeat");
+            camera.transform.position = new Vector3(22, 3, -10);
+            yield return RenderFrame(camera);
+            Vector3 primaryPosition = primary.transform.position;
+            Vector3 copyPosition = copy.position;
+            camera.transform.position = new Vector3(43, 3, -10);
+            yield return RenderFrame(camera);
+            PositionIs(copy, copyPosition);
+            PositionIs(primary.transform, primaryPosition + Vector3.right * 64);
+            BeltCoversCamera(layer);
+            camera.transform.position = new Vector3(22, 3, -10);
+            yield return RenderFrame(camera);
+            PositionIs(copy, copyPosition);
+            PositionIs(primary.transform, primaryPosition);
+        }
+
+        [UnityTest] public IEnumerator BeltPreservesParallaxRateAndRestoresBothImagesOnDisable()
+        {
+            var layer = Layer(.25f, true);
+            yield return RenderFrame(camera);
+            Vector3 first = layer.transform.position;
+            camera.transform.position += Vector3.right * 10;
+            yield return RenderFrame(camera);
+            PositionIs(layer.transform, first + Vector3.right * 7.5f);
+            camera.transform.position += Vector3.right * 5000;
+            yield return RenderFrame(camera);
+            BeltCoversCamera(layer);
+            layer.enabled = false;
+            PositionIs(layer.transform, new Vector3(20, 5, 2));
+            Assert.That(layer.transform.Find("Repeat").localPosition, Is.EqualTo(Vector3.right * 32));
+            yield return RenderFrame(camera);
+            PositionIs(layer.transform, new Vector3(20, 5, 2));
+            layer.enabled = true;
+            yield return RenderFrame(camera);
+            BeltCoversCamera(layer);
+        }
+
+        [UnityTest] public IEnumerator TiledAndScaledImagesUseWorldWidthAfterZoomChanges()
+        {
+            var layer = Layer(.1f, true);
+            foreach (var image in layer.GetComponentsInChildren<SpriteRenderer>())
+            {
+                image.drawMode = SpriteDrawMode.Tiled;
+                image.size = new Vector2(48, 16);
+            }
+            layer.transform.localScale = new Vector3(1.25f, 1, 1);
+            camera.orthographicSize = 15;
+            camera.aspect = 1.5f; // View width 45, each belt image width 60.
+            foreach (float x in new[] { -2000f, 2000f, 4f })
+            {
+                camera.transform.position = new Vector3(x, 3, -10);
+                yield return RenderFrame(camera);
+                BeltCoversCamera(layer);
+            }
         }
     }
 

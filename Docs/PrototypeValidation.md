@@ -635,3 +635,11 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - Unity 재컴파일 성공. PlayMode `ParallaxLayerTests` **5/5 통과**, 16:37:19 KST, 결과 `Library/PrototypeValidation/ParallaxPlayMode.xml`. 실제 URP 카메라를 렌더링하며 정지 시간의 레이어별 속도, 왕복/줌/반복 렌더의 누적 오차, 비활성화 복원과 재활성화, 다른 카메라 무시, LateUpdate 이동의 같은 프레임 반영을 검사했다.
 - 실제 레벨을 자동 입력으로 23.4초/702프레임/30 FPS 플레이했다. 대화 카메라 전환·이동·점프·글리치·전투·적 4종 처치·클리어를 확인했다. 카메라 X 7.5~48.55416 범위에서 레이어 이동량과 설정 비율의 최대 차이는 0.000009346 유닛이었다. 모든 프레임에서 배경 3장의 경계가 카메라 화면을 덮었으며 빈틈 검출은 0건이었다.
 - 영상 `Exports/Environment/Parallax-20261021/Parallax-Gameplay.mp4`, 계측 `parallax.csv` 및 `timeline.csv`. 대화·전투 이동·출구 구간 캡처를 검토했고 MP4 전체 디코딩도 통과했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 배경 두 장 무한 반복 벨트
+
+- CoreLoopStage의 Base/Far/Mid 각각에 기존 스프라이트를 공유하는 `Repeat` 자식을 연결했다. 총 6개의 SpriteRenderer를 재배치하며, 두 번째 장을 가로 반전해 연결되는 가장자리 무늬를 맞췄다. 최신 스크롤 계수 0.05/0.1/0.25, 원본 이미지·임포트 설정·카메라·플레이어·적·지형 충돌은 유지했다. 가로 반복이며 한 장의 너비가 카메라 화면 너비 이상이어야 한다.
+- Unity C# 재컴파일 성공. PlayMode `ParallaxLayerTests` **9/9 통과**, 16:59:31 KST, 결과 `Library/PrototypeValidation/BackgroundBeltPlayMode.xml`. 기존 5개 검사와 함께 양방향/여러 장 너비 순간 이동, 화면 밖 장만 재배치, 속도 유지와 비활성화 복원, Tiled·Transform 스케일·카메라 줌을 검사했다.
+- 실제 씬 배경으로 카메라 X ±10,000/±5,000 순간 이동 및 1,200→1,600→1,200 왕복을 실행했다. 305개 표본에서 화면 덮임 실패 0건, 두 장의 경계 차이 최대 0, 레이어별 재배치 2회씩, SpriteRenderer 6개 유지를 확인했다. 최초 임시 검증 도구가 원본 장의 재배치만 세어 원경 반복을 누락했으므로 복제 장도 세도록 고친 뒤 재검증했다. 이 계측 수정으로 게임 코드는 변경하지 않았다.
+- 실제 Game View의 배경 경계 왕복 영상 `Exports/Environment/BackgroundBelt-20261021/Background-Belt.mp4`는 10초/300프레임/30 FPS/1280×720이다. 일반 플레이 대신 카메라를 레벨 밖까지 이동시킨 반복 검증 영상이다. 경계 전후 캡처를 직접 확인했고 MP4 전체 디코딩 검사도 통과했다.
+- 종료 시 콘솔 오류 0건, CoreLoopStage dirty=false, Play Mode 정지, Time.timeScale=1, Time.captureDeltaTime=0, runInBackground=false를 확인했다. 임시 카메라·시간·녹화 설정을 복원했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
