@@ -15,7 +15,7 @@ namespace ActionPlatformer.Tests
     public sealed class StageFlowTests
     {
         private const int ExpectedEnemyCount = 4;
-        private const float StageWidth = 104f;
+        private const float StageWidth = 217f;
         private StageFlowController flow;
         private PlayerUnit player;
         private StageGoal goal;
@@ -49,6 +49,22 @@ namespace ActionPlatformer.Tests
             var stage = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageFlowController>(true)).Single();
             typeof(StageFlowController).GetField("encounters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(stage, null);
+            // Isolate the original four-kind objective independently of the authored 2/3/4/5 course.
+            var authored = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<UnitHealth>(true))
+                .Where(h => h.GetComponent<PlayerUnit>() == null).ToArray();
+            string[] kinds = { "enemy.patrol", "enemy.shieldsoldier", "enemy.flyingdrone", "enemy.surveillanceturret" };
+            Vector2[] positions = { new Vector2(24, .52f), new Vector2(34, .82f), new Vector2(42, 4), new Vector2(50, .62f) };
+            var selected = kinds.Select(id => authored.First(h => h.GetComponent<ActionPlatformer.Units.Unit>().Definition.UnitId == id)).ToArray();
+            foreach (var enemy in authored) enemy.gameObject.SetActive(false);
+            var root = new GameObject("Legacy Objective Test Enemies");
+            for (int i = 0; i < selected.Length; i++)
+            {
+                selected[i].transform.SetParent(root.transform);
+                selected[i].transform.position = positions[i];
+                selected[i].gameObject.SetActive(true);
+            }
+            typeof(StageFlowController).GetField("requiredEnemies", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(stage, selected);
             foreach (var gate in scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageGate>(true))) gate.SetLocked(false);
         }
 
@@ -59,8 +75,7 @@ namespace ActionPlatformer.Tests
             player = flow.Player;
             goal = Object.FindFirstObjectByType<StageGoal>();
             view = Object.FindFirstObjectByType<StageFlowView>();
-            enemies = Object.FindObjectsByType<UnitHealth>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .Where(h => h.gameObject.scene == flow.gameObject.scene && h.Owner != null && h.Owner != player).ToArray();
+            enemies = flow.ActiveEnemies.ToArray();
             player.SetInputSource(new Driver());
             // These tests isolate gameplay; the cinematic suite covers automatic entry.
             var intro = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneTrigger>();
@@ -122,7 +137,7 @@ namespace ActionPlatformer.Tests
             Assert.That(floor.GetComponent<BoxCollider2D>().size.x, Is.EqualTo(60f));
             Assert.That(floor.GetComponent<SpriteRenderer>().size.x, Is.EqualTo(60f));
             var ledges = floor.parent.Cast<Transform>().Where(t => t.name.StartsWith("Ledge ")).OrderBy(t => t.position.x).ToArray();
-            Assert.That(ledges.Select(t => t.position.x), Is.EqualTo(new[] { 20f, 36f, 52f }));
+            Assert.That(ledges.Select(t => t.position.x), Is.EqualTo(new[] { 26.5f, 36.5f, 45f }));
             Assert.That(floor.parent.Find("Right Boundary").position.x, Is.EqualTo(StageWidth + .5f));
             Assert.That(enemies.All(e => e.transform.position.x > 0f && e.transform.position.x < StageWidth), Is.True);
             Assert.That(goal.IsUnlocked, Is.False);
@@ -273,6 +288,9 @@ namespace ActionPlatformer.Tests
                 enemy.GetComponent<GroundMovement2D>()?.Stop();
             }
             var target = enemies.Single(e => e.Owner.Definition.UnitId == "enemy.patrol");
+            // Keep the emergence column clear; the authored course now has a low ledge at x=25..28.
+            target.GetComponent<Rigidbody2D>().position = new Vector2(22f, .52f);
+            Physics2D.SyncTransforms();
             player.Motor.Teleport(new Vector2(target.transform.position.x - 3f, .82f));
             yield return new WaitForFixedUpdate();
             yield return null;
@@ -378,7 +396,7 @@ namespace ActionPlatformer.Tests
             float deadline = Time.realtimeSinceStartup + 120f;
             while (flow.State == StageState.Playing && Time.realtimeSinceStartup < deadline)
             {
-                var cutscene = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneRunner>();
+                var cutscene = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneCoordinator>().Active;
                 if (cutscene != null && cutscene.IsRunning) { cutscene.Skip(); yield return null; continue; }
                 var closest = enemies.Where(e => e.IsAlive)
                     .OrderBy(e => Mathf.Abs(e.transform.position.x - player.Motor.Position.x)).FirstOrDefault();

@@ -34,7 +34,7 @@ namespace ActionPlatformer.Tests
             Time.timeScale = 1;
             yield return SceneManager.LoadSceneAsync("CoreLoopStage");
             yield return null;
-            runner = Object.FindFirstObjectByType<CutsceneRunner>();
+            runner = Object.FindFirstObjectByType<CutsceneTrigger>().GetComponentInParent<CutsceneRunner>();
             player = runner.Player; stage = Object.FindFirstObjectByType<StageFlowController>();
             trigger = Object.FindFirstObjectByType<CutsceneTrigger>();
             Assert.That(stage.isActiveAndEnabled, Is.True);

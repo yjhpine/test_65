@@ -20,6 +20,8 @@ namespace ActionPlatformer.Flow
         [SerializeField] private StageGoal goal;
         [SerializeField] private StageFlowView view;
         [SerializeField] private CutsceneCoordinator cinematics;
+        [Tooltip("Optional one-shot reveal after the final encounter, before the player can finish at the goal.")]
+        [SerializeField] private CutsceneRunner finalWaveCutscene;
         [Tooltip("Optional ordered encounter loop. Empty keeps the original single-stage objective.")]
         [SerializeField] private StageEncounter[] encounters;
         [SerializeField] private LayerMask transferTerrainMask = 1;
@@ -38,10 +40,13 @@ namespace ActionPlatformer.Flow
         private int passedWaypoint;
         private Vector2 bodyOffset;
         private bool transferRequested;
+        private bool finalWaveCutsceneAttempted;
+        private double finalWaveRevealReadyAt = double.PositiveInfinity;
 
         public StageState State { get; private set; } = StageState.Playing;
         public int RemainingEnemies { get; private set; }
         public PlayerUnit Player => player;
+        public CutsceneRunner FinalWaveCutscene => finalWaveCutscene;
         public bool UsesEncounters => encounters != null && encounters.Length > 0;
         public EncounterPhase Phase { get; private set; }
         public int CurrentEncounterIndex { get; private set; }
@@ -170,6 +175,19 @@ namespace ActionPlatformer.Flow
             if (State != StageState.Playing || (cinematics != null && cinematics.IsBusy)) return;
             if (UsesEncounters && UpdateEncounter()) return;
             if (!UpdateObjective()) return;
+            if (UsesEncounters && RemainingEnemies == 0 && finalWaveCutscene != null && !finalWaveCutsceneAttempted)
+            {
+                view.ShowGoalHint(false);
+                // Let the authored death animations (up to 0.8s) finish before pausing the scene.
+                if (double.IsPositiveInfinity(finalWaveRevealReadyAt)) finalWaveRevealReadyAt = Time.timeAsDouble + .85;
+                // Finish combat-owned time effects before the cutscene acquires the camera and pauses the world.
+                if (Time.timeScale <= 0 || Time.timeAsDouble < finalWaveRevealReadyAt || player.IsControlLocked ||
+                    (player.Feedback?.IsTimeEffectActive ?? false)) return;
+                finalWaveCutsceneAttempted = true;
+                if (!finalWaveCutscene.TryPlay())
+                    Debug.LogWarning("Final-wave cutscene could not start; the unlocked exit remains available.", this);
+                return;
+            }
             bool inside = player.isActiveAndEnabled && !player.IsUnderground && goal.Contains(playerBody);
             view.ShowGoalHint(inside && RemainingEnemies > 0);
             if (inside && RemainingEnemies == 0) Complete();

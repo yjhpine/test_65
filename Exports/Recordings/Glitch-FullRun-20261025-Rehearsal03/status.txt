@@ -1,0 +1,1 @@
+90.0s wave=2 phase=Combat enemies=1 hp=4 glitches=13 position=(82.72, 3.25) target=FlyingDrone

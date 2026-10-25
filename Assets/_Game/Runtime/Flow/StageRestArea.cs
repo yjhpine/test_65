@@ -20,7 +20,9 @@ namespace ActionPlatformer.Flow
 
         public bool TryArrival(CapsuleCollider2D body, int terrainMask, List<Collider2D> overlaps, out Vector2 position)
         {
-            Vector2 offset = (Vector2)body.bounds.center - (Vector2)body.transform.position;
+            // Bounds use the physics pose; the interpolated Transform can still show the previous step.
+            // Derive the collider's offset without mixing those two positions.
+            Vector2 offset = body.transform.TransformVector(body.offset);
             position = new Vector2(arrival.position.x, floor.bounds.max.y + body.bounds.extents.y + .02f - offset.y);
             return floor.enabled && floor.gameObject.activeInHierarchy &&
                 position.x - body.bounds.extents.x >= area.bounds.min.x &&

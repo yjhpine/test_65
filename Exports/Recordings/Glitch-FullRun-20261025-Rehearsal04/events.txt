@@ -1,0 +1,51 @@
+0.00s WAVE 1
+2.87s DIALOGUE 앞쪽 발판을 따라 이동해 보세요.
+5.28s DIALOGUE 출구는 어떻게 열죠?
+7.70s DIALOGUE 모든 적을 쓰러뜨리면 오른쪽 출구가 열립니다.
+12.25s GLITCH Right target=SurveillanceTurret position=(29.975, 0.840) underground=False
+12.32s ATTACK Side
+12.60s ATTACK Side
+12.88s ATTACK Side
+13.12s GLITCH Up target=SurveillanceTurret position=(29.000, 2.170) underground=False
+13.18s ATTACK Slam
+13.52s ATTACK Side
+13.80s ATTACK Side
+14.03s GLITCH Down target=SurveillanceTurret position=(28.965, 0.805) underground=True
+14.30s ATTACK Emergence
+14.72s GLITCH Right target=SurveillanceTurret position=(29.975, 0.840) underground=False
+14.78s ATTACK Side
+15.07s ATTACK Side
+15.58s GLITCH Right target=SurveillanceTurret position=(37.475, 3.840) underground=False
+15.65s ATTACK Side
+15.93s ATTACK Side
+16.22s ATTACK Side
+16.45s GLITCH Up target=SurveillanceTurret position=(36.500, 5.170) underground=False
+16.52s ATTACK Slam
+16.85s ATTACK Side
+17.13s ATTACK Side
+17.37s GLITCH Left target=SurveillanceTurret position=(35.525, 3.840) underground=False
+17.42s ATTACK Side
+17.70s ATTACK Side
+17.98s ATTACK Side
+19.85s REST hp=100
+21.83s WAVE 2
+22.25s GLITCH Right target=PatrolEnemy position=(81.975, 0.840) underground=False
+22.32s ATTACK Side
+22.60s ATTACK Side
+22.88s ATTACK Side
+23.52s ATTACK Side
+23.78s GLITCH Left target=PatrolEnemy position=(75.837, 0.840) underground=False
+23.85s ATTACK Side
+24.93s GLITCH Right target=SurveillanceTurret position=(89.475, 3.840) underground=False
+25.00s ATTACK Side
+25.30s ATTACK Side
+25.90s GLITCH Up target=SurveillanceTurret position=(88.500, 5.170) underground=False
+25.97s ATTACK Slam
+26.30s ATTACK Side
+26.58s ATTACK Side
+26.82s GLITCH Left target=SurveillanceTurret position=(87.525, 3.840) underground=False
+26.87s ATTACK Side
+27.15s ATTACK Side
+27.43s ATTACK Side
+27.68s GLITCH Left target=SurveillanceTurret position=(87.525, 3.840) underground=False
+27.75s ATTACK Side

@@ -36,7 +36,8 @@ namespace ActionPlatformer.Tests
             var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath(path);
             bool opened = !scene.IsValid() || !scene.isLoaded;
             if (opened) scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(path, UnityEditor.SceneManagement.OpenSceneMode.Additive);
-            var runner = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<CutsceneRunner>(true)).Single();
+            var runner = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<CutsceneTrigger>(true)).Single()
+                .GetComponentInParent<CutsceneRunner>();
             var follow = runner.Coordinator.CameraRig.Output.transform.parent.GetComponent<ActionPlatformer.Flow.StageCameraFollow>();
             var window = UnityEditor.Timeline.TimelineEditor.GetOrCreateWindow();
             bool followEnabled = follow.enabled, brainEnabled = runner.Coordinator.CameraRig.Brain.enabled;

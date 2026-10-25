@@ -64,43 +64,74 @@ namespace ActionPlatformer.Tests
         }
         private IEnumerator EnterNextRoom()
         {
-            player.Motor.Teleport(new Vector2(71, .82f));
+            int nextIndex = flow.CurrentEncounterIndex + 1;
+            var previousRest = flow.CurrentRestArea;
+            player.Motor.Teleport(new Vector2(previousRest.NextEntry.EntryX - 1.15f, .82f));
             driver.Command = new PlayerCommand { Move = Vector2.right };
             float deadline = Time.realtimeSinceStartup + 3;
-            while (flow.CurrentEncounterIndex == 0 && Time.realtimeSinceStartup < deadline) yield return null;
+            while (flow.CurrentEncounterIndex != nextIndex && Time.realtimeSinceStartup < deadline) yield return null;
             driver.Command = default;
-            Assert.That(flow.CurrentEncounterIndex, Is.EqualTo(1));
+            Assert.That(flow.CurrentEncounterIndex, Is.EqualTo(nextIndex));
             Assert.That(flow.Phase, Is.EqualTo(EncounterPhase.Combat));
-            Assert.That(rest.NextEntry.IsLocked, Is.True);
+            Assert.That(previousRest.NextEntry.IsLocked, Is.True);
         }
         [UnityTest] public IEnumerator WholeCycleHealsOnceActivatesNextRoomAndCompletes()
         {
-            Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(4));
+            Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(2));
             var all = Object.FindObjectsByType<UnitHealth>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .Where(h => h != health).ToArray();
-            Assert.That(all.Length, Is.EqualTo(6));
-            Assert.That(all.Count(h => !h.gameObject.activeInHierarchy), Is.EqualTo(2));
+            Assert.That(all.Length, Is.EqualTo(14));
+            Assert.That(all.Count(h => !h.gameObject.activeInHierarchy), Is.EqualTo(12));
             Assert.That(all.Where(h => !h.gameObject.activeInHierarchy).All(h => !h.CanReceiveDamage && h.MaxHealth == 0), Is.True);
-            health.ApplyDamage(20); yield return null;
-            KillRoom(); yield return RequestTransfer(); yield return Until(EncounterPhase.Transferring);
-            float before = player.Motor.Position.x; yield return new WaitForFixedUpdate();
-            Assert.That(player.Motor.Position.x, Is.GreaterThan(before));
-            Assert.That(player.transform.position.x, Is.EqualTo(player.Motor.Position.x).Within(.001f));
-            yield return Until(EncounterPhase.Rest);
-            AssertRestored(); Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
-            Assert.That(player.Motor.Position.x, Is.EqualTo(66f).Within(.03f)); Assert.That(rest.Visited, Is.True);
-            Assert.That(flow.State, Is.EqualTo(StageState.Playing));
-            health.ApplyDamage(1); yield return null;
-            Assert.That(rest.TryVisit(health, player.GetComponent<Collider2D>()), Is.False);
-            yield return new WaitForSeconds(.4f);
-            Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth - 1));
-            Assert.That(all.Count(h => h.gameObject.activeInHierarchy && h.IsAlive), Is.Zero);
-            yield return EnterNextRoom();
-            Assert.That(flow.RemainingEnemies, Is.EqualTo(2)); Assert.That(flow.ActiveEnemies.All(h => h.IsAlive), Is.True);
-            var goal = Object.FindFirstObjectByType<StageGoal>(); Assert.That(goal.IsUnlocked, Is.False);
+            var goal = Object.FindFirstObjectByType<StageGoal>();
+            float[] destinations = { 66, 116, 168 };
+            string[][] expectedKinds = {
+                new[] { "enemy.surveillanceturret", "enemy.surveillanceturret" },
+                new[] { "enemy.patrol", "enemy.surveillanceturret", "enemy.flyingdrone" },
+                new[] { "enemy.patrol", "enemy.surveillanceturret", "enemy.flyingdrone", "enemy.surveillanceturret" },
+                new[] { "enemy.patrol", "enemy.surveillanceturret", "enemy.flyingdrone", "enemy.surveillanceturret", "enemy.shieldsoldier" }
+            };
+            for (int wave = 0; wave < 4; wave++)
+            {
+                Assert.That(flow.CurrentEncounterIndex, Is.EqualTo(wave));
+                Assert.That(flow.RemainingEnemies, Is.EqualTo(wave + 2));
+                Assert.That(flow.ActiveEnemies.Select(h => h.Owner.Definition.UnitId), Is.EquivalentTo(expectedKinds[wave]));
+                Assert.That(all.Count(h => h.gameObject.activeInHierarchy && h.IsAlive), Is.EqualTo(wave + 2));
+                Assert.That(goal.IsUnlocked, Is.False);
+                if (wave == 3) break;
+                var currentRest = flow.CurrentRestArea;
+                Assert.That(currentRest.Visited, Is.False);
+                health.ApplyDamage(20); yield return null;
+                KillRoom(); yield return RequestTransfer(); yield return Until(EncounterPhase.Transferring);
+                float before = player.Motor.Position.x; yield return new WaitForFixedUpdate();
+                Assert.That(player.Motor.Position.x, Is.GreaterThan(before));
+                Assert.That(player.transform.position.x, Is.EqualTo(player.Motor.Position.x).Within(.001f));
+                yield return Until(EncounterPhase.Rest);
+                AssertRestored(); Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
+                Assert.That(player.Motor.Position.x, Is.EqualTo(destinations[wave]).Within(.03f));
+                Assert.That(currentRest.Visited, Is.True); Assert.That(goal.IsUnlocked, Is.False);
+                health.ApplyDamage(1); yield return null;
+                Assert.That(currentRest.TryVisit(health, player.GetComponent<Collider2D>()), Is.False);
+                yield return new WaitForSeconds(.4f);
+                Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth - 1));
+                Assert.That(all.Count(h => h.gameObject.activeInHierarchy && h.IsAlive), Is.Zero);
+                Assert.That(flow.State, Is.EqualTo(StageState.Playing));
+                yield return EnterNextRoom();
+            }
+            Assert.That(flow.CurrentRestArea, Is.Null);
             KillRoom(); yield return null; yield return null;
             Assert.That(goal.IsUnlocked, Is.True);
-            player.Motor.Teleport(new Vector2(102, .82f)); Physics2D.SyncTransforms(); yield return null; yield return null;
+            float revealStartDeadline = Time.realtimeSinceStartup + 5;
+            while (!flow.FinalWaveCutscene.IsRunning && Time.realtimeSinceStartup < revealStartDeadline) yield return null;
+            Assert.That(flow.FinalWaveCutscene.IsRunning, Is.True);
+            Assert.That(flow.ActiveEnemies.All(enemy => !enemy.gameObject.activeInHierarchy), Is.True,
+                "Death animations must finish before the reveal pauses the scene.");
+            flow.FinalWaveCutscene.Skip();
+            float revealDeadline = Time.realtimeSinceStartup + 3;
+            while (flow.FinalWaveCutscene.IsRunning && Time.realtimeSinceStartup < revealDeadline) yield return null;
+            Assert.That(flow.FinalWaveCutscene.IsRunning, Is.False);
+            Assert.That(flow.CanRequestTransfer, Is.False);
+            player.Motor.Teleport(new Vector2(215, .82f)); Physics2D.SyncTransforms(); yield return null; yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Completed)); Assert.That(Time.timeScale, Is.Zero);
         }
         [UnityTest] public IEnumerator DisabledLivingEnemyDoesNotCountAsCleared()
@@ -144,13 +175,13 @@ namespace ActionPlatformer.Tests
             while (previous != null && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(previous == null, Is.True); yield return null;
             var restarted = Object.FindFirstObjectByType<StageFlowController>();
-            Assert.That(restarted.CurrentEncounterIndex, Is.Zero); Assert.That(restarted.RemainingEnemies, Is.EqualTo(4));
+            Assert.That(restarted.CurrentEncounterIndex, Is.Zero); Assert.That(restarted.RemainingEnemies, Is.EqualTo(2));
             Assert.That(restarted.CurrentRestArea.Visited, Is.False);
         }
         [UnityTest] public IEnumerator UndergroundClearCancelsHoldAndCannotCrossTheOriginalFloor()
         {
             foreach (var enemy in flow.ActiveEnemies) { enemy.Owner.Fsm.Stop(); enemy.GetComponent<GroundMovement2D>()?.Stop(); }
-            var target = flow.ActiveEnemies.Single(h => h.Owner.Definition.UnitId == "enemy.patrol");
+            var target = flow.ActiveEnemies.Single(h => h.transform.position.y < 1);
             player.Motor.Teleport(new Vector2(target.transform.position.x - 3, .82f)); yield return new WaitForFixedUpdate();
             Assert.That(player.Glitch.TryExecute(new GlitchRequest { Target = target, Direction = GlitchDirection.Down }, Time.timeAsDouble), Is.True);
             player.Glitch.MoveUnderground(1, 100);
@@ -189,7 +220,8 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator CinematicAndTransferNeverOwnThePlayerTogether()
         {
-            var runner = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneRunner>();
+            var runner = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneTrigger>()
+                .GetComponentInParent<ActionPlatformer.Cinematics.CutsceneRunner>();
             KillRoom(); Assert.That(runner.TryPlay(), Is.True);
             yield return new WaitForSecondsRealtime(.6f);
             Assert.That(player.IsScriptedTransferring, Is.False);
@@ -234,6 +266,34 @@ namespace ActionPlatformer.Tests
             Assert.That(view.IsTransferHintVisible, Is.True);
             yield return RequestTransfer(); yield return Until(EncounterPhase.Rest);
             Assert.That(view.IsTransferHintVisible, Is.False);
+            Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
+        }
+
+        [UnityTest] public IEnumerator FallingDepartureReachesRestWithoutRollback()
+        {
+            health.ApplyDamage(10); yield return null;
+            KillRoom(); yield return new WaitForSeconds(1.2f);
+            player.Motor.Teleport(new Vector2(10, 20));
+            yield return new WaitForSeconds(.24f);
+            Assert.That(player.Motor.Velocity.y, Is.LessThan(-5f));
+            yield return RequestTransfer(); yield return Until(EncounterPhase.Rest);
+            AssertRestored(); Assert.That(rest.Visited, Is.True);
+            Assert.That(player.Motor.Position.x, Is.EqualTo(66).Within(.03f));
+            Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
+        }
+
+        [UnityTest] public IEnumerator RisingDepartureReachesRestWithoutRollback()
+        {
+            health.ApplyDamage(10); yield return null;
+            KillRoom(); yield return new WaitForSeconds(1.2f);
+            driver.Command = new PlayerCommand { JumpPressed = true, JumpHeld = true, Move = Vector2.right };
+            yield return null;
+            driver.Command = new PlayerCommand { JumpHeld = true, Move = Vector2.right };
+            yield return new WaitForSeconds(.08f);
+            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(5f));
+            yield return RequestTransfer(); yield return Until(EncounterPhase.Rest);
+            AssertRestored(); Assert.That(rest.Visited, Is.True);
+            Assert.That(player.Motor.Position.x, Is.EqualTo(66).Within(.03f));
             Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
         }
 

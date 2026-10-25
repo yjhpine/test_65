@@ -1,0 +1,1 @@
+78.0s wave=4 phase=Combat enemies=0 hp=84 glitches=43 position=(213.97, 0.80) target=ShieldSoldier step=

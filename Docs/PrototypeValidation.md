@@ -1,5 +1,36 @@
 # Movement Lab 검증 기록
 
+## 휴식 이동의 간헐적 출발점 복귀 수정 (2026-10-25)
+
+- 사용자 플레이 콘솔 619/620에서 도착 검증 실패를 확인했다. 첫 전투 전멸 후 (10,20)에서 0.24초 낙하하고 글리치 입력을 전달하는 PlayMode 검사로 수정 전 **2회 중 2회 실패**를 재현했다. 원본 결과는 `Library/PrototypeValidation/RestRollbackRepro.xml`, 계측 재현은 `RestRollbackInstrumentedRepro.xml`이다.
+- 원인은 물리 `Collider2D.bounds.center`에서 보간된 표시 `Transform.position`을 빼서 몸체 오프셋으로 사용한 것이다. 계측에서 물리 Y=17.99800, 표시 Y=18.26193으로 인해 도착 Y가 0.82000 대신 1.08393이 됐다. 실제 장애물 검사는 통과했지만 도착 후 위치 오차 0.26393이 허용값 0.05를 넘어 출발점 복귀/TransferBlocked로 진입했다. `RestRollbackProbe.json`에 증거를 보존했다.
+- `StageRestArea.TryArrival`과 `StageTransferRoute.SpaceFree`가 캡슐의 설정 오프셋을 `TransformVector`로 환산하도록 수정했다. 도착점 재검사·실제 장애물 차단·회복 1회·문 개방 순서·모터·전투·씬 배치는 유지했다. 임시 계측 로그는 검증 전에 제거했다.
+- Unity 6000.3.23f1 재컴파일 성공(errors=[]). PlayMode `RestCycleTests` **16/16 통과**, 39.97초(`RestRollbackFixedPlayMode.xml`): 신규 낙하/점프 출발, 전체 4웨이브/3휴식, 회복·다음 입장, 실제 목적지 차단, 일시정지·비활성화·사망·잠복·내려찍기·컷신을 검사했다. EditMode `StageTransferRouteTests` **5/5 통과**, 0.30초(`RestRollbackRouteEditMode.xml`).
+- 별도 실제 CoreLoopStage Play Mode에서 30/60/144 FPS 기준 `captureDeltaTime`으로 세 휴식 구역을 각각 순회해 **9/9 이동 성공**을 확인했다. 낙하/상승과 수평 이동 중 테스트 입력을 전달했고, 도착·HP 100·입구 개방·조작 잠금 해제·Dynamic/simulated 복원을 검사했다(`RestRollbackFrameStress.txt`). 적 처치는 검증용 피해로 진행했다. 직접 키보드 전투 플레이나 Player 빌드는 실행하지 않았다.
+- 임시 입력/시간/프레임 설정을 복원하고 Play Mode를 종료했다. CoreLoopStage dirty=false, timeScale=1을 확인했다. 콘솔의 오류 672/673은 기존 실제 장애물 검사에서 의도한 로그이며 추가 런타임 오류는 없다.
+
+## 마지막 웨이브 출구 컷신 (2026-10-25)
+
+- `StageFlowController.finalWaveCutscene`에 선택적 전용 Runner를 연결했다. 마지막 전멸 후 기존 사망 동작용 게임 시간 0.85초와 전투 시간 연출이 끝나면 한 번 재생한다. 출구에 이미 서 있어도 컷신을 먼저 처리하며, 사망·외부 일시정지·기존 컷신의 소유권을 존중한다. 구역이 없는 기존 단일 전투 흐름은 그대로다.
+- `FinalWaveExitReveal.playable`은 기존 Cinemachine/Timeline/말풍선 시스템을 사용한다. 문 확대 0.65초(Size 3.2), 문 유지 0.7초, 플레이어 복귀 0.65초(Size 4.5), 독백 2.75초, 평소 카메라 복귀 0.35초다. 문과 플레이어 카메라는 실제 Transform을 따라가며 대사는 `문이 열렸다. 어서 탈출하자.`다. 자동 진행과 기존 Esc/Start 스킵을 지원한다.
+- 기존 씬 오브젝트 ID 누락 0개, 새 씬 블록 16개. Timeline 3개 샷의 카메라 참조와 플레이어 화자 연결을 확인했고 `TryValidate=true`, Missing Script=0이다. 기존 인트로·적 배치·전투 수치·아트는 변경하지 않았다. 두 Runner를 구별하도록 관련 검사에서 인트로 Trigger의 부모 Runner를 명시적으로 선택했다.
+- PlayMode `CutsceneTests`(새 FinalWaveCutsceneTests 포함) **21/21 통과**, 56.39초(`ExitRevealCutscenePlayMode.xml`). `StageFlowTests` **12/12 통과**, 34.47초(`ExitRevealStageFlowPlayMode.xml`). 마지막 처치, 문 줌·플레이어 복귀·정확한 독백, 자동 종료, 출구 안에서의 종료 순서, 스킵·비활성화·일시정지·동시 사망·재시작과 기존 인트로를 검사했다.
+- 실제 첫 재생에서 사망 상태로 전환되기 전 월드가 일시정지돼 사체가 대기 자세로 남는 것을 확인했다. 기존 사망 시간(포탑/드론/방패병 0.6초, 돼지 0.8초)을 바꾸지 않고, 시작 대기를 0.85초로 보완했다. 전체 구역 통합 검사에는 컷신 시작 전에 마지막 적 전부가 비활성화됐는지 확인하는 조건을 추가했다.
+- 최종 보완 후 Unity 재컴파일 errors=[] 확인. `FinalWaveCutsceneTests` **5/5 통과**, 15.92초(`ExitRevealDeathDelayPlayMode.xml`), `RestCycleTests` **14/14 통과**, 33.64초(`ExitRevealFinalCyclePlayMode.xml`). 컷신 시작 전에 적 사망·비활성화가 완료되는 조건도 통과했다.
+- 실제 4웨이브까지 진행한 뒤 검증용 피해로 마지막 적을 처치하고 자동 컷신을 재생했다. 카메라는 문 X=215/Size=3.2 → 현재 플레이어 X=191/Size=4.5 → 기본 Size=6.5로 복원됐다. 대사 전체 문자열, 조작 잠금 해제, 입력 활성, timeScale=1을 확인했다(`ExitRevealRuntime.txt`). `ExitRevealDoor.png`, `ExitRevealMonologue.png`는 실제 Timeline 재생 중 캡처한 1920×1080 프레임이며 보완 후 사체가 남지 않는 것을 확인했다.
+- 검증 후 Play Mode 종료, CoreLoopStage dirty=false, timeScale=1. Console 오류는 의도한 막힌 도착지 검사 로그만 있으며 새 예외는 없다. 이번에는 플레이어 빌드와 기존 Timeline 편집기 미리보기 검사를 재실행하지 않았다.
+
+## 프로토타입 추천 배치로 4웨이브 확장 (2026-10-25)
+
+- 공개 프로토타입의 `app.js?v=keys61` 기본값 `layoutSource='course'`와 `combat-course.js?v=keys61`를 확인했다. 추천 코스의 적 수 2/3/4/5와 상대 위치·발판 높이를 적용했다. 원본 증거는 `Library/PrototypeValidation/FourWaveCourse.js`에 보관했다. 직선탄→포탑, 공중 포격→드론, 지상 근접→돼지로 대응하고 4웨이브 마지막 근접 적은 방패병을 사용했다. Unity의 기존 전투 수치와 적 행동은 변경하지 않았다.
+- `CoreLoopStage`에 적 14마리, 휴식 3개, 전투 4개를 연결했다. 기존 적 인스턴스 6개를 재배치하고 8개를 추가했다. 휴식 도착 X=66/116/168, 다음 전투 시작 X=72/122/174, 최종 출구 X=215, 카메라 경계 X=217이다. 첫 구역 인트로는 보존하고, 전멸 후 Shift 이동·첫 방문 회복·입구 통과 후 적 활성화를 유지한다.
+- Unity 6000.3.23f1 / 연결된 Pipeline CLI로 컴파일 성공(completed, failed=false, errors=[]). 씬 검사 결과 모든 적 14개에 프리팹 연결·유효한 정의가 있고, 뒤쪽 3개 적 그룹은 비활성, 휴식 3개 모두 설정 유효, Missing Script=0이다(`FourWaveAssetCheck.json`).
+- `RestCycleTests` **14/14 통과**, 32.78초(`FourWaveCyclePlayMode.xml`). 통합 검사는 실제 씬의 4개 전투/3개 휴식을 순서대로 진행하며 각 적 구성, 미래 적 미초기화/피해 불가, Shift 요청, 이동·회복·조작 복원, 각 휴식의 회복 1회, 마지막 구역에서만 출구 개방과 클리어를 확인한다.
+- 전체 PlayMode **263개 중 262개 통과**, 195.10초(`FourWaveRegressionPlayMode.xml`). 실패 1개는 `StageFlowTests.CameraFollowsEmergedBodyAfterUndergroundMovement`의 기존 테스트 출현 지점 X=26이 새 발판 X=25~28과 겹쳐 정상적인 가까운 출현 보정이 수행된 경우다. 카메라 추적 검사의 타깃만 빈 바닥 X=22로 옮겼다. 이후 `StageFlowTests` **12/12 통과**, 34.05초(`FourWaveStageFlowPlayMode.xml`). 게임 코드나 출현 보정 규칙은 변경하지 않았다. 전체 회귀의 전투·애니메이션·레이저·컷신 검사에는 실패가 없었다.
+- 실제 Play Mode에서 검증용 피해와 이동 요청으로 전투 1→휴식 1→전투 2→휴식 2→전투 3→휴식 3→전투 4를 실행했다. 각 휴식 도착 시 HP 80→100, simulated=true, 조작 잠금 해제, 마지막 적 5개 활성화를 기록했다(`FourWaveRuntimeTrace.txt`). 이는 직접 키보드로 모든 적을 처치한 플레이 기록은 아니다.
+- 마지막 구역 X=191에서 물리/카메라 갱신 후 검증용으로 일시정지해 1120×660, 1920×1080 화면을 확인했다(`FourWaveFinal1120.png`, `FourWaveFinal1920.png`). 지상 돼지·방패병, 높이가 다른 포탑 2개와 드론, 레이저 및 반복 배경을 확인했다. 검증 후 Play Mode를 종료했고 저장된 CoreLoopStage는 dirty=false다.
+- Console의 새 게임 오류는 없다. 막힌 도착지 2종 검사와 초기화 실패 2종의 오류 로그는 기존 `LogAssert.Expect` 검사에 해당한다. 이번 변경 파일은 씬, 관련 PlayMode 검사 2개, 가이드·검증 문서다. 공유 정의·프리팹·원본 아트·입력·프로젝트 설정·런타임 전투 코드는 수정하지 않았다.
+
 ## 전멸 후 Shift 입력으로 휴식 이동 (2026-10-25)
 
 - 자동 출발을 제거했다. 기존 0.35초·컷신·시간 연출 대기 이후 기존 안내 영역에 `SHIFT > REST AREA`를 표시하고, 새 글리치 입력을 받으면 기존 경로 이동을 시작한다. 전투 중/준비 전 입력은 예약하지 않으며 도착 회복과 다음 전투는 유지한다.

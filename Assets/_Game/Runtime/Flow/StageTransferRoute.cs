@@ -44,7 +44,7 @@ namespace ActionPlatformer.Flow
         public static bool SpaceFree(CapsuleCollider2D body, Vector2 position, int mask, List<Collider2D> overlaps)
         {
             Vector2 size = Vector2.Scale(body.size, new Vector2(Mathf.Abs(body.transform.lossyScale.x), Mathf.Abs(body.transform.lossyScale.y)));
-            Vector2 center = position + ((Vector2)body.bounds.center - (Vector2)body.transform.position);
+            Vector2 center = position + (Vector2)body.transform.TransformVector(body.offset);
             Physics2D.OverlapCapsule(center, size, body.direction, body.transform.eulerAngles.z, UnitPhysics2D.Filter(mask), overlaps);
             foreach (var other in overlaps)
                 if (other.attachedRigidbody != body.attachedRigidbody &&
