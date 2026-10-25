@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 2768515316456167238}
   - component: {fileID: 5310154408156685181}
   - component: {fileID: 3384588191381952953}
+  - component: {fileID: 2913797248331723451}
   m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
@@ -77,7 +78,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ebc552b0c3051374384636e54939a9cb, type: 2}
+  - {fileID: 2100000, guid: fecbbf066d82ddc4eb662a3c14724bcd, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -132,6 +133,18 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &2913797248331723451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6566725973696522729}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31a8ada3cc52d1d419dc9e5613fa0079, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitDamageFlash
 --- !u!1 &8077634514357657763
 GameObject:
   m_ObjectHideFlags: 0
@@ -288,6 +301,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitHealth
   deactivateOnDeath: 0
+  preserveHealthOnDamage: 0
 --- !u!114 &7589714538130753928
 MonoBehaviour:
   m_ObjectHideFlags: 0

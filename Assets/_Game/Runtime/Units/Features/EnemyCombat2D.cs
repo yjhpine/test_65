@@ -151,7 +151,7 @@ namespace ActionPlatformer.Units.Features
             if (!UnitPhysics2D.IsAvailable(target) || !target.CanReceiveDamage || target.Owner.Kind != UnitKind.Player || struck.Contains(target)) return;
             var collider = UnitPhysics2D.Body(target);
             if (collider == null || !HasSight(origin, collider.ClosestPoint(origin))) return;
-            struck.Add(target); target.ApplyDamage(amount);
+            struck.Add(target); target.ApplyDirectedDamage(amount, (Vector2)collider.bounds.center - origin);
         }
         private void OnDisable() => ClearAttack();
     }

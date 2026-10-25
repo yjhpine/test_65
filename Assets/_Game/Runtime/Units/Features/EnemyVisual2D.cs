@@ -13,10 +13,14 @@ namespace ActionPlatformer.Units.Features
         private UnitHealth health;
         private Rigidbody2D body;
         private uint damageVersion, blockVersion, shotVersion;
-        private float hurtUntil, blockUntil, shotUntil;
+        private float blockUntil, shotUntil;
         private string animationName;
         private Color originalColor;
         private SurveillanceTurretVisual turretVisual;
+        private ShieldSoldierVisual shieldVisual;
+        private EnemyLaserVisual laserVisual;
+        private Vector2 shotEmitter;
+        private bool shotVertical;
         private void Awake()
         {
             spriteRenderer = GetComponent<SpriteRenderer>(); animator = GetComponent<Animator>();
@@ -24,6 +28,10 @@ namespace ActionPlatformer.Units.Features
             originalColor = spriteRenderer.color;
             turretVisual = GetComponent<SurveillanceTurretVisual>();
             if (turretVisual != null) turretVisual.Initialize(spriteRenderer, animator);
+            shieldVisual = GetComponent<ShieldSoldierVisual>();
+            if (shieldVisual != null) shieldVisual.Initialize(animator, health.DamageVersion, stateSource.BlockVersion);
+            laserVisual = GetComponent<EnemyLaserVisual>();
+            if (laserVisual != null) laserVisual.Initialize(spriteRenderer);
             shield = Shape("Energy shield"); scan = Shape("Scan progress"); beam = Shape("Attack telegraph");
         }
         private SpriteRenderer Shape(string label)
@@ -38,11 +46,15 @@ namespace ActionPlatformer.Units.Features
             var state = stateSource.State; var settings = stateSource.Settings;
             if (state == null || settings == null || !stateSource.isActiveAndEnabled || !health.Owner.isActiveAndEnabled) { Hide(); return; }
             bool dead = !health.IsAlive || state.Phase == EnemyPhase.Death;
-            if (damageVersion != health.DamageVersion) { damageVersion = health.DamageVersion; hurtUntil = Time.time + .09f; }
+            if (damageVersion != health.DamageVersion) damageVersion = health.DamageVersion;
             if (blockVersion != stateSource.BlockVersion) { blockVersion = stateSource.BlockVersion; blockUntil = Time.time + .12f; }
-            if (shotVersion != stateSource.ShotVersion) { shotVersion = stateSource.ShotVersion; shotUntil = Time.time + settings.BeamDisplayDuration; }
+            if (shotVersion != stateSource.ShotVersion)
+            {
+                shotVersion = stateSource.ShotVersion; shotUntil = Time.time + settings.BeamDisplayDuration;
+                shotEmitter = stateSource.Center; shotVertical = state.Vertical;
+            }
             spriteRenderer.flipX = (state.Facing > 0f) != spriteFacesRight;
-            spriteRenderer.color = !dead && Time.time < hurtUntil ? new Color(1f, .45f, .45f) : originalColor;
+            spriteRenderer.color = originalColor; // UnitDamageFlash owns the short, unscaled hit brightness.
             string desired = dead ? "Death" : state.Phase == EnemyPhase.Dash || Time.time < shotUntil ? "Attack" :
                 state.Phase == EnemyPhase.Idle && body.linearVelocity.sqrMagnitude > .04f ? "Run" : "Idle";
             float actionTime = dead ? (settings.DeathDuration <= 0f ? 1f : state.Elapsed / settings.DeathDuration) :
@@ -50,6 +62,9 @@ namespace ActionPlatformer.Units.Features
             if (turretVisual != null && settings.Pattern == EnemyPattern.Surveillance)
                 turretVisual.Render(state, Time.time < shotUntil, dead, actionTime,
                     stateSource.LastShot.End - stateSource.LastShot.Start);
+            else if (shieldVisual != null && settings.Pattern == EnemyPattern.Shield)
+                shieldVisual.Render(state, dead, actionTime, body.linearVelocity.sqrMagnitude > .04f,
+                    health.DamageVersion, stateSource.BlockVersion);
             else
             {
                 if (desired != animationName) { animationName = desired; animator.Play(desired, 0, 0f); }
@@ -65,9 +80,21 @@ namespace ActionPlatformer.Units.Features
             }
             if (settings.Pattern == EnemyPattern.Surveillance && state.Phase == EnemyPhase.Preparing)
                 Draw(scan, center + new Vector2(-.5f + state.Progress * .5f, .82f), new Vector2(Mathf.Max(.015f,state.Progress), .07f), 0, Color.yellow);
-            if (Time.time < shotUntil) DrawBeam(stateSource.LastShot, new Color(1f,.85f,.25f));
+            if (Time.time < shotUntil)
+            {
+                if (laserVisual == null || !laserVisual.ShowShot(stateSource.LastShot, shotEmitter, shotVertical, actionTime))
+                    DrawBeam(stateSource.LastShot, new Color(1f,.85f,.25f));
+            }
             else if (settings.Pattern != EnemyPattern.Shield && (state.Phase == EnemyPhase.Preparing || state.Phase == EnemyPhase.Locked))
-                DrawBeam(stateSource.CalculateBeam(state.Aim, state.Vertical), state.Phase == EnemyPhase.Locked ? new Color(1f,.2f,.12f,.75f) : new Color(1f,.8f,.15f,.28f));
+            {
+                var preview = stateSource.CalculateBeam(state.Aim, state.Vertical);
+                bool locked = state.Phase == EnemyPhase.Locked;
+                Color color = laserVisual != null && laserVisual.IsConfigured ? laserVisual.TelegraphColor :
+                    locked ? new Color(1f,.2f,.12f) : new Color(1f,.8f,.15f);
+                color.a = locked ? .75f : .28f;
+                DrawBeam(preview, color);
+                laserVisual?.ShowCharge(preview, stateSource.Center, state.Vertical, locked ? 1 : state.Progress);
+            }
         }
         private void DrawBeam(EnemyBeam value, Color color)
         {
@@ -82,12 +109,13 @@ namespace ActionPlatformer.Units.Features
             Vector3 source = shapeSprite.bounds.size;
             renderer.transform.localScale = new Vector3(size.x/source.x, size.y/source.y, 1f);
         }
-        private void Hide() { if (shield != null) shield.enabled = false; if (scan != null) scan.enabled = false; if (beam != null) beam.enabled = false; }
+        private void Hide() { if (shield != null) shield.enabled = false; if (scan != null) scan.enabled = false; if (beam != null) beam.enabled = false; laserVisual?.Hide(); }
         private void OnDisable()
         {
-            Hide(); hurtUntil = blockUntil = shotUntil = 0f; animationName = null;
+            Hide(); blockUntil = shotUntil = 0f; animationName = null;
             if (stateSource != null) { blockVersion = stateSource.BlockVersion; shotVersion = stateSource.ShotVersion; }
             if (health != null) damageVersion = health.DamageVersion;
+            if (shieldVisual != null) shieldVisual.ResetPresentation(damageVersion, blockVersion);
             if (spriteRenderer != null) { spriteRenderer.color = originalColor; spriteRenderer.flipX = !spriteFacesRight; }
         }
     }

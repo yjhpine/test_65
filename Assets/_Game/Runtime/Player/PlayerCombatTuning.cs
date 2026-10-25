@@ -43,23 +43,26 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(0f)] private float hitStopDuration = 0.035f;
         [SerializeField, Min(0f)] private float heavyHitStopDuration = 0.055f;
         [SerializeField, Min(0f)] private float slamHitStopDuration = 0.08f;
-        [SerializeField, Min(0f)] private float shakeAmplitude = 0.025f;
-        [SerializeField, Min(0f)] private float heavyShakeAmplitude = 0.075f;
-        [SerializeField, Min(0f)] private float slamShakeAmplitude = 0.14f;
-        [SerializeField, Min(0f)] private float shakeDuration = 0.14f;
+        [Tooltip("Normal hit movement in reference-screen pixels (1120 x 660). Capped at 4.")]
+        [SerializeField, Min(0f)] private float shakeAmplitude = 1.5f;
+        [Tooltip("Lift/emergence movement in reference-screen pixels; finishers do not boost camera motion.")]
+        [SerializeField, Min(0f)] private float heavyShakeAmplitude = 2f;
+        [SerializeField, Min(0f)] private float slamShakeAmplitude = 3f;
+        [SerializeField, Min(0f)] private float shakeDuration = 0.06f;
         [SerializeField, Min(0.01f)] private float shakeFrequency = 22f;
         [Header("Player damage feedback (0 disables each effect)")]
         [SerializeField, Range(.01f, 1f)] private float damageSlowTimeScale = .2f;
         [SerializeField, Min(0f)] private float damageSlowDuration = .15f;
         [SerializeField, Min(0f)] private float damageSlowRecovery = .1f;
-        [SerializeField, Min(0f)] private float damageShakeAmplitude = .22f;
-        [SerializeField, Min(0f)] private float damageShakeDuration = .28f;
-        [SerializeField, Range(0f, .2f)] private float damageZoom = .035f;
+        [Tooltip("Player damage movement in reference-screen pixels; zero direction never invents an axis.")]
+        [SerializeField, Min(0f)] private float damageShakeAmplitude = 4f;
+        [SerializeField, Min(0f)] private float damageShakeDuration = .12f;
+        [SerializeField, HideInInspector, Range(0f, .2f)] private float damageZoom;
         [SerializeField, Min(0f)] private float damageZoomDuration = .18f;
-        [SerializeField, Range(0f, 1f)] private float damageFlashOpacity = .7f;
+        [SerializeField, HideInInspector, Range(0f, 1f)] private float damageFlashOpacity;
         [SerializeField, Min(0f)] private float damageFlashDuration = .065f;
-        [SerializeField, Range(0f, 1f)] private float damageVignetteOpacity = .8f;
-        [SerializeField, Min(0f)] private float damageScreenDuration = .45f;
+        [SerializeField, Range(0f, .12f)] private float damageVignetteOpacity = .12f;
+        [SerializeField, Range(0f, .16f)] private float damageScreenDuration = .16f;
         [SerializeField] private LayerMask targetMask = 1 << 2;
         [SerializeField] private LayerMask obstacleMask = 1;
         public float Windup => windup;

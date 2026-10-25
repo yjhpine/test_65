@@ -13,9 +13,29 @@ namespace ActionPlatformer.Player
         [Tooltip("Optional shared material for attack and glitch effects only.")]
         [SerializeField] private Material actionEffectMaterial;
         [SerializeField, Min(0.01f)] private float basicAttackEffectSize = 2f;
-        [SerializeField, Min(0.01f)] private float glitchEffectSize = 2f;
+        [SerializeField, Min(0.01f)] private float glitchEffectSize = 2.5f;
         [SerializeField, Min(1f)] private float glitchEffectFps = 30f;
+        [Tooltip("World-space spacing between spark bursts along the teleport path (up to 16).")]
+        [SerializeField, Min(0.1f)] private float glitchTrailSpacing = .6f;
+        [Tooltip("Unscaled delay between successive path bursts. Departure and arrival burst immediately.")]
+        [SerializeField, Min(0.001f)] private float glitchTrailInterval = .025f;
         private PlayerActionEffects actionEffects;
+        private PlayerContactEffects contactEffects;
+        private readonly System.Collections.Generic.Queue<PlayerHitPresentation> pendingHits = new System.Collections.Generic.Queue<PlayerHitPresentation>();
+        private readonly PlayerAttackAlternation alternation = new PlayerAttackAlternation();
+        private MaterialPropertyBlock reactionProperties;
+        private Quaternion originalRotation;
+        private bool reducedMotion;
+        private uint landingVersion, alternationVersion, reactionAttackVersion;
+        private uint observedReactionVersion;
+        public void SetReducedMotion(bool value) { reducedMotion = value; }
+        public void PresentHit(PlayerHitPresentation hit) => pendingHits.Enqueue(hit);
+        public void PresentTransferSpark(Vector2 point) => actionEffects?.Burst(point);
+        public void NotifyDamage()
+        {
+            observedReactionVersion = actions?.ReactionPresentation.Version ?? 0;
+            alternation.Reset(); reactionAttackVersion = actions?.AttackPresentation.Version ?? 0;
+        }
         private ICharacterMotionState motionState;
         private SpriteRenderer spriteRenderer;
         private Animator animator;
@@ -25,7 +45,6 @@ namespace ActionPlatformer.Player
         private SpriteRenderer attackShape, groundMarker;
         private SpriteRenderer glitchFill;
         private readonly SpriteRenderer[] glitchEdges = new SpriteRenderer[4];
-        private readonly SpriteRenderer[] shockwaveEdges = new SpriteRenderer[24];
         private Sprite shapeSprite;
         private static readonly int Moving = Animator.StringToHash("Moving");
         private static readonly int Grounded = Animator.StringToHash("Grounded");
@@ -57,9 +76,11 @@ namespace ActionPlatformer.Player
 
         private void Awake()
         {
+            reactionProperties = new MaterialPropertyBlock();
             spriteRenderer = GetComponent<SpriteRenderer>();
             animator = GetComponent<Animator>();
             originalPosition = transform.localPosition;
+            originalRotation = transform.localRotation;
             originalColor = spriteRenderer.color;
             foreach (var parameter in animator.parameters)
                 hasActionAnimations |= parameter.nameHash == ActionOverride && parameter.type == AnimatorControllerParameterType.Bool;
@@ -80,17 +101,16 @@ namespace ActionPlatformer.Player
             }
             if (actions != null)
             {
-                actionEffects = new PlayerActionEffects(transform, spriteRenderer, basicAttackEffectFrames,
-                    glitchEffectFrames, basicAttackEffectSize, glitchEffectSize, glitchEffectFps, actionEffectMaterial);
+                actionEffects = new PlayerActionEffects(transform, spriteRenderer, basicAttackEffectFrames, glitchEffectFrames,
+                    basicAttackEffectSize, glitchEffectSize, glitchEffectFps, glitchTrailSpacing, glitchTrailInterval, actionEffectMaterial);
                 actionEffects.Reset(actions.GlitchPresentation.Version);
+                contactEffects = new PlayerContactEffects(transform, spriteRenderer, glitchEffectFrames, actionEffectMaterial);
                 shapeSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
                 attackShape = CreateShape("Attack area", new Color(1f, 0.8f, 0.2f, 0.4f));
                 groundMarker = CreateShape("Underground marker", new Color(0.15f, 1f, 1f, 0.9f));
                 glitchFill = CreateShape("Glitch preview", Color.white);
                 for (int i = 0; i < glitchEdges.Length; i++)
                     glitchEdges[i] = CreateShape("Glitch preview edge " + i, Color.white);
-                for (int i = 0; i < shockwaveEdges.Length; i++)
-                    shockwaveEdges[i] = CreateShape("Shockwave " + i, Color.white);
             }
         }
 
@@ -98,6 +118,18 @@ namespace ActionPlatformer.Player
         {
             if (motionState == null) return;
             bool underground = actions != null && actions.IsUnderground;
+            var attack = actions?.AttackPresentation ?? default;
+            var reaction = actions?.ReactionPresentation ?? default;
+            if (reaction.Kind != PlayerReaction.None && reaction.Version != observedReactionVersion)
+            {
+                observedReactionVersion = reaction.Version;
+                NotifyDamage();
+            }
+            if (actions != null && actions.AttackPhase != PlayerAttackPhase.Ready && attack.Version != alternationVersion)
+            {
+                alternationVersion = attack.Version;
+                alternation.Begin(attack.Kind, attack.StartedAt);
+            }
             spriteRenderer.enabled = !underground;
             if (underground)
                 transform.position = new Vector3(actions.UndergroundPosition.x, actions.UndergroundPosition.y, transform.position.z);
@@ -110,7 +142,18 @@ namespace ActionPlatformer.Player
             animator.SetBool(Grounded, motionState.IsGrounded);
             animator.SetBool(Rising, velocity.y > 0.1f);
             UpdateAttackAnimation(underground, moving, velocity.y > 0.1f);
+            // Apply the selected sprite in this display frame, including during a global hit stop.
+            if (hasActionAnimations && animator.GetBool(ActionOverride)) animator.Update(0f);
             spriteRenderer.color = originalColor;
+            bool hurt = reaction.Kind == PlayerReaction.Hit;
+            bool newAttack = actions != null && actions.AttackPhase != PlayerAttackPhase.Ready && attack.Version != reactionAttackVersion;
+            transform.localRotation = originalRotation;
+            if (hurt && !newAttack && reaction.HasDirection && !reducedMotion)
+                transform.localRotation *= Quaternion.Euler(0, 0, -reaction.Direction.x * 7f * Mathf.Sin(reaction.Progress * Mathf.PI));
+            spriteRenderer.GetPropertyBlock(reactionProperties);
+            reactionProperties.SetFloat("_HitFlash", hurt ? Mathf.Clamp01(1 - reaction.Progress * 2) : 0);
+            reactionProperties.SetFloat("_OutlineWidth", hurt ? 1f : 0);
+            spriteRenderer.SetPropertyBlock(reactionProperties);
             if (attackShape != null)
             {
                 attackShape.enabled = showAttackArea && !underground &&
@@ -132,15 +175,21 @@ namespace ActionPlatformer.Player
                 }
             }
             UpdateGlitchPreview(underground);
-            UpdateShockwave(underground);
-            actionEffects?.Tick(actions, Time.deltaTime);
+            while (pendingHits.Count > 0) { var hit = pendingHits.Dequeue(); contactEffects?.Spawn(hit); }
+            var wave = actions?.Shockwave ?? default;
+            if (wave.Visible && wave.Version != landingVersion) { landingVersion = wave.Version; contactEffects?.Land(wave.Center); }
+            contactEffects?.Tick(Time.unscaledTimeAsDouble);
+            actionEffects?.Tick(actions, Time.unscaledDeltaTime, alternation.Variant,
+                reaction.Kind == PlayerReaction.Die || (hurt && !newAttack));
         }
 
         private void UpdateAttackAnimation(bool underground, bool moving, bool rising)
         {
             if (!hasActionAnimations) return;
             var reaction = actions?.ReactionPresentation ?? default;
-            if (reaction.Kind != PlayerReaction.None)
+            bool newAttack = actions != null && actions.AttackPhase != PlayerAttackPhase.Ready &&
+                actions.AttackPresentation.Version != reactionAttackVersion;
+            if (reaction.Kind == PlayerReaction.Die || (reaction.Kind == PlayerReaction.Hit && !newAttack && reaction.HasDirection))
             {
                 int reactionState = reaction.Kind == PlayerReaction.Die ? Die : Hit;
                 animator.SetBool(ActionOverride, true);
@@ -165,13 +214,13 @@ namespace ActionPlatformer.Player
                 currentAction = 0;
                 return;
             }
-            int strike = Mathf.Clamp(attack.Strike, 1, 3) - 1;
+            int strike = alternation.Variant;
             int state = attack.Kind == PlayerAttack.Slam
                 ? (phase == PlayerAttackPhase.Windup ? SlamHover : phase == PlayerAttackPhase.Descending ? SlamFall : SlamLand)
                 : attack.Kind == PlayerAttack.Lift ? Lift : attack.Kind == PlayerAttack.Emergence ? Emergence
                 : attack.Kind == PlayerAttack.Air ? AirAttacks[strike] : GroundAttacks[strike];
             // Clips place their impact at 0.35 and recovery at 0.6. Combat owns all real timing.
-            float progress = phase == PlayerAttackPhase.Windup ? attack.PhaseProgress * 0.35f
+            float progress = phase == PlayerAttackPhase.Windup ? 0.35f
                 : phase == PlayerAttackPhase.Active ? Mathf.Lerp(0.35f, 0.6f, attack.PhaseProgress)
                 : Mathf.Lerp(0.6f, 0.999f, attack.PhaseProgress);
             if (attack.Kind == PlayerAttack.Slam && phase == PlayerAttackPhase.Active)
@@ -181,27 +230,6 @@ namespace ActionPlatformer.Player
                 animator.Play(state, 0, 0f);
             currentAction = state;
             previousAttackVersion = attack.Version;
-        }
-
-        private void UpdateShockwave(bool underground)
-        {
-            if (actions == null) return;
-            var wave = actions.Shockwave;
-            float radius = wave.Radius * Mathf.Lerp(0.15f, 1f, wave.Progress);
-            Color color = new Color(1f, 0.8f, 0.25f, 1f - wave.Progress);
-            for (int i = 0; i < shockwaveEdges.Length; i++)
-            {
-                var edge = shockwaveEdges[i];
-                if (edge == null) continue;
-                edge.enabled = wave.Visible && !underground;
-                if (!edge.enabled) continue;
-                float a = Mathf.PI * i / shockwaveEdges.Length;
-                float b = Mathf.PI * (i + 1) / shockwaveEdges.Length;
-                Vector2 from = wave.Center + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
-                Vector2 to = wave.Center + new Vector2(Mathf.Cos(b), Mathf.Sin(b)) * radius;
-                SetPreviewShape(edge, (from + to) * 0.5f, new Vector2(Vector2.Distance(from, to) + 0.015f, 0.065f), color);
-                edge.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(to.y - from.y, to.x - from.x) * Mathf.Rad2Deg);
-            }
         }
 
         private void UpdateGlitchPreview(bool underground)
@@ -250,13 +278,21 @@ namespace ActionPlatformer.Player
 
         public void ResetActions()
         {
-            if (spriteRenderer == null) return;
+            if (spriteRenderer == null || reactionProperties == null) return;
             transform.localPosition = originalPosition;
+            transform.localRotation = originalRotation;
             spriteRenderer.enabled = true;
             spriteRenderer.color = originalColor;
             currentAction = 0;
             previousAttackVersion = 0;
             previousReactionVersion = 0;
+            observedReactionVersion = 0;
+            alternationVersion = actions?.AttackPresentation.Version ?? 0;
+            landingVersion = actions?.Shockwave.Version ?? 0;
+            alternation.Reset(); pendingHits.Clear(); contactEffects?.Reset();
+            spriteRenderer.GetPropertyBlock(reactionProperties);
+            reactionProperties.SetFloat("_HitFlash", 0); reactionProperties.SetFloat("_OutlineWidth", 0);
+            spriteRenderer.SetPropertyBlock(reactionProperties);
             actionEffects?.Reset(actions?.GlitchPresentation.Version ?? 0);
             if (hasActionAnimations)
             {
@@ -269,8 +305,6 @@ namespace ActionPlatformer.Player
             if (glitchFill != null) glitchFill.enabled = false;
             for (int i = 0; i < glitchEdges.Length; i++)
                 if (glitchEdges[i] != null) glitchEdges[i].enabled = false;
-            for (int i = 0; i < shockwaveEdges.Length; i++)
-                if (shockwaveEdges[i] != null) shockwaveEdges[i].enabled = false;
         }
 
         private void OnDisable() => ResetActions();

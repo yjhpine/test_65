@@ -15,7 +15,7 @@ namespace ActionPlatformer.Tests
     public sealed class StageFlowTests
     {
         private const int ExpectedEnemyCount = 4;
-        private const float StageWidth = 60f;
+        private const float StageWidth = 104f;
         private StageFlowController flow;
         private PlayerUnit player;
         private StageGoal goal;
@@ -35,10 +35,21 @@ namespace ActionPlatformer.Tests
             savedScale = Time.timeScale;
             savedFixed = Time.fixedDeltaTime;
             Time.timeScale = 1f;
+            // Keep this suite exercising the supported legacy objective path; RestCycleTests cover the authored loop.
+            SceneManager.sceneLoaded += UseLegacyObjective;
             yield return SceneManager.LoadSceneAsync("CoreLoopStage");
             yield return null;
             FindStage();
             yield return new WaitForFixedUpdate();
+        }
+
+        private static void UseLegacyObjective(Scene scene, LoadSceneMode mode)
+        {
+            if (scene.name != "CoreLoopStage") return;
+            var stage = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageFlowController>(true)).Single();
+            typeof(StageFlowController).GetField("encounters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .SetValue(stage, null);
+            foreach (var gate in scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageGate>(true))) gate.SetLocked(false);
         }
 
         private void FindStage()
@@ -49,7 +60,7 @@ namespace ActionPlatformer.Tests
             goal = Object.FindFirstObjectByType<StageGoal>();
             view = Object.FindFirstObjectByType<StageFlowView>();
             enemies = Object.FindObjectsByType<UnitHealth>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .Where(h => h.gameObject.scene == flow.gameObject.scene && h.Owner != player).ToArray();
+                .Where(h => h.gameObject.scene == flow.gameObject.scene && h.Owner != null && h.Owner != player).ToArray();
             player.SetInputSource(new Driver());
             // These tests isolate gameplay; the cinematic suite covers automatic entry.
             var intro = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneTrigger>();
@@ -58,6 +69,7 @@ namespace ActionPlatformer.Tests
 
         [UnityTearDown] public IEnumerator Cleanup()
         {
+            SceneManager.sceneLoaded -= UseLegacyObjective;
             var stage = SceneManager.GetSceneByName("CoreLoopStage");
             emptyScene = SceneManager.CreateScene("StageFlowTestCleanup");
             SceneManager.SetActiveScene(emptyScene);
@@ -107,8 +119,8 @@ namespace ActionPlatformer.Tests
                 Assert.That(enemies.Count(e => e.Owner.Definition.UnitId == id), Is.EqualTo(1), id);
             Assert.That(goal.transform.position.x, Is.EqualTo(StageWidth - 2f));
             var floor = flow.gameObject.scene.GetRootGameObjects().Single(g => g.name == "Terrain").transform.Find("Floor");
-            Assert.That(floor.GetComponent<BoxCollider2D>().size.x, Is.EqualTo(StageWidth));
-            Assert.That(floor.GetComponent<SpriteRenderer>().size.x, Is.EqualTo(StageWidth));
+            Assert.That(floor.GetComponent<BoxCollider2D>().size.x, Is.EqualTo(60f));
+            Assert.That(floor.GetComponent<SpriteRenderer>().size.x, Is.EqualTo(60f));
             var ledges = floor.parent.Cast<Transform>().Where(t => t.name.StartsWith("Ledge ")).OrderBy(t => t.position.x).ToArray();
             Assert.That(ledges.Select(t => t.position.x), Is.EqualTo(new[] { 20f, 36f, 52f }));
             Assert.That(floor.parent.Find("Right Boundary").position.x, Is.EqualTo(StageWidth + .5f));

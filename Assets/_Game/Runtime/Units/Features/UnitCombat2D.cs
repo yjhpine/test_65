@@ -56,7 +56,8 @@ namespace ActionPlatformer.Units.Features
         {
             if (!isActiveAndEnabled || !owner.isActiveAndEnabled || !health.IsAlive || expectedTarget != Target ||
                 !IsTargetInRange(range)) return false;
-            return Target.ApplyDamage(owner.Definition.AttackPower) > 0;
+            return Target.ApplyDirectedDamage(owner.Definition.AttackPower,
+                (Vector2)(Target.transform.position - transform.position)) > 0;
         }
 
         public void ClearTarget() => Target = null;

@@ -176,6 +176,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   initiallyFacesRight: 0
+  aimPivotOffset: {x: 0, y: 0}
+  muzzleDistance: 0
 --- !u!1 &2920776903526180851
 GameObject:
   m_ObjectHideFlags: 0
@@ -188,6 +190,8 @@ GameObject:
   - component: {fileID: 1347980812809238706}
   - component: {fileID: 8062333687675604568}
   - component: {fileID: 8069104592102329978}
+  - component: {fileID: 6344475906623357488}
+  - component: {fileID: 7816440887687065343}
   m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
@@ -236,7 +240,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ebc552b0c3051374384636e54939a9cb, type: 2}
+  - {fileID: 2100000, guid: fecbbf066d82ddc4eb662a3c14724bcd, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -306,3 +310,27 @@ MonoBehaviour:
   stateSource: {fileID: 2157661488461133436}
   shapeSprite: {fileID: 2537882373423050008, guid: 388ad2e908298d04bad8c352166b49ad, type: 3}
   spriteFacesRight: 0
+--- !u!114 &6344475906623357488
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920776903526180851}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d50482c02e7a98946b53e27880f4d503, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.ShieldSoldierVisual
+--- !u!114 &7816440887687065343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2920776903526180851}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31a8ada3cc52d1d419dc9e5613fa0079, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitDamageFlash

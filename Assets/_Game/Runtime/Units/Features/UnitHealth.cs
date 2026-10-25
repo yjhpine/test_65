@@ -17,12 +17,23 @@ namespace ActionPlatformer.Units.Features
         public int CurrentHealth { get; private set; }
         public int MaxHealth { get; private set; }
         public uint DamageVersion { get; private set; }
+        public UnitDamageResult LastDamage { get; private set; }
+        public event System.Action<UnitDamageResult> DamageApplied;
         public bool IsAlive => initialized && CurrentHealth > 0;
         public Unit Owner => owner;
         public bool DamageEnabled { get; private set; } = true;
         public bool CanReceiveDamage => DamageEnabled && IsAlive && isActiveAndEnabled && owner != null && owner.isActiveAndEnabled;
 
         public void SetDamageEnabled(bool value) => DamageEnabled = value;
+
+        // Recovery is not a damage transaction and never revives an uninitialized/dead unit.
+        public int RestoreToFull()
+        {
+            if (!IsAlive || !isActiveAndEnabled || owner == null || !owner.isActiveAndEnabled) return 0;
+            int restored = MaxHealth - CurrentHealth;
+            CurrentHealth = MaxHealth;
+            return restored;
+        }
 
         private void Awake()
         {
@@ -45,16 +56,26 @@ namespace ActionPlatformer.Units.Features
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
             if (amount == 0 || !CanReceiveDamage) return 0;
             if (!bypassDirectionalGuard && damageGuard != null && damageGuard.BlocksDamage(sourcePosition)) return 0;
-            return ApplyDamage(amount);
+            return ApplyDamageCore(amount, (Vector2)transform.position - sourcePosition);
         }
 
         public int ApplyDamage(int amount)
+            => ApplyDamageCore(amount, Vector2.zero);
+
+        // Direction is presentation-only. Keep the caller's existing guard policy unchanged.
+        public int ApplyDirectedDamage(int amount, Vector2 direction)
+            => ApplyDamageCore(amount, direction);
+
+        private int ApplyDamageCore(int amount, Vector2 direction)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
             if (amount == 0 || !CanReceiveDamage) return 0;
             int applied = Mathf.Min(amount, CurrentHealth);
             if (!preserveHealthOnDamage) CurrentHealth -= applied;
             unchecked { DamageVersion++; }
+            LastDamage = new UnitDamageResult(this, DamageVersion, applied, preserveHealthOnDamage ? 0 : applied,
+                !IsAlive, direction);
+            DamageApplied?.Invoke(LastDamage);
             if (!IsAlive && deactivateOnDeath) gameObject.SetActive(false);
             return applied;
         }

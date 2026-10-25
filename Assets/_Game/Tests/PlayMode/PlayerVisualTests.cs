@@ -46,7 +46,10 @@ namespace ActionPlatformer.Tests
             state.IsGrounded = !airborne;
             state.AttackPhase = phase;
             state.AttackPresentation = new PlayerAttackPresentation { Kind = kind, Strike = strike,
-                Airborne = airborne, PhaseProgress = progress, Version = state.AttackPresentation.Version + 1 };
+                Airborne = airborne, PhaseProgress = progress,
+                Version = state.AttackPresentation.Version + (phase == PlayerAttackPhase.Windup ||
+                    state.AttackPresentation.Kind != kind || state.AttackPresentation.Version == 0 ? 1u : 0u),
+                StartedAt = state.AttackPresentation.StartedAt + (phase == PlayerAttackPhase.Windup ? .6 : 0) };
         }
         private static IEnumerator RenderFrame() { yield return null; yield return null; }
         private static void AssertFrame(PlayerVisual visual, string animation, string sprite)
@@ -72,12 +75,12 @@ namespace ActionPlatformer.Tests
                 state.Facing = facing;
                 state.AttackBounds = new Bounds(new Vector3(facing, 2f, 0), Vector3.one);
                 Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Windup);
-                yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+                yield return RenderFrame(); Assert.That(slash.enabled, Is.True);
                 Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Active, .3f);
                 yield return RenderFrame();
                 Assert.That(slash.enabled, Is.True);
                 Assert.That(slash.flipX, Is.EqualTo(facing < 0f));
-                Assert.That(slash.transform.position, Is.EqualTo(state.AttackBounds.center));
+                Assert.That(slash.transform.position, Is.EqualTo(visual.transform.TransformPoint(new Vector3(.65f * facing, .3f))));
                 Assert.That(slash.sprite.name, Does.StartWith("white_slash_"));
                 var impactFrame = slash.sprite;
                 Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Recovery, .5f);
@@ -86,7 +89,7 @@ namespace ActionPlatformer.Tests
                 yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
             }
             Attack(state, PlayerAttack.Lift, 1, false, PlayerAttackPhase.Active);
-            yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+            yield return RenderFrame(); Assert.That(slash.enabled, Is.True);
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Active);
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1 };
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
@@ -94,41 +97,66 @@ namespace ActionPlatformer.Tests
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
         }
 
-        [UnityTest] public IEnumerator GlitchSparksStayAtWorldPointsReuseAndDoNotReplayAfterDisable()
+        [UnityTest] public IEnumerator GlitchSparksBurstAtEndpointsThenAlongOneWorldSpaceRowAndReset()
         {
             var state = new State(); var visual = Visual(state);
+            // Separate the bursts enough to observe their order even at a low Editor frame rate.
+            var settings = new SerializedObject(visual);
+            settings.FindProperty("glitchTrailInterval").floatValue = .06f;
+            settings.ApplyModifiedPropertiesWithoutUndo();
             yield return RenderFrame();
-            var first = visual.transform.Find("Glitch spark 0").GetComponent<SpriteRenderer>();
-            var second = visual.transform.Find("Glitch spark 1").GetComponent<SpriteRenderer>();
-            Assert.That(first.enabled, Is.False);
-            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 1, From = new Vector2(-3, 2), To = new Vector2(4, 2) };
-            yield return RenderFrame();
-            Assert.That(first.enabled && second.enabled, Is.True);
-            Assert.That(first.sprite.name, Does.StartWith("white_spark_"));
+            Assert.That(visual.transform.Find("Glitch teleport line"), Is.Null);
+            var sparks = new List<SpriteRenderer>();
+            foreach (var renderer in visual.GetComponentsInChildren<SpriteRenderer>())
+                if (renderer.name.StartsWith("Glitch spark ")) sparks.Add(renderer);
+            Assert.That(sparks.Count, Is.EqualTo(16), "A bounded pool is reused for every teleport.");
+            foreach (var spark in sparks) Assert.That(spark.enabled, Is.False);
             state.IsUnderground = true;
             visual.transform.parent.position = new Vector3(20, 10, 0);
-            yield return RenderFrame();
-            Assert.That((Vector2)first.transform.position, Is.EqualTo(state.GlitchPresentation.From));
-            Assert.That((Vector2)second.transform.position, Is.EqualTo(state.GlitchPresentation.To));
-            yield return new WaitForSeconds(.6f);
-            Assert.That(first.enabled || second.enabled, Is.False);
-            for (uint version = 2; version <= 8; version++)
+            visual.transform.parent.localScale = Vector3.one * 1.25f;
+            visual.transform.parent.rotation = Quaternion.Euler(0, 0, 17);
+            var from = new Vector2(-3, 2);
+            foreach (var to in new[] { new Vector2(0, 2), new Vector2(-3, 5), new Vector2(-4.8f, -.4f) })
             {
-                state.GlitchPresentation = new PlayerGlitchPresentation { Version = version, From = Vector2.left, To = Vector2.right };
+                state.GlitchPresentation = new PlayerGlitchPresentation {
+                    Version = state.GlitchPresentation.Version + 1, From = from, To = to };
+                visual.SendMessage("LateUpdate");
+                int count = Mathf.CeilToInt(Vector2.Distance(from, to) / .6f) + 1;
+                Assert.That(sparks[0].enabled && sparks[count - 1].enabled, Is.True, "Both original endpoint bursts start immediately.");
+                Assert.That(sparks[1].enabled, Is.False, "Interior bursts are delayed.");
+                Assert.That(Vector2.Distance(sparks[0].transform.position, from), Is.LessThan(.001f));
+                Assert.That(Vector2.Distance(sparks[count - 1].transform.position, to), Is.LessThan(.001f));
+                yield return new WaitForSecondsRealtime(.09f);
                 yield return RenderFrame();
+                Assert.That(sparks[1].enabled, Is.True);
+                Assert.That(sparks[1].sprite.name, Does.StartWith("white_spark_"));
+                Assert.That(sparks[0].sprite, Is.Not.EqualTo(sparks[1].sprite), "Each spark plays its own staggered animation.");
+                for (int i = 0; i < count; i++)
+                    if (sparks[i].enabled)
+                        Assert.That(Vector2.Distance(sparks[i].transform.position, Vector2.Lerp(from, to, (float)i / (count - 1))), Is.LessThan(.001f));
             }
-            int count = 0;
-            foreach (var renderer in visual.GetComponentsInChildren<SpriteRenderer>())
-                if (renderer.name.StartsWith("Glitch spark ")) count++;
-            Assert.That(count, Is.EqualTo(4), "Repeated glitches reuse a bounded set of renderers.");
+            float savedTime = Time.timeScale;
+            try
+            {
+                Time.timeScale = 0;
+                yield return new WaitForSecondsRealtime(1f);
+                foreach (var spark in sparks) Assert.That(spark.enabled, Is.False, "All scheduled bursts finish even during hitstop or pause.");
+            }
+            finally { Time.timeScale = savedTime; }
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 4, From = from, To = from };
+            visual.SendMessage("LateUpdate");
+            Assert.That(sparks[0].enabled, Is.True, "A zero-length teleport plays one local burst.");
+            for (int i = 1; i < sparks.Count; i++) Assert.That(sparks[i].enabled, Is.False);
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 5, From = from, To = Vector2.right };
+            yield return RenderFrame(); Assert.That(sparks[0].enabled, Is.True);
             visual.gameObject.SetActive(false); visual.gameObject.SetActive(true);
             yield return RenderFrame();
-            foreach (var renderer in visual.GetComponentsInChildren<SpriteRenderer>())
-                if (renderer.name.StartsWith("Glitch spark ")) Assert.That(renderer.enabled, Is.False);
-            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 9, From = Vector2.left, To = Vector2.right };
-            yield return RenderFrame(); Assert.That(first.enabled, Is.True);
+            foreach (var spark in sparks) Assert.That(spark.enabled, Is.False);
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 6, From = Vector2.left, To = Vector2.right };
+            yield return RenderFrame(); Assert.That(sparks[0].enabled, Is.True);
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Die, Version = 1 };
-            yield return RenderFrame(); Assert.That(first.enabled || second.enabled, Is.False);
+            yield return RenderFrame();
+            foreach (var spark in sparks) Assert.That(spark.enabled, Is.False);
         }
 
         [UnityTest] public IEnumerator GroundComboAndOrdinaryAirAttacksSampleImpactAndRecovery()
@@ -138,19 +166,19 @@ namespace ActionPlatformer.Tests
             for (int strike = 1; strike <= 3; strike++)
             {
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Windup);
-                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack_v7_ready_01");
+                yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_02");
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Active);
-                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack_v7_punch_02");
+                yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_02");
                 Attack(state, PlayerAttack.Side, strike, false, PlayerAttackPhase.Recovery, .99f);
-                yield return RenderFrame(); AssertFrame(visual, "Attack" + strike, "attack_v7_punch_08");
+                yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_08");
                 state.Velocity = new Vector2(8f, -4f);
                 Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Windup);
-                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, "attack_v7_ready_01");
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack1", "attack_v7_punch_02");
                 Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Active);
-                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, "attack_v7_punch_02");
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack1", "attack_v7_punch_02");
                 Attack(state, PlayerAttack.Air, strike, true, PlayerAttackPhase.Recovery, .99f);
                 state.IsGrounded = true; // Landing cannot restart the swing as a ground animation.
-                yield return RenderFrame(); AssertFrame(visual, "AirAttack" + strike, "attack_v7_punch_08");
+                yield return RenderFrame(); AssertFrame(visual, "AirAttack1", "attack_v7_punch_08");
                 state.AttackPhase = PlayerAttackPhase.Ready;
                 yield return RenderFrame();
                 Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Run"), Is.True);
@@ -192,7 +220,7 @@ namespace ActionPlatformer.Tests
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Recovery, .9f);
             yield return RenderFrame();
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Windup);
-            yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_ready_01");
+            yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_02");
             visual.gameObject.SetActive(false); state.AttackPhase = PlayerAttackPhase.Ready;
             visual.gameObject.SetActive(true); yield return RenderFrame();
             Assert.That(animator.GetBool("ActionOverride"), Is.False);
@@ -210,7 +238,7 @@ namespace ActionPlatformer.Tests
                 string prefix = "hurt_v1_";
                 for (int i = 0; i < count; i++)
                 {
-                    state.ReactionPresentation = new PlayerReactionPresentation { Kind = kind, Version = 1,
+                    state.ReactionPresentation = new PlayerReactionPresentation { Kind = kind, Version = 1, HasDirection = true, Direction = Vector2.right,
                         Progress = (i + .1f) / count };
                     yield return RenderFrame();
                     AssertFrame(visual, kind.ToString(), prefix + (i + 1).ToString("00"));
@@ -223,6 +251,97 @@ namespace ActionPlatformer.Tests
             Assert.That(visual.GetComponent<Animator>().GetBool("ActionOverride"), Is.False);
         }
 
+        [UnityTest] public IEnumerator AlternatingFramesSurviveTeleportAndNewAttacksOverrideHitPose()
+        {
+            var state = new State(); var visual = Visual(state);
+            state.AttackPhase = PlayerAttackPhase.Active;
+            state.AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 1, StartedAt = 10 };
+            yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_02");
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 1, From = Vector2.left, To = Vector2.right };
+            state.AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 2, StartedAt = 10.2 };
+            yield return RenderFrame(); AssertFrame(visual, "Attack2", "attack_v7_punch_04");
+            Assert.That(visual.transform.Find("Basic attack slash").GetComponent<SpriteRenderer>().flipY, Is.True);
+            state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1,
+                HasDirection = true, Direction = Vector2.right, Progress = .4f };
+            yield return RenderFrame(); Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);
+            Assert.That(Quaternion.Angle(visual.transform.localRotation, Quaternion.identity), Is.GreaterThan(1));
+            visual.SetReducedMotion(true); yield return RenderFrame();
+            Assert.That(Quaternion.Angle(visual.transform.localRotation, Quaternion.identity), Is.LessThan(.01f));
+            state.AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 3, StartedAt = 10.3 };
+            yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_02");
+            var properties = new MaterialPropertyBlock(); visual.GetComponent<SpriteRenderer>().GetPropertyBlock(properties);
+            Assert.That(properties.GetFloat("_OutlineWidth"), Is.GreaterThan(0), "Reduced motion preserves the damage outline.");
+            state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Die, Version = 2 };
+            yield return RenderFrame(); Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Die"), Is.True);
+        }
+
+        [UnityTest] public IEnumerator CapturePresentationAtReferenceAndFullHdWithReducedMotion()
+        {
+            if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) Assert.Ignore("Graphics device required.");
+            var states = new State[6]; var visuals = new PlayerVisual[6];
+            for (int i = 0; i < 6; i++)
+            {
+                states[i] = new State();
+                var kind = i == 2 ? PlayerAttack.Lift : i == 3 ? PlayerAttack.Slam : PlayerAttack.Side;
+                states[i].AttackPhase = i == 3 ? PlayerAttackPhase.Descending : i == 4 ? PlayerAttackPhase.Ready : PlayerAttackPhase.Active;
+                states[i].AttackPresentation = new PlayerAttackPresentation { Kind = kind, Version = 1, StartedAt = 10, PhaseProgress = .2f };
+                if (i == 4) states[i].ReactionPresentation = new PlayerReactionPresentation {
+                    Kind = PlayerReaction.Hit, Version = 1, Progress = .2f, HasDirection = true, Direction = Vector2.left };
+                visuals[i] = Visual(states[i], new Vector3((i % 3) * 4 - 4, 103 - (i / 3) * 3, 0));
+            }
+            yield return RenderFrame();
+            states[1].AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 2, StartedAt = 10.2, PhaseProgress = .2f };
+            var victim = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/PatrolEnemy.prefab"),
+                new Vector3(5.1f, 100, 0), Quaternion.identity); created.Add(victim);
+            victim.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
+            var health = victim.GetComponent<ActionPlatformer.Units.Features.UnitHealth>();
+            var go = new GameObject("Presentation acceptance camera"); created.Add(go);
+            var camera = go.AddComponent<Camera>(); camera.enabled = false; camera.orthographic = true;
+            camera.orthographicSize = 4.1f; camera.transform.position = new Vector3(.4f, 101.5f, -10);
+            camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = new Color(.08f, .1f, .15f);
+            var tuning = AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset");
+            var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Game/Art/PlayerDamageScreen.mat");
+            var feedback = new PlayerImpactFeedback(tuning, camera, material);
+            float savedTime = Time.timeScale, savedStep = Time.fixedDeltaTime;
+            try
+            {
+                foreach (bool reduced in new[] { false, true })
+                foreach (var size in new[] { new Vector2Int(1120, 660), new Vector2Int(1920, 1080) })
+                {
+                    foreach (var visual in visuals) visual.SetReducedMotion(reduced);
+                    health.ApplyDamage(1);
+                    visuals[5].PresentHit(new PlayerHitPresentation(1, PlayerAttack.Side, health,
+                        health.GetComponent<Collider2D>().ClosestPoint(visuals[5].transform.position), Vector2.right, 1, 1, false));
+                    yield return null;
+                    int victimOrder = victim.GetComponentInChildren<SpriteRenderer>().sortingOrder;
+                    foreach (var effect in visuals[5].GetComponentsInChildren<SpriteRenderer>())
+                        if (effect.name.StartsWith("Contact ") && effect.enabled)
+                            Assert.That(effect.sortingOrder, Is.EqualTo(victimOrder + 1), "Contacts must appear above the victim and below telegraphs.");
+                    feedback.Reset(); feedback.ReducedMotion = reduced;
+                    var basePosition = camera.transform.position;
+                    double now = Time.unscaledTimeAsDouble; feedback.PlayDamage(Vector2.left, now); feedback.LateTick(now);
+                    float screenPixels = Vector3.Distance(basePosition, camera.transform.position) * size.y / (2 * camera.orthographicSize);
+                    Assert.That(screenPixels, Is.EqualTo(reduced ? 0 : 4f * size.y / 660f).Within(.001f));
+                    var rt = new RenderTexture(size.x, size.y, 24); var texture = new Texture2D(size.x, size.y, TextureFormat.RGB24, false);
+                    var previous = RenderTexture.active;
+                    try
+                    {
+                        camera.targetTexture = rt; camera.Render(); RenderTexture.active = rt;
+                        texture.ReadPixels(new Rect(0, 0, size.x, size.y), 0, 0); texture.Apply();
+                        System.IO.Directory.CreateDirectory("Library/PrototypeValidation");
+                        System.IO.File.WriteAllBytes("Library/PrototypeValidation/GlitchPresentation-" + size.x + "-" + (reduced ? "reduced" : "normal") + ".png", texture.EncodeToPNG());
+                        Vector2 cursor = camera.WorldToScreenPoint(victim.transform.position);
+                        feedback.Tick(now);
+                        var ray = feedback.ScreenPointToRay(cursor); var plane = new Plane(Vector3.forward, Vector3.zero);
+                        Assert.That(plane.Raycast(ray, out float distance), Is.True);
+                        Assert.That(Vector3.Distance(ray.GetPoint(distance), victim.transform.position), Is.LessThan(.001f));
+                    }
+                    finally { RenderTexture.active = previous; camera.targetTexture = null; rt.Release(); Object.DestroyImmediate(rt); Object.DestroyImmediate(texture); }
+                }
+            }
+            finally { feedback.Dispose(); Time.timeScale = savedTime; Time.fixedDeltaTime = savedStep; }
+        }
+
         [UnityTest] public IEnumerator CapturePlayerHitAndDieFrames()
         {
             if (SystemInfo.graphicsDeviceType == UnityEngine.Rendering.GraphicsDeviceType.Null) Assert.Ignore("Graphics device required.");
@@ -230,7 +349,7 @@ namespace ActionPlatformer.Tests
             {
                 bool hit = i < 8; int frame = hit ? i : i-8;
                 var state = new State { ReactionPresentation = new PlayerReactionPresentation {
-                    Kind = hit ? PlayerReaction.Hit : PlayerReaction.Die, Version = 1,
+                    Kind = hit ? PlayerReaction.Hit : PlayerReaction.Die, Version = 1, HasDirection = true, Direction = Vector2.right,
                     Progress = (frame + .1f) / (hit ? 8f : 4f) } };
                 Visual(state,new Vector3(frame*1.8f-6.3f,hit?103f:100f,0f));
             }

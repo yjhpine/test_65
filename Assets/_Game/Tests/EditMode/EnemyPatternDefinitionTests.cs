@@ -22,7 +22,7 @@ namespace ActionPlatformer.Tests
             Assert.That(((EnemyFsmDefinition)definition.Fsm).TryValidate(out error),Is.True,error);
             Assert.That(go.GetComponent<BoxCollider2D>().size,Is.EqualTo(new Vector2(1,height)));
             Assert.That(go.GetComponent<EnemyCombat2D>(),Is.Not.Null);Assert.That(go.GetComponentInChildren<EnemyVisual2D>(),Is.Not.Null);
-            var animator=go.GetComponentInChildren<Animator>();Assert.That(animator.applyRootMotion,Is.False);Assert.That(animator.runtimeAnimatorController.animationClips.Length,Is.EqualTo(name=="SurveillanceTurret"?8:4));
+            var animator=go.GetComponentInChildren<Animator>();Assert.That(animator.applyRootMotion,Is.False);Assert.That(animator.runtimeAnimatorController.animationClips.Length,Is.EqualTo(name=="SurveillanceTurret"?8:name=="ShieldSoldier"?9:4));
             foreach(var clip in animator.runtimeAnimatorController.animationClips)Assert.That(AnimationUtility.GetObjectReferenceCurveBindings(clip)[0].propertyName,Is.EqualTo("m_Sprite"));
         }
         [Test] public void InvalidTimingAndNonFiniteSettingsAreRejected()
@@ -34,6 +34,32 @@ namespace ActionPlatformer.Tests
                 data.FindProperty("lockDuration").floatValue=.4f;data.FindProperty("dashSpeed").floatValue=float.NaN;data.ApplyModifiedPropertiesWithoutUndo();Assert.That(s.TryValidate(out _),Is.False);
             }
             finally{Object.DestroyImmediate(s);}
+        }
+
+        [TestCase("SurveillanceTurret", "blue")]
+        [TestCase("FlyingDrone", "red")]
+        public void RangedLaserSpritesKeepNativePalettePivotsAndPixelImport(string name, string color)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/" + name + ".prefab");
+            var view = prefab.GetComponentInChildren<EnemyLaserVisual>(); Assert.That(view.IsConfigured, Is.True);
+            var data = new SerializedObject(view);
+            foreach (string part in new[] { "start", "body", "end" })
+            {
+                var frames = data.FindProperty(part + "Frames");
+                Assert.That(frames.arraySize, Is.EqualTo(part == "start" ? 21 : 13));
+                for (int i = 0; i < frames.arraySize; i++)
+                {
+                    var sprite = frames.GetArrayElementAtIndex(i).objectReferenceValue as Sprite;
+                    Assert.That(sprite, Is.Not.Null);
+                    StringAssert.Contains("laser_" + part + "_32x32_" + color, AssetDatabase.GetAssetPath(sprite));
+                    Assert.That(sprite.rect.size, Is.EqualTo(new Vector2(32, 32)));
+                    Assert.That(sprite.pivot, Is.EqualTo(new Vector2(part == "start" ? 12 : part == "end" ? 17 : 0, 17)));
+                    Assert.That(sprite.texture.filterMode, Is.EqualTo(FilterMode.Point));
+                    var importer = (TextureImporter)AssetImporter.GetAtPath(AssetDatabase.GetAssetPath(sprite));
+                    Assert.That(importer.mipmapEnabled, Is.False);
+                    Assert.That(importer.textureCompression, Is.EqualTo(TextureImporterCompression.Uncompressed));
+                }
+            }
         }
     }
 }

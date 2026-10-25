@@ -37,17 +37,8 @@ Shader "ActionPlatformer/Player Damage Screen"
             half4 Frag(Varyings input) : SV_Target
             {
                 float2 p = input.uv * 2 - 1;
-                float radius = length(p);
-                float angle = atan2(p.y, p.x + .00001);
-                float edge = smoothstep(.35,1.3,radius);
-                float rays = pow(saturate(sin(angle*19 + cos(angle*7)*1.4)),38);
-                float rayAlpha = rays * smoothstep(.25,.85,radius) * _Streak * .8;
-                float redAlpha = edge * _Vignette;
-                float alpha = redAlpha + rayAlpha * (1-redAlpha);
-                float3 rgb = float3(.42,.012,.03)*redAlpha*(1-rayAlpha) + float3(1,.84,.76)*rayAlpha;
-                rgb = rgb*(1-_Flash) + float3(1,.95,.88)*_Flash;
-                alpha = alpha*(1-_Flash) + _Flash;
-                return half4(rgb / max(alpha,.0001), alpha);
+                float edge = smoothstep(.72, 1, max(abs(p.x), abs(p.y)));
+                return half4(1, .35, .55, edge * min(_Vignette, .12));
             }
             ENDHLSL
         }

@@ -57,6 +57,70 @@ namespace ActionPlatformer.Tests
         void MoveTarget(Vector2 p){target.GetComponent<Rigidbody2D>().position=p;target.transform.position=p;Physics2D.SyncTransforms();}
         [TearDown] public void Cleanup(){for(int i=created.Count-1;i>=0;i--)if(created[i]!=null)Object.DestroyImmediate(created[i]);created.Clear();}
 
+        Sprite SampleShield(string stateName, string artFolder)
+        {
+            var visual = enemy.GetComponentInChildren<EnemyVisual2D>();
+            var animator = visual.GetComponent<Animator>();
+            visual.SendMessage("LateUpdate");
+            animator.Update(0f);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName(stateName), Is.True, stateName);
+            var sprite = visual.GetComponent<SpriteRenderer>().sprite;
+            StringAssert.Contains("/Monster3/" + artFolder + "/", AssetDatabase.GetAssetPath(sprite));
+            return sprite;
+        }
+
+        [UnityTest] public IEnumerator ShieldNewGuardAndAttackFollowExistingPreparationAndDash()
+        {
+            yield return Spawn("ShieldSoldier", Vector2.left);
+            SampleShield("Idle", "Idle");
+            Tick(); SampleShield("GuardEnter", "GuardEnter");
+            Tick(.5f); SampleShield("GuardHold", "GuardHold");
+            Tick(.52f); SampleShield("GuardExit", "GuardExit");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing));
+            Assert.That(Combat.State.Elapsed, Is.EqualTo(1.02f).Within(.001f));
+            Tick(.2f); SampleShield("Attack", "AttackSlash");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Dash));
+            Tick(.07f); var middle = SampleShield("Attack", "AttackSlash");
+            Assert.That(middle.name, Is.Not.EqualTo("01"));
+            Tick(.5f); SampleShield("Idle", "Idle");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Recovery));
+        }
+
+        [UnityTest] public IEnumerator ShieldBlockAndHitReactWithoutResettingFsmAndClearOnReuse()
+        {
+            yield return Spawn("ShieldSoldier", Vector2.left);
+            Tick(); Tick(.3f);
+            Assert.That(Health.ApplyDamage(10, Combat.Center + Vector2.left), Is.Zero);
+            SampleShield("Block", "Block");
+            Assert.That(Health.CurrentHealth, Is.EqualTo(75));
+            Assert.That(Health.ApplyDamage(1, Combat.Center + Vector2.right), Is.EqualTo(1));
+            SampleShield("Hit", "Hit");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing));
+            Assert.That(Combat.State.Elapsed, Is.EqualTo(.3f).Within(.001f));
+            yield return new WaitForSeconds(.12f);
+            Health.ApplyDamage(1, Combat.Center + Vector2.right);
+            Assert.That(SampleShield("Hit", "Hit").name, Is.EqualTo("01"));
+            enemy.gameObject.SetActive(false); enemy.gameObject.SetActive(true);
+            MoveTarget(Combat.Center + Vector2.left * 20f);
+            yield return null;
+            SampleShield("Idle", "Idle");
+            Assert.That(Health.CurrentHealth, Is.EqualTo(73));
+        }
+
+        [UnityTest] public IEnumerator ShieldDissolveOverridesReactionAndUsesExistingDeathDelay()
+        {
+            yield return Spawn("ShieldSoldier", Vector2.right);
+            Tick(); Tick(.56f);
+            Assert.That(Combat.Facing, Is.EqualTo(1));
+            Health.ApplyDamage(1000, Combat.Center + Vector2.left, true);
+            Tick(); SampleShield("Death", "DeathDissolve");
+            Assert.That(enemy.GetComponentInChildren<SpriteRenderer>().flipX, Is.True);
+            Tick(.3f); Assert.That(SampleShield("Death", "DeathDissolve").name, Is.EqualTo("06"));
+            Tick(.29f); Assert.That(SampleShield("Death", "DeathDissolve").name, Is.EqualTo("10"));
+            Assert.That(enemy.gameObject.activeSelf, Is.True);
+            Tick(.02f); Assert.That(enemy.gameObject.activeSelf, Is.False);
+        }
+
         [UnityTest] public IEnumerator ShieldBlocksFrontOnlyAndBypassDoesNotBlock()
         {
             yield return Spawn("ShieldSoldier",Vector2.left);

@@ -41,22 +41,22 @@ MonoBehaviour:
   hitStopDuration: 0.035
   heavyHitStopDuration: 0.055
   slamHitStopDuration: 0.08
-  shakeAmplitude: 0.025
-  heavyShakeAmplitude: 0.075
-  slamShakeAmplitude: 0.14
-  shakeDuration: 0.14
+  shakeAmplitude: 1.5
+  heavyShakeAmplitude: 2
+  slamShakeAmplitude: 3
+  shakeDuration: 0.06
   shakeFrequency: 22
   damageSlowTimeScale: 0.2
   damageSlowDuration: 0.15
   damageSlowRecovery: 0.1
-  damageShakeAmplitude: 0.22
-  damageShakeDuration: 0.28
-  damageZoom: 0.035
+  damageShakeAmplitude: 4
+  damageShakeDuration: 0.12
+  damageZoom: 0
   damageZoomDuration: 0.18
-  damageFlashOpacity: 0.7
+  damageFlashOpacity: 0
   damageFlashDuration: 0.065
-  damageVignetteOpacity: 0.8
-  damageScreenDuration: 0.45
+  damageVignetteOpacity: 0.12
+  damageScreenDuration: 0.16
   targetMask:
     serializedVersion: 2
     m_Bits: 4

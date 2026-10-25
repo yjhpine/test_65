@@ -13,6 +13,8 @@ namespace ActionPlatformer.Player
         public PlayerReaction Kind;
         public uint Version;
         public float Progress;
+        public bool HasDirection;
+        public Vector2 Direction;
     }
 
     // Presentation facts only. Animation never advances combat or applies damage.
@@ -21,12 +23,14 @@ namespace ActionPlatformer.Player
         public PlayerAttack Kind;
         public int Strike;
         public uint Version;
+        public double StartedAt;
         public bool Airborne;
         public float PhaseProgress;
     }
 
     public struct PlayerShockwave
     {
+        public uint Version;
         public bool Visible;
         public Vector2 Center;
         public float Radius;

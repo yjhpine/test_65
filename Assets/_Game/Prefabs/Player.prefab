@@ -123,6 +123,7 @@ MonoBehaviour:
   combatTuning: {fileID: 11400000, guid: 61f6a7c237e4f4f4ca4b50e440146d1a, type: 2}
   aimCamera: {fileID: 0}
   damageScreenMaterial: {fileID: 2100000, guid: 2e8f5f35ce01f7946ad2ac545e81a363, type: 2}
+  reducedMotion: 0
   deathDuration: 0.7
 --- !u!114 &7290577179776929193
 MonoBehaviour:
@@ -228,7 +229,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ebc552b0c3051374384636e54939a9cb, type: 2}
+  - {fileID: 2100000, guid: fecbbf066d82ddc4eb662a3c14724bcd, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -334,3 +335,5 @@ MonoBehaviour:
   basicAttackEffectSize: 2.5
   glitchEffectSize: 2.5
   glitchEffectFps: 30
+  glitchTrailSpacing: 0.6
+  glitchTrailInterval: 0.025

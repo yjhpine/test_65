@@ -29,6 +29,9 @@ namespace ActionPlatformer.Player
         private double phaseEndsAt;
         private double phaseStartedAt;
         private uint attackVersion;
+        private double attackStartedAt;
+        private uint landingVersion;
+        private readonly Queue<PlayerHitPresentation> presentationHits = new Queue<PlayerHitPresentation>();
         private bool airborneAttack;
         private double comboExpiresAt;
         private double stunnedUntil;
@@ -82,6 +85,12 @@ namespace ActionPlatformer.Player
             return true;
         }
 
+        public bool ConsumeHit(out PlayerHitPresentation result)
+        {
+            if (presentationHits.Count == 0) { result = default; return false; }
+            result = presentationHits.Dequeue(); return true;
+        }
+
         // The coordinator supplies arrival facts; combat owns the one-use follow-up state.
         public void ObserveArrival(bool aboveTarget) => slamReady = aboveTarget;
         public void ObserveGrounded(bool grounded) { if (grounded) slamReady = false; }
@@ -108,6 +117,7 @@ namespace ActionPlatformer.Player
             bufferedAttack = false;
             emittedImpactStages = 0;
             attackVersion++;
+            attackStartedAt = now;
             airborneAttack = !grounded;
             Phase = PlayerAttackPhase.Windup;
             phaseStartedAt = now;
@@ -120,7 +130,7 @@ namespace ActionPlatformer.Player
 
         public PlayerAttackPresentation GetPresentation(double now) => new PlayerAttackPresentation
         {
-            Kind = Attack, Strike = Strike, Version = attackVersion, Airborne = airborneAttack,
+            Kind = Attack, Strike = Strike, Version = attackVersion, StartedAt = attackStartedAt, Airborne = airborneAttack,
             PhaseProgress = phaseEndsAt > phaseStartedAt
                 ? Mathf.Clamp01((float)((now - phaseStartedAt) / (phaseEndsAt - phaseStartedAt))) : 1f
         };
@@ -128,7 +138,7 @@ namespace ActionPlatformer.Player
         public PlayerShockwave GetShockwave(double now)
         {
             float progress = (float)((now - shockwaveStartedAt) / tuning.ShockwaveDuration);
-            return new PlayerShockwave { Visible = progress >= 0f && progress < 1f,
+            return new PlayerShockwave { Version = landingVersion, Visible = progress >= 0f && progress < 1f,
                 Center = shockwaveCenter, Radius = tuning.ShockwaveRadius, Progress = Mathf.Clamp01(progress) };
         }
 
@@ -137,6 +147,7 @@ namespace ActionPlatformer.Player
             if (!IsDescending) return;
             shockwaveCenter = contact + Vector2.up * 0.08f;
             shockwaveStartedAt = now;
+            landingVersion++;
             Phase = PlayerAttackPhase.Active;
             phaseStartedAt = now;
             phaseEndsAt = now + tuning.ActiveDuration;
@@ -194,7 +205,16 @@ namespace ActionPlatformer.Player
                         candidates[i].bounds.center, tuning.ObstacleMask, obstacles)) continue;
                 hit.Add(target);
                 bool bypassGuard = shockwave || Attack == PlayerAttack.Emergence || Attack == PlayerAttack.Lift || Attack == PlayerAttack.Slam;
-                if (target.ApplyDamage(owner.Definition.AttackPower, body.bounds.center, bypassGuard) <= 0) continue;
+                Vector2 origin = shockwave ? shockwaveCenter : (Vector2)body.bounds.center;
+                Vector2 point = candidates[i].ClosestPoint(origin);
+                int healthBefore = target.CurrentHealth;
+                int damage = target.ApplyDamage(owner.Definition.AttackPower, body.bounds.center, bypassGuard);
+                if (damage <= 0) continue;
+                var kind = shockwave ? PlayerAttack.Shockwave : Attack;
+                Vector2 hitDirection = Attack == PlayerAttack.Slam ? Vector2.down :
+                    Attack == PlayerAttack.Lift || Attack == PlayerAttack.Emergence ? Vector2.up : Vector2.right * Facing;
+                presentationHits.Enqueue(new PlayerHitPresentation(attackVersion, kind, target, point, hitDirection,
+                    damage, healthBefore - target.CurrentHealth, !target.IsAlive));
                 dealtDamage = true; // Lethal hits also produce feedback.
                 if (target.IsAlive)
                     hitReaction?.Apply(target, shockwave ? new PlayerAttackSelection(PlayerAttack.Shockwave,
@@ -237,6 +257,7 @@ namespace ActionPlatformer.Player
             bufferedAttack = hasImpact = false;
             emittedImpactStages = 0;
             pendingImpact = default;
+            presentationHits.Clear();
             hit.Clear();
         }
     }

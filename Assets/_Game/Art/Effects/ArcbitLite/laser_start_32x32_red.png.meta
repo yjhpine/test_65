@@ -1,0 +1,703 @@
+fileFormatVersion: 2
+guid: cfe853feeb4c50946b76071a500278eb
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 1178832112186019476
+    second: laser_start_32x32_red_0
+  - first:
+      213: 1008844399673430604
+    second: laser_start_32x32_red_1
+  - first:
+      213: 6040361599044700857
+    second: laser_start_32x32_red_2
+  - first:
+      213: -8122299254378857198
+    second: laser_start_32x32_red_3
+  - first:
+      213: -8141166472668256731
+    second: laser_start_32x32_red_4
+  - first:
+      213: -1085023386524866850
+    second: laser_start_32x32_red_5
+  - first:
+      213: -4317938792934496411
+    second: laser_start_32x32_red_6
+  - first:
+      213: -2266936779725053091
+    second: laser_start_32x32_red_7
+  - first:
+      213: 5227449874347853366
+    second: laser_start_32x32_red_8
+  - first:
+      213: -9110391728431433503
+    second: laser_start_32x32_red_9
+  - first:
+      213: 8328814586678330322
+    second: laser_start_32x32_red_10
+  - first:
+      213: -5977159441066381518
+    second: laser_start_32x32_red_11
+  - first:
+      213: -4627094966735643617
+    second: laser_start_32x32_red_12
+  - first:
+      213: 8566550807993697622
+    second: laser_start_32x32_red_13
+  - first:
+      213: -6563296075944876038
+    second: laser_start_32x32_red_14
+  - first:
+      213: 3116017443432122649
+    second: laser_start_32x32_red_00
+  - first:
+      213: -275430570153028936
+    second: laser_start_32x32_red_01
+  - first:
+      213: -5614867860050832645
+    second: laser_start_32x32_red_02
+  - first:
+      213: 2704165426160712911
+    second: laser_start_32x32_red_03
+  - first:
+      213: 6636061077605951557
+    second: laser_start_32x32_red_04
+  - first:
+      213: 6471017828426903262
+    second: laser_start_32x32_red_05
+  - first:
+      213: -3544960782969753730
+    second: laser_start_32x32_red_06
+  - first:
+      213: 4678877929099422429
+    second: laser_start_32x32_red_07
+  - first:
+      213: 1572118435383409082
+    second: laser_start_32x32_red_08
+  - first:
+      213: 1870583274423896872
+    second: laser_start_32x32_red_09
+  - first:
+      213: -6874637278693722723
+    second: laser_start_32x32_red_15
+  - first:
+      213: -6032053927238442026
+    second: laser_start_32x32_red_16
+  - first:
+      213: 1045656036768391646
+    second: laser_start_32x32_red_17
+  - first:
+      213: 2755129265764335120
+    second: laser_start_32x32_red_18
+  - first:
+      213: 2425958402666117517
+    second: laser_start_32x32_red_19
+  - first:
+      213: -5590889204940451121
+    second: laser_start_32x32_red_20
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 32
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: laser_start_32x32_red_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 91941bdfa515e3b20800000000000000
+      internalID: 3116017443432122649
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_01
+      rect:
+        serializedVersion: 2
+        x: 32
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8b2deb11b597d2cf0800000000000000
+      internalID: -275430570153028936
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_02
+      rect:
+        serializedVersion: 2
+        x: 64
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: bf299ec1e6bf312b0800000000000000
+      internalID: -5614867860050832645
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_03
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fccb338b020278520800000000000000
+      internalID: 2704165426160712911
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_04
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 548af760466081c50800000000000000
+      internalID: 6636061077605951557
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_05
+      rect:
+        serializedVersion: 2
+        x: 160
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: edeea961e6cadc950800000000000000
+      internalID: 6471017828426903262
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_06
+      rect:
+        serializedVersion: 2
+        x: 192
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e7fa56c23f4cdcec0800000000000000
+      internalID: -3544960782969753730
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_07
+      rect:
+        serializedVersion: 2
+        x: 224
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ddae26fcfa6bee040800000000000000
+      internalID: 4678877929099422429
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_08
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ab9fed5336941d510800000000000000
+      internalID: 1572118435383409082
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_09
+      rect:
+        serializedVersion: 2
+        x: 288
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 82bc2dac395a5f910800000000000000
+      internalID: 1870583274423896872
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_10
+      rect:
+        serializedVersion: 2
+        x: 320
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2d3cd071db4e59370800000000000000
+      internalID: 8328814586678330322
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_11
+      rect:
+        serializedVersion: 2
+        x: 352
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 23fad5d182ddc0da0800000000000000
+      internalID: -5977159441066381518
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_12
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f1c59b5a4a149cfb0800000000000000
+      internalID: -4627094966735643617
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_13
+      rect:
+        serializedVersion: 2
+        x: 416
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 655ccc4829082e670800000000000000
+      internalID: 8566550807993697622
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_14
+      rect:
+        serializedVersion: 2
+        x: 448
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: af727952efc7ae4a0800000000000000
+      internalID: -6563296075944876038
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_15
+      rect:
+        serializedVersion: 2
+        x: 480
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d957dc381d16890a0800000000000000
+      internalID: -6874637278693722723
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_16
+      rect:
+        serializedVersion: 2
+        x: 512
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6d3e3f099e6d94ca0800000000000000
+      internalID: -6032053927238442026
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_17
+      rect:
+        serializedVersion: 2
+        x: 544
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ed1a2d410aae28e00800000000000000
+      internalID: 1045656036768391646
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_18
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01e7a2c487f2c3620800000000000000
+      internalID: 2755129265764335120
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_19
+      rect:
+        serializedVersion: 2
+        x: 608
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: d89b9ce505cbaa120800000000000000
+      internalID: 2425958402666117517
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: laser_start_32x32_red_20
+      rect:
+        serializedVersion: 2
+        x: 640
+        y: 0
+        width: 32
+        height: 32
+      alignment: 9
+      pivot: {x: 0.375, y: 0.53125}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: fc255f0d3eb2962b0800000000000000
+      internalID: -5590889204940451121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      laser_start_32x32_red_0: 1178832112186019476
+      laser_start_32x32_red_00: 3116017443432122649
+      laser_start_32x32_red_01: -275430570153028936
+      laser_start_32x32_red_02: -5614867860050832645
+      laser_start_32x32_red_03: 2704165426160712911
+      laser_start_32x32_red_04: 6636061077605951557
+      laser_start_32x32_red_05: 6471017828426903262
+      laser_start_32x32_red_06: -3544960782969753730
+      laser_start_32x32_red_07: 4678877929099422429
+      laser_start_32x32_red_08: 1572118435383409082
+      laser_start_32x32_red_09: 1870583274423896872
+      laser_start_32x32_red_1: 1008844399673430604
+      laser_start_32x32_red_10: 8328814586678330322
+      laser_start_32x32_red_11: -5977159441066381518
+      laser_start_32x32_red_12: -4627094966735643617
+      laser_start_32x32_red_13: 8566550807993697622
+      laser_start_32x32_red_14: -6563296075944876038
+      laser_start_32x32_red_15: -6874637278693722723
+      laser_start_32x32_red_16: -6032053927238442026
+      laser_start_32x32_red_17: 1045656036768391646
+      laser_start_32x32_red_18: 2755129265764335120
+      laser_start_32x32_red_19: 2425958402666117517
+      laser_start_32x32_red_2: 6040361599044700857
+      laser_start_32x32_red_20: -5590889204940451121
+      laser_start_32x32_red_3: -8122299254378857198
+      laser_start_32x32_red_4: -8141166472668256731
+      laser_start_32x32_red_5: -1085023386524866850
+      laser_start_32x32_red_6: -4317938792934496411
+      laser_start_32x32_red_7: -2266936779725053091
+      laser_start_32x32_red_8: 5227449874347853366
+      laser_start_32x32_red_9: -9110391728431433503
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

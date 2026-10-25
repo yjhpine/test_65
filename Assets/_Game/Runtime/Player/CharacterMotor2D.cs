@@ -16,6 +16,8 @@ namespace ActionPlatformer.Player
         private readonly ContactFilter2D groundFilter;
         private readonly RaycastHit2D[] groundHits = new RaycastHit2D[8];
         private RigidbodyType2D savedBodyType;
+        private bool savedSimulated;
+        public bool IsTransferring { get; private set; }
         public bool IsHeld { get; private set; }
 
         public Vector2 Velocity => body.linearVelocity;
@@ -75,6 +77,8 @@ namespace ActionPlatformer.Player
         public void Relocate(Vector2 position, Vector2 velocity)
         {
             body.position = position;
+            // Unsimulated bodies do not publish their physics pose to the Transform/camera.
+            if (IsTransferring) body.transform.position = new Vector3(position.x, position.y, body.transform.position.z);
             body.linearVelocity = velocity;
             IsGrounded = false;
         }
@@ -134,6 +138,28 @@ namespace ActionPlatformer.Player
             body.bodyType = RigidbodyType2D.Kinematic;
             IsHeld = true;
             IsGrounded = false;
+        }
+
+        public void BeginTransfer()
+        {
+            if (IsTransferring) return;
+            Hold();
+            savedSimulated = body.simulated;
+            body.simulated = false;
+            IsTransferring = true;
+        }
+
+        public void EndTransfer()
+        {
+            if (!IsTransferring) return;
+            Vector2 position = body.position;
+            body.simulated = savedSimulated;
+            IsTransferring = false;
+            Release();
+            body.position = position;
+            body.transform.position = new Vector3(position.x, position.y, body.transform.position.z);
+            Physics2D.SyncTransforms();
+            RefreshContacts();
         }
 
         public void Release()

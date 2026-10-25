@@ -144,7 +144,7 @@ namespace ActionPlatformer.Cinematics
                     if (!actor.IsAvailable) return false;
                     boundSpeakers.Add(actor);
                 }
-            if (!player.isActiveAndEnabled || player.Motor == null || stage.State != StageState.Playing ||
+            if (!player.isActiveAndEnabled || player.IsScriptedTransferring || player.Motor == null || stage.State != StageState.Playing ||
                 !player.TryGetComponent(out health) || !health.IsAlive || !coordinator.TryAcquire(this)) return false;
             State = CutsceneState.Playing;
             try

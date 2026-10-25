@@ -763,7 +763,7 @@ namespace ActionPlatformer.Tests
             {
                 Time.timeScale = 0f;
                 yield return null;
-                Assert.That(player.transform.Find("Visual/Shockwave 0").GetComponent<SpriteRenderer>().enabled, Is.True);
+                Assert.That(player.transform.Find("Visual/Shockwave 0"), Is.Null, "The gameplay shockwave does not create the old debug semicircle.");
                 if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null) yield return Capture("Shockwave");
             }
             finally { Time.timeScale = previousTimeScale; }
@@ -1416,30 +1416,35 @@ namespace ActionPlatformer.Tests
             var animator = player.GetComponentInChildren<Animator>();
             var sprite = player.GetComponentInChildren<SpriteRenderer>();
             Combat.TryAttack(enemy, 1f, false, Time.timeAsDouble);
-            Health.ApplyDamage(1);
+            Health.ApplyDirectedDamage(1, Vector2.left);
             input.Command = new PlayerCommand { Move = Vector2.right };
-            yield return Step; yield return null; yield return null;
-            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
-            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);
-            Assert.That(sprite.sprite.name, Is.EqualTo("hurt_v1_01"));
-            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f), "Hit keeps existing walking rules.");
-            uint version = player.ReactionPresentation.Version;
-            yield return new WaitForSeconds(0.11f);
-            Assert.That(player.ReactionPresentation.Progress, Is.GreaterThan(0.3f));
-            Health.ApplyDamage(1);
-            yield return Step; yield return null; yield return null;
-            Assert.That(player.ReactionPresentation.Version, Is.GreaterThan(version));
-            Assert.That(player.ReactionPresentation.Progress, Is.LessThan(0.3f));
-            Assert.That(sprite.sprite.name, Is.EqualTo("hurt_v1_01"));
-            yield return new WaitForSeconds(combatSettings.HitStun + 0.05f);
             yield return null; yield return null;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True,
+                "Reaction=" + player.ReactionPresentation.Kind + " progress=" + player.ReactionPresentation.Progress +
+                " direction=" + player.ReactionPresentation.HasDirection + " sprite=" + sprite.sprite.name);
+            Assert.That(sprite.sprite.name, Does.StartWith("hurt_v1_"));
+            uint version = player.ReactionPresentation.Version;
+            yield return new WaitForSecondsRealtime(.04f);
+            Assert.That(player.ReactionPresentation.Progress, Is.GreaterThan(.2f));
+            Health.ApplyDirectedDamage(1, Vector2.right);
+            yield return null; yield return null;
+            Assert.That(player.ReactionPresentation.Version, Is.GreaterThan(version));
+            Assert.That(player.ReactionPresentation.HasDirection, Is.True);
+            Assert.That(player.ReactionPresentation.Direction, Is.EqualTo(Vector2.right));
+            Assert.That(sprite.sprite.name, Does.StartWith("hurt_v1_"));
+            yield return new WaitForSecondsRealtime(.14f);
             Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
+            Assert.That(Combat.CanAttack(Time.timeAsDouble), Is.False, "Short visuals must not shorten gameplay hit stun.");
+            yield return new WaitForSeconds(combatSettings.HitStun + .05f);
+            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Run"), Is.True);
-            Health.ApplyDamage(1); yield return Step; yield return null;
+            Health.ApplyDamage(1); yield return null; yield return null;
+            Assert.That(player.ReactionPresentation.HasDirection, Is.False);
+            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.False, "Unknown damage must not invent a directional pose.");
             player.enabled = false; player.enabled = true;
             yield return null; yield return null;
             Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
-            Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.False);
         }
 
         [UnityTest] public IEnumerator PlayerDeathPlaysEveryFrameBlocksActionsThenDeactivatesWithoutRevival()

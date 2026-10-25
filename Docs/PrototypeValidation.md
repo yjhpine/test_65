@@ -1,5 +1,26 @@
 # Movement Lab 검증 기록
 
+## 전멸 후 Shift 입력으로 휴식 이동 (2026-10-25)
+
+- 자동 출발을 제거했다. 기존 0.35초·컷신·시간 연출 대기 이후 기존 안내 영역에 `SHIFT > REST AREA`를 표시하고, 새 글리치 입력을 받으면 기존 경로 이동을 시작한다. 전투 중/준비 전 입력은 예약하지 않으며 도착 회복과 다음 전투는 유지한다.
+- Unity Pipeline 재컴파일 성공(completed, failed=false, errors=[]). PlayMode `RestCycleTests` **14/14**, `PlayerGlitchCombatTests` **120/120**, `StageFlowTests` **12/12** 통과. 이번 실행 결과는 `Library/PrototypeValidation/RestShiftPlayMode.xml`, `RestShiftGlitchCombatPlayMode.xml`, `RestShiftStageFlowPlayMode.xml`에 보관했다.
+- 추가 검사는 입력 전 1.2초 대기 중 위치·체력·조작 유지, 안내 표시, 새 입력 후 도착/회복, 전투 중 또는 너무 이른 입력 미예약을 확인한다. 기존 휴식 이동 취소·죽음·경계·회복 1회와 글리치 전투·클리어·재시작 검사도 통과했다. 입력은 테스트용 `IPlayerInputSource`로 전달했으며 실제 키보드 조작 영상은 별도로 촬영하지 않았다.
+- 검증 구간 Console 오류 2건은 막힌 목적지/이동 중 목적지 무효화를 의도적으로 유발하고 `LogAssert.Expect`로 확인한 로그다. 그 외 새 오류는 없다. 씬·프리팹·전투 설정은 이번 변경에서 수정하지 않았다.
+
+## 전투·휴식 구역 연결 (2026-10-25)
+
+- Unity 6000.3.23f1. Unity MCP 인스턴스 조회는 연결을 찾지 못해, 이미 연결된 Unity Pipeline CLI로 같은 프로젝트의 컴파일·테스트·Play Mode를 검증했다. 추가 패키지 설치는 없다.
+- 변경 범위: 구역 순서/전멸 판정, 자동 이동과 조작·물리 복원, 최초 도착 회복, 재사용 RestArea 프리팹, 다음 전투 활성화, 카메라 경계 104 확장. 기존 적 4개·발판·인트로 위치와 전투 설정은 보존했다. 변경 전 씬의 오브젝트 ID 누락은 0개다.
+- 컴파일: `recompile_status` completed, failed=false, errors=[] 확인.
+- 전체 PlayMode: **258/258 통과**, 14:56:04~14:58:50 KST, 166.10초. `Library/PrototypeValidation/RestCycleRegressionPlayMode.xml`. 전투·글리치·레이저·애니메이션·컷신·단일 목표 완료의 회귀를 포함한다. 기존 StageFlowTests는 sceneLoaded 시 구역 배열을 비워 지원 중인 단일 목표 경로를 명시적으로 검사하며, 실제 씬의 구역 순서는 RestCycleTests가 검사한다.
+- 최종 보강 후 RestCycleTests **12/12 통과**, 15:00:03~15:00:26 KST. `RestCycleFinalPlayMode.xml`. 전멸→이동→회복→입장→최종 완료, 미활성 적 초기화, 비활성 생존 적, 회복 1회/피해 이벤트 불변/부활 금지, 목적지 초기·이동 중 차단, 외부 일시정지, 비활성화와 이동 중 사망, 잠복 경계·종료, 공중 내려찍기·도착 후 점프, 양방향 경계문, 컷신과 이동의 독점 처리를 검사했다.
+- 최종 컷신 보강 회귀: CutsceneTests **16/16 통과**, 15:02:16~15:03:01 KST. `RestCycleCutscenePlayMode.xml`.
+- 전체 EditMode: **43/44 통과**. 경로 계산 5개는 전부 통과했다. 실패는 `CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership`의 53행(편집기 말풍선 표시)이다. 작업 시작 전 백업한 CoreLoopStage를 같은 경로에 일시 복원해 동일 검사를 실행했으며 같은 53행 실패를 재현했다(`RestCycleOriginalScenePreview.xml`). 이후 이번 씬을 복원하고 SHA256 일치를 확인했다. 이 기존 편집기 미리보기 실패는 수정하지 않았으며, 런타임 컷신 16개는 통과했다.
+- 초기 구현에서 시뮬레이션을 끈 Rigidbody2D의 Transform이 갱신되지 않아 도착 복원 시 출발 위치로 되돌아가는 문제를 재현했다. CharacterMotor2D에서 구역 이동 중에만 표시 좌표를 동기화하고 재활성화 후 도착 좌표를 보존하도록 수정했다. 관련 전체/최종 검사를 재실행해 통과했다.
+- 실제 Play Mode: 테스트 피해로 첫 구역 전멸을 유도한 뒤 자동 이동을 실행했다. 휴식 도착 X=66, 체력 80→100, Rest, 조작 잠금 해제, Dynamic/simulated=true, 살아 있는 활성 적 0, timeScale=1을 확인했다(`RestCycleRuntimeArrival.json`). 다음 입구 통과 후 Combat/구역 1/목표 2개, 적 활성·입구 잠금과 실제 적 공격을 확인했다.
+- 렌더 확인: `RestCycle1120.png`, `RestCycle1920.png`, `RestCycleNextCombat1120.png`, `RestCycleNextCombat1920.png`에서 1120×660/1920×1080의 안내 문구·민트 경계·지형·배경과 전투 재개를 직접 확인했다. 모든 결과는 `Library/PrototypeValidation/`에 있다.
+- 최종 상태: CoreLoopStage 저장 완료, Edit Mode, scene dirty=false. 새 기능의 런타임 검증은 완료. 기존 Timeline 편집 미리보기 검사 1개가 남아 있어 전체 검증 상태는 **Ready with limitations**다. 별도 플레이어 빌드는 이번 범위에서 실행하지 않았다.
+
 ## 공중 검격 상태와 이동 유지 (2026-09-30)
 
 - PlayerAttack.Air를 추가해 일반 공중 검격을 Side/Slam과 구분했다. PlayerCombat.BlocksMovement가 공중 검격에서만 수평 조작을 허용하며 착지 후에는 남은 공격 동안 지상 이동 제한을 적용한다. 중력과 점프 해제는 유지하고 공격 중 새 점프 입력은 예약하지 않는다. 지상 공격·출현·위쪽 글리치 후 내려찍기, 콤보·넉백 수치는 보존했다.
@@ -643,3 +664,49 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 실제 씬 배경으로 카메라 X ±10,000/±5,000 순간 이동 및 1,200→1,600→1,200 왕복을 실행했다. 305개 표본에서 화면 덮임 실패 0건, 두 장의 경계 차이 최대 0, 레이어별 재배치 2회씩, SpriteRenderer 6개 유지를 확인했다. 최초 임시 검증 도구가 원본 장의 재배치만 세어 원경 반복을 누락했으므로 복제 장도 세도록 고친 뒤 재검증했다. 이 계측 수정으로 게임 코드는 변경하지 않았다.
 - 실제 Game View의 배경 경계 왕복 영상 `Exports/Environment/BackgroundBelt-20261021/Background-Belt.mp4`는 10초/300프레임/30 FPS/1280×720이다. 일반 플레이 대신 카메라를 레벨 밖까지 이동시킨 반복 검증 영상이다. 경계 전후 캡처를 직접 확인했고 MP4 전체 디코딩 검사도 통과했다.
 - 종료 시 콘솔 오류 0건, CoreLoopStage dirty=false, Play Mode 정지, Time.timeScale=1, Time.captureDeltaTime=0, runInBackground=false를 확인했다. 임시 카메라·시간·녹화 설정을 복원했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-22 — 방패병 전용 애니메이션
+
+- Unity C# 컴파일 성공. EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 15:21:23~15:21:24 KST, `Library/PrototypeValidation/ShieldArtEditMode.xml`. 방패병 9개 클립 연결, 기존 적 정의·충돌·Root Motion 설정을 확인했다.
+- PlayMode `EnemyPatternTests` **22/22 통과**, 15:21:40~15:21:41 KST, `Library/PrototypeValidation/ShieldArtPlayMode.xml`. 신규 3개 검사는 방패 준비/유지/해제와 돌진, 막기/연속 피격과 기존 FSM 타이머 유지, 재활성화 초기화, 우측 반전과 사망 분해 후 기존 0.6초 비활성화를 확인한다. 기존 포탑·드론·방패병 행동 검사 19개도 통과했다.
+- 실제 방패병 프리팹을 Play Mode에서 임시 지형·타깃과 생성하고 기존 FSM을 지정 시간만큼 진행해 9개 포즈를 렌더링했다. `Library/PrototypeValidation/ShieldArt/`의 대기, 방패 올리기/유지/내리기, 좌우 공격, 막기, 피격, 사망 캡처와 Sprite 경로를 확인했다. 좌우 공격과 분해 프레임을 직접 시각 검토했다. 최초 비동기 캡처 도구의 프레임 대기가 만료되어 임시 작업을 정리하고 동기 캡처로 변경했다. 게임 코드 오류는 아니며 검증 도구는 Assets 밖에 있다.
+- 새 PNG 66장의 바이트가 ZIP 원본과 동일하고 각 .meta가 생성됐음을 확인했다. 씬 인스턴스에 새 외형 컴포넌트가 상속됐고 Missing Script=0, Root Motion=false다. 게임플레이 FSM·설정 데이터·씬 파일·물리·기존 Idle/Run은 수정하지 않았다.
+- 종료 시 콘솔 오류 0건, CoreLoopStage dirty=false, Play Mode 정지, Time.timeScale=1, runInBackground=false. 임시 카메라·오브젝트·시간 설정을 복원했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 전투 연출 보강 검증 (2026-10-25)
+
+- 검증 경로: 이 프로젝트에 설치된 Unity Pipeline CLI. 별도 Unity MCP 서버에는 에디터 연결이 없었으므로 Pipeline의 recompile / run_tests / eval_file을 사용했다. Unity 6000.3.23f1, DX12에서 실제 실행했다.
+- 컴파일: recompile_status completed, failed=false, errors=[] 확인. 반응 재질의 MaterialPropertyBlock 생성은 Awake로 이동해 에셋 로드/직렬화 중 생성 오류를 수정했다.
+- 전체 PlayMode: 247/247 통과, 0 실패, 0 건너뜀. 결과 `Library/PrototypeValidation/GlitchPresentationFullPlayMode.xml` 및 동일 이름의 JSON. 기존 이동·전투·글리치·적 패턴·컷신 회귀 검사를 포함한다.
+- 이후 접촉 효과가 적 몸체 뒤에 가려지는 정렬을 수정했다. 대상 몸체 +1, 적 사격 예고 +2 순서이며 마지막 외형 PlayMode 9/9 재검증 통과. 결과 `Library/PrototypeValidation/GlitchPresentationVisualFinal.xml`.
+- 전체 EditMode: 36/37 통과. `CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership`의 53행 IsBubbleVisible 확인이 실패했다. 단독 실행과 Timeline 창 포커스 후에도 재현했다. 이번 변경 범위 밖의 편집기 Timeline 미리보기는 수정하지 않았고, 변경 전 동일 실패 여부는 이 작업에서 확인하지 않았으므로 기존 결함으로 단정하지 않는다. 결과 `Library/PrototypeValidation/GlitchPresentationEditMode.xml`.
+- 실제 공격 시작과 피격 자세를 해당 표시 프레임에 반영하도록 Animator를 0초 평가한다. 이 보정 후 실제 플레이어 피격 모션 회귀 검사와 전체 PlayMode가 통과했다.
+- A/B 교대 0.40초 경계·공격 종류 변경·순간이동 유지·피격 초기화·새 공격 우선·사망 우선, 대상별 피해 결과/치명타 비활성화 전 알림, 허수아비 HealthLost=0, 화면 피격 > 처치 > 명중 및 무방향 피해를 검사했다.
+- 1120×660 / 1920×1080 각각 일반/움직임 감소 상태로 실제 PlayMode 렌더링했다. 최대 4 기준 픽셀의 뷰포트 비례 환산과 표시된 적의 화면 좌표를 다시 조준 좌표로 변환했을 때 0.001 월드 단위 이내 일치를 확인했다. 접촉 효과가 대상 위, 사격 예고 아래에 위치하는 정렬도 검사했다.
+- 이미지: `Library/PrototypeValidation/GlitchPresentation-1120-normal.png`, `GlitchPresentation-1120-reduced.png`, `GlitchPresentation-1920-normal.png`, `GlitchPresentation-1920-reduced.png`. 위쪽 A/B/띄우기, 아래쪽 내려찍기/피격/적 접촉을 보여주는 검증용 배치다.
+- 현재 CoreLoopStage를 Play Mode로 실행해 플레이어와 적 4종의 재질/피격 컴포넌트 연결, Missing Script=0, 관련 셰이더 오류=0을 확인했다. 체력은 플레이어 100, 돼지 50, 드론 60, 포탑 90, 방패병 75였다. 실제 전투 API로 일반 공격을 시작한 표시 프레임 캡처는 `Library/PrototypeValidation/GlitchPresentationCoreLoop.png`다. 검증 후 Play Mode를 종료했다.
+- 최종 외형 검사 및 레벨 확인 구간의 새 Console 오류는 0건이다. 전체 회귀 실행의 `Player tuning is missing`, `Unit definition is missing`는 기존 UnitLifecycleTests가 LogAssert.Expect로 확인하는 의도된 로그다.
+- 씬 배치·원본 PNG는 변경하지 않았다. ProjectSettings/TimeManager.asset의 기존 직렬화 변경은 보존했다. 피해·공격 단계·넉백·피격 경직 및 히트스톱/슬로모션 에셋 값이 유지되고 화면 연출 항목만 변경된 것을 diff로 확인했다.
+
+## 2026-10-25 — 글리치 직선 한 줄 효과
+
+- Unity Pipeline 재컴파일 성공: completed, failed=false, errors=[]. Unity MCP 연결 대신 기존 Pipeline CLI로 검증했다.
+- PlayMode `PlayerVisualTests` 9/9 통과(13:50 KST). 수평·수직·대각선의 실제 양 끝점, 회전/확대된 부모와 잠복 표시, 한 렌더러 재사용, 비스케일 0.12초 소멸, 길이 0, 비활성화 후 재생 방지, 사망 초기화를 검사했다. 결과: `Library/PrototypeValidation/GlitchLineVisual.xml`.
+- PlayMode `PlayerGlitchCombatTests` 120/120 통과(13:51 KST). 결과: `Library/PrototypeValidation/GlitchLineCombat.xml`. EditMode `PlayerVisualAssetTests` 2/2 통과, 결과: `Library/PrototypeValidation/GlitchLineAssets.xml`.
+- CoreLoopStage Play Mode에서 임시 허수아비를 사용해 실제 `PlayerGlitch.TryExecute`를 실행하고 선을 렌더링했다. 출발 (3.00, 0.80), 도착 (4.93, 2.73), 렌더러 양 끝점 오차 최대 0.00000012 월드 단위. 청록/붉은 한 선을 `Library/PrototypeValidation/GlitchTeleportLine.png`에서 확인했다. 이 이미지는 실행 검증용으로 카메라를 잠시 경로 중앙에 맞춘 캡처다.
+- 새 Console 오류 0건. 임시 대상을 제거하고 Play Mode를 종료했으며 CoreLoopStage dirty=false, timeScale=1을 확인했다. 이동/전투 코드, 저장된 씬 배치, 원본 PNG는 변경하지 않았다.
+
+## 2026-10-25 — 글리치 spark 한 열 연쇄 재생으로 수정
+
+- 사용자의 연출 의도에 맞춰 직선 렌더러를 제거하고 기존 spark 프레임을 복구했다. 양 끝은 기존 2.5 크기로 즉시 재생하며, 중간은 1.25 크기·약 0.6 간격으로 배치해 0.025초씩 늦게 시작한다. 청록·붉은 기존 재질을 그대로 사용한다.
+- Unity Pipeline 재컴파일 성공(errors=[]). PlayMode `PlayerVisualTests` 9/9, EditMode `PlayerVisualAssetTests` 2/2 통과. 결과는 `Library/PrototypeValidation/GlitchSparkRowVisual.xml`, `GlitchSparkRowAssets.xml`이다. 출발/도착 즉시 표시, 중간 spark의 지연·서로 다른 애니메이션 프레임, 수평/수직/대각선 월드 좌표, 재사용·취소·재시작·사망 정리를 확인했다. 이번 수정에서는 이동/전투 코드를 변경하지 않았고 전체 전투 검사는 다시 실행하지 않았다.
+- CoreLoopStage에서 임시 허수아비를 대상으로 실제 글리치를 실행해 1.125초·34프레임을 캡처했다. 0초에는 출발/도착, 0.034초에는 첫 중간 spark, 이후 뒤쪽 spark가 차례로 활성화되는 기록을 `Library/PrototypeValidation/GlitchSparkRow/bursts.txt`에서 확인했다. 렌더링 이미지를 직접 확인했고, 순서대로 묶은 미리보기는 `Library/PrototypeValidation/GlitchSparkRow.gif`다.
+- 최초 캡처는 명령 평가로 길어진 프레임 때문에 짧은 효과를 놓쳤다. 검증 도구의 실행을 다음 프레임으로 예약한 후 정상 캡처했으며 게임 코드의 시간을 변경하지 않았다. 새 Console 오류 0건, Play Mode 종료, CoreLoopStage dirty=false, timeScale=1을 확인했다.
+
+## 2026-10-25 — ARCBIT 포탑 파랑 / 드론 빨강 레이저
+
+- ARCBIT Lite 1.0.2 무료 ZIP을 제작자 itch.io에서 다운로드했다. 레이저 PNG 6개는 원본과 SHA-256이 모두 일치하며, 원본 JSON·LICENSE·CREDITS도 보존했다. 94개 Sprite 연결과 32 PPU / Point / 무압축 / 피벗을 검사했다.
+- Unity Pipeline 재컴파일 성공(completed, failed=false, errors=[]). PlayMode `EnemyLaserVisualTests` 2/2 통과(14:15 KST), 기존 `EnemyPatternTests` 22/22 통과(14:16 KST), EditMode `EnemyPatternDefinitionTests` 6/6 통과(14:17 KST). 결과: `Library/PrototypeValidation/ArcbitLaserPlayMode.xml`, `ArcbitEnemyRegression.xml`, `ArcbitAssetsEditMode.xml`.
+- 신규 검사는 양 색상, charge/on/loop/off 프레임 동기화, 시작/끝 피벗과 타일 몸통 연결, 사선·좌우·수직 발사, 벽에 잘린 길이, 추적 방향 변경 후 발사 경로 고정, 아주 짧은/길이 0인 빔, 표시 종료·사망·비활성화·재시작을 확인한다. 기존 검사는 포탑 반회전·정면 감지·추적/고정/발사/재추적, 포신 시작점, 피해 및 드론/방패병 행동을 포함한다.
+- 원본 적 프리팹 두 개를 Play Mode 검증용 위치에 임시 생성하고 실제 Fire 결과를 ARCBIT 프레임으로 렌더링했다. `Library/PrototypeValidation/ArcbitEnemyLasers.png`에서 위쪽 포탑의 파랑, 아래쪽 드론의 빨강 및 몸통/끝 조각 연결을 직접 확인했다. 이미지의 배치는 연출 검증용이며 저장된 레벨을 바꾸지 않았다.
+- 현재 CoreLoopStage의 원래 SurveillanceTurret와 FlyingDrone에도 각각 blue/red 프레임과 EnemyLaserVisual이 연결된 것을 확인했다. Play Mode 종료, scene dirty=false, timeScale=1, 검증 구간의 새 Console 오류 0건이다. 이번 수정에서 전투 수치·판정·FSM·플레이어 글리치 효과는 변경하지 않았다.

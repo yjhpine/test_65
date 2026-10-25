@@ -12,9 +12,11 @@ namespace ActionPlatformer.Flow
         private VisualElement completion;
         private Label goalHint;
         private Button restart;
+        private bool transferHintVisible;
         public event Action RestartRequested;
         public bool IsConfigured => document != null && document.panelSettings != null && completion != null;
         public bool IsCompletedVisible => completion != null && completion.style.display == DisplayStyle.Flex;
+        public bool IsTransferHintVisible => transferHintVisible;
 
         private void OnEnable()
         {
@@ -65,7 +67,18 @@ namespace ActionPlatformer.Flow
 
         public void ShowGoalHint(bool show)
         {
-            if (goalHint != null) goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+            transferHintVisible = false;
+            if (goalHint == null) return;
+            goalHint.text = "DEFEAT ALL ENEMIES TO OPEN THE EXIT";
+            goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        public void ShowTransferHint(bool show)
+        {
+            if (goalHint == null || (!show && !transferHintVisible)) return;
+            transferHintVisible = show;
+            goalHint.text = "SHIFT  >  REST AREA";
+            goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         public void ShowCompleted()

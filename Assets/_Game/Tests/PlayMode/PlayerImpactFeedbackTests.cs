@@ -75,9 +75,10 @@ namespace ActionPlatformer.Tests
             var direction = new Vector2(x,y);
             feedback.Play(new PlayerImpact(direction, PlayerImpactStrength.Heavy), 0);
             feedback.LateTick(0);
-            Assert.That(Vector3.Distance(camera.transform.position, origin + (Vector3)(direction*tuning.HeavyShakeAmplitude)), Is.LessThan(.00001f));
+            Assert.That(Vector3.Distance(camera.transform.position, origin + (Vector3)(direction*feedback.ReferencePixelsToWorld(tuning.HeavyShakeAmplitude))), Is.LessThan(.00001f));
             feedback.Tick(.01); // Runs before PlayerUnit samples its aim.
-            Assert.That(Vector3.Distance(camera.ScreenPointToRay(screenPoint).origin, aim.origin), Is.LessThan(.00001f));
+            Assert.That(Vector3.Distance(feedback.ScreenPointToRay(screenPoint).origin,
+                aim.origin + (Vector3)(direction * feedback.ReferencePixelsToWorld(tuning.HeavyShakeAmplitude))), Is.LessThan(.00001f));
             for(int i=1;i<20;i++) { feedback.LateTick(i*.01); feedback.Tick(i*.01); }
             Assert.That(Vector3.Distance(camera.transform.position, origin), Is.LessThan(.00001f));
         }
@@ -88,7 +89,7 @@ namespace ActionPlatformer.Tests
             feedback.Play(new PlayerImpact(Vector2.down, PlayerImpactStrength.Slam), 0);
             for(int i=0;i<20;i++) feedback.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Normal), 0);
             feedback.LateTick(0);
-            Assert.That(camera.transform.position.y, Is.EqualTo(origin.y-tuning.SlamShakeAmplitude).Within(.00001f));
+            Assert.That(camera.transform.position.y, Is.EqualTo(origin.y-feedback.ReferencePixelsToWorld(tuning.SlamShakeAmplitude)).Within(.00001f));
             Assert.That(camera.transform.position.x, Is.EqualTo(origin.x).Within(.00001f));
             feedback.SetCamera(null);
             Assert.That(Vector3.Distance(camera.transform.position, origin), Is.LessThan(.00001f));
@@ -106,7 +107,7 @@ namespace ActionPlatformer.Tests
             feedback.LateTick(10);
             Assert.That(Time.timeScale, Is.EqualTo(tuning.DamageSlowTimeScale));
             Assert.That(camera.transform.position.x, Is.LessThan(position.x));
-            Assert.That(camera.orthographicSize, Is.LessThan(size));
+            Assert.That(camera.orthographicSize, Is.EqualTo(size));
             Assert.That(feedback.IsDamageFeedbackActive(10), Is.True);
             feedback.Tick(10.01);
             Assert.That(camera.transform.position, Is.EqualTo(position));

@@ -116,7 +116,7 @@ Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / D
 | FlyingDrone | `Monster2_Idle.zip: Monster2_Idle/Monster2_Idle/Idle_Normal` (32, shared for Run) | `Monster2AttackPNG.zip: PNG/Attack_Angry_Left` (10) | `Monster2Death_PNG.zip: PNG/Death` (8) |
 | ShieldSoldier | `Monster3Left_Idle+Walk_PNG.zip: PNG/Normal/Idle` (10) / `PNG/Normal/Walk` (16) | `PNG/Angry/Walk` (16), used for the existing shield dash | `PNG/Angry/WalkStopB` (8), stop/hold fallback until the existing death timer deactivates the enemy |
 
-`Monster3Hit_PNG.zip` was visually inspected and contains UFO/drone frames despite its name, so it is not used for ShieldSoldier. The supplied shield character has no dedicated death sequence. The right-facing archive, pose banks, duplicate Monster2 death archive, and bundled scripts/shader were not imported.
+`Monster3Hit_PNG.zip` was visually inspected and contains UFO/drone frames despite its name, so it is not used for ShieldSoldier. The initial archives had no dedicated shield death sequence; the 2026-10-22 follow-up below replaces that fallback. The right-facing archive, pose banks, duplicate Monster2 death archive, and bundled scripts/shader were not imported.
 
 The turret follow-up imported 20 additional unchanged PNGs into `Monster1/AngryIdle` and `Monster1/AngryDeath` (32 PPU, original 64×64 layout, pivot 32/64,13/64). The previous normal death frames remain available. Project-authored `SurveillanceTurretVisual` slices the referenced textures into a stationary pedestal and aiming upper part at runtime; source image bytes are unchanged. The source package's Unity scripts/shader and its variable frame timing were not imported.
 
@@ -130,6 +130,20 @@ Archive SHA-256:
 | Monster2AttackPNG.zip | `1e52ea5ae55d9aa8375fc51b1cbf3cabb66f74365f3962b273cdb01fde9ece7b` |
 | Monster2Death_PNG.zip | `7592c171cff7ae22b90afabecbc8565c63d1292486347a1155f001097f6dac1b` |
 | Monster3Left_Idle+Walk_PNG.zip | `929032f0105d1ea84a33a4283768868922c831a18ef58b469813ce305e133610` |
+
+## Project-supplied shield animations — 2026-10-22
+
+- Supplied by the user in the Desktop `벽,바닥` folder. No download or author/license inference was made. Imported 66 unchanged PNGs into additional `Monster3` subfolders, retaining 30 PPU, Point, no compression/mipmaps, Full Rect and pivot `(32/64,7/64)`.
+- Attack uses `Monster3Attack_PNG.zip: PNG/Left/AttackFromIdle` (14). Death uses `Monster3Death_PNG.zip: PNG/Left/Angry` (10), replacing the stop-pose fallback. Hit uses the new **`Monster3_Hit_PNG.zip`** (underscore included), `PNG/Left` (10); the old incorrectly named drone archive remains excluded.
+- `Monster3Siled_PNG.zip: Monster3Siled_PNG/Core/Left/Angry` supplies Enter/Hold/Exit/BlockImpact (8 each). Right-facing copies and alternative walk-entry transitions are not imported; existing SpriteRenderer flipping handles direction. Original Idle/Run remain unchanged.
+- Existing Attack/Death clip GUIDs are retained. Five clips/states are added for Hit, GuardEnter, GuardHold, GuardExit and Block. Source PNGs are not recolored, rescaled or cropped. The 2026-10-21 attack/death mappings above describe the prior integration.
+
+| Archive | SHA-256 |
+|---|---|
+| Monster3Attack_PNG.zip | `4b7625be1d77eede68bc30d6aaac1feb94f375069c24fe1ccd2be74e1b861147` |
+| Monster3Death_PNG.zip | `ef76f5b2c67f9fd56cf53fe32f6df0de4a638184372ac8974560fc6a9ec96463` |
+| Monster3_Hit_PNG.zip | `7ad541209d19fede8c4b55704248b64d059a3e9c6525bb215bef760102a4d708` |
+| Monster3Siled_PNG.zip | `1494a43df7abacf7aa2d2345ceb9c5dc56606ed5daf9bbeaafa8c9b2061a0a0a` |
 
 ## Combat FX Free — player slash and glitch spark (2026-10-21)
 
@@ -147,3 +161,12 @@ Archive SHA-256:
 - All PNG bytes are preserved. Import settings and scene placement are project-authored. The archives contain no creator or license document; no third-party license has been inferred.
 - `terrain_tiles.zip` SHA-256: `6fd1f72204b2bf21aa8c506ca98bbe7d90899ba504bbe6640b2dd22726de5f56`.
 - `Background_runtime.zip` SHA-256: `4bf229103940edfaff5d8f932f3c1f33548aef7ba71d6b432dc9c13c2af6d200`.
+
+## ARCBIT Lite — enemy lasers (2026-10-25)
+
+- Creator/source: [gennai — ARCBIT Lite](https://gennai.itch.io/arcbit-lite), download version 1.0.2, `arcbit-lite-lite.zip`, SHA-256 `10915e07e80a6cbbe3375a3240c4bd58e66b9b17e1c850227bb5b59c63832585`.
+- Free use and modification in commercial/non-commercial games, apps and media; attribution optional. The pack and its parts may not be redistributed on their own or in another asset pack, template or tool, resold, used to train machine-learning models, or claimed as original work. Exported product builds are permitted. Original `LICENSE.txt` and `CREDITS.txt` are retained in `Assets/_Game/Art/Effects/ArcbitLite`.
+- Imported only the six unchanged `sprites/laser/laser_{start,body,end}_32x32_{blue,red}.png` strips and their source JSON. Turret uses blue, FlyingDrone uses red. No Godot scripts/project, orb or zap effects were imported.
+- Unity slices 21 start frames and 13 body/end frames per color (94 sprites total), 32 PPU, Point, Full Rect, no mipmaps/compression. Pivots are converted from the source top-left coordinates: start `(12,17)`, body `(0,17)`, end `(17,17)` in Unity pixel coordinates.
+- Project-authored `EnemyLaserVisual` uses the original palettes with an unlit sprite material. Charge follows existing preparation/lock; on/loop/off frames are retimed to the existing 0.16-second beam display. Tiled body fills the gap between source/impact caps; native source dimensions are retained and render scale fits the existing beam width. Very short clipped beams shrink caps together.
+- Enemy targeting, aim lock, muzzle position, wall clipping, attack timing, damage, and the player's glitch spark effects are unchanged. FlyingDrone's existing bidirectional vertical shot is displayed as two segments from the emitter to the already-calculated endpoints.

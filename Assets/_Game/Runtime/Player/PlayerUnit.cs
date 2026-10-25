@@ -16,9 +16,14 @@ namespace ActionPlatformer.Player
         [SerializeField] private Camera aimCamera;
         [Tooltip("Optional camera overlay material for player damage flashes and vignette.")]
         [SerializeField] private Material damageScreenMaterial;
+        [SerializeField] private bool reducedMotion;
+        public bool ReducedMotion => reducedMotion;
+        private readonly System.Collections.Generic.Queue<UnitDamageResult> pendingDamageFeedback =
+            new System.Collections.Generic.Queue<UnitDamageResult>();
+        private double hitVisualStartedAt = double.NegativeInfinity;
+        private UnitDamageResult visualDamage;
         [Tooltip("Time to display Die before deactivating the player. UnitHealth Deactivate On Death must be off.")]
         [SerializeField, Min(0f)] private float deathDuration = 0.7f;
-        private double hitStartedAt = double.NegativeInfinity;
         private double deathStartedAt = double.NegativeInfinity;
         private PlayerInputReader inputReader;
         private IPlayerInputSource input;
@@ -34,14 +39,48 @@ namespace ActionPlatformer.Player
         private uint observedDamage;
         private float facing = 1f;
         private int controlLocks;
+        private System.IDisposable transferLock;
+        private Vector2 transferOrigin;
+        public bool IsScriptedTransferring => transferLock != null;
         public bool IsControlLocked => controlLocks > 0;
         // Relinquish external camera control before applying a new damage presentation.
         public event System.Action ControlInterrupted;
-        public System.IDisposable AcquireControlLock()
+        // Local observers may react to the same input; normal combat glitch selection stays here.
+        public event System.Action GlitchPressed;
+        public System.IDisposable AcquireControlLock() => AcquireControlLock(false);
+        private System.IDisposable AcquireControlLock(bool preserveGlitchCooldown)
         {
-            if (controlLocks++ == 0) { ClearActions(); Motor?.StopHorizontal(); }
+            if (controlLocks++ == 0) { ClearActions(preserveGlitchCooldown); Motor?.StopHorizontal(); }
             return new ControlLock(this);
         }
+
+        public bool BeginScriptedTransfer()
+        {
+            if (!isActiveAndEnabled || Motor == null || health == null || !health.IsAlive || IsControlLocked) return false;
+            transferLock = AcquireControlLock(true);
+            visual?.ResetActions();
+            transferOrigin = Motor.Position;
+            Motor.BeginTransfer();
+            unchecked { RepositionVersion++; }
+            return true;
+        }
+
+        public void SetScriptedTransferPosition(Vector2 position)
+        {
+            if (IsScriptedTransferring && float.IsFinite(position.x) && float.IsFinite(position.y))
+                Motor.Relocate(position, Vector2.zero);
+        }
+
+        public void EndScriptedTransfer(bool completed = false)
+        {
+            if (transferLock == null) return;
+            if (!completed) Motor?.Relocate(transferOrigin, Vector2.zero);
+            Motor?.EndTransfer();
+            transferLock.Dispose();
+            transferLock = null;
+        }
+
+        public void PresentTransferSpark(Vector2 point) => visual?.PresentTransferSpark(point);
         private sealed class ControlLock : System.IDisposable
         {
             private PlayerUnit owner;
@@ -83,12 +122,13 @@ namespace ActionPlatformer.Player
             {
                 if (!isActiveAndEnabled || health == null) return default;
                 bool dying = !health.IsAlive;
-                float duration = dying ? Mathf.Max(0f, deathDuration) : combatTuning != null ? combatTuning.HitStun : 0.25f;
-                double started = dying ? deathStartedAt : hitStartedAt;
-                double elapsed = Time.timeAsDouble - started;
+                float duration = dying ? Mathf.Max(0f, deathDuration) : .12f;
+                double started = dying ? deathStartedAt : hitVisualStartedAt;
+                double elapsed = (dying ? Time.timeAsDouble : Time.unscaledTimeAsDouble) - started;
                 if (!dying && (duration <= 0f || elapsed >= duration)) return default;
                 return new PlayerReactionPresentation { Kind = dying ? PlayerReaction.Die : PlayerReaction.Hit,
-                    Version = health.DamageVersion, Progress = double.IsNegativeInfinity(started) ? 0f :
+                    Version = health.DamageVersion, HasDirection = visualDamage.HasDirection, Direction = visualDamage.Direction,
+                    Progress = double.IsNegativeInfinity(started) ? 0f :
                         duration > 0f ? Mathf.Clamp01((float)(elapsed / duration)) : 1f };
             }
         }
@@ -115,17 +155,45 @@ namespace ActionPlatformer.Player
                         combatTuning.EnableHitReactions ? new GroundHitReaction(combatTuning) : null);
             }
             if (combatTuning != null) Feedback = new PlayerImpactFeedback(combatTuning, aimCamera, damageScreenMaterial);
+            if (health != null) health.DamageApplied += OnDamageApplied;
+            SetReducedMotion(reducedMotion);
             if (visual != null) visual.Initialize(Motor, this);
             return true;
         }
 
         public void SetInputSource(IPlayerInputSource source) => input = source ?? inputReader;
 
+        public void SetReducedMotion(bool value)
+        {
+            reducedMotion = value;
+            if (Feedback != null) Feedback.ReducedMotion = value;
+            if (visual != null) visual.SetReducedMotion(value);
+        }
+
+        private void OnDamageApplied(UnitDamageResult result)
+        {
+            if (isActiveAndEnabled && result.HealthLost > 0) pendingDamageFeedback.Enqueue(result);
+        }
+
+        private void PresentDamage()
+        {
+            while (pendingDamageFeedback.Count > 0)
+            {
+                visualDamage = pendingDamageFeedback.Dequeue();
+                hitVisualStartedAt = Time.unscaledTimeAsDouble;
+                Feedback?.PlayDamage(visualDamage.Direction, Time.unscaledTimeAsDouble);
+                visual?.NotifyDamage();
+            }
+        }
+
         protected override void OnUnitUpdate()
         {
+            if (Feedback != null && Feedback.ReducedMotion != reducedMotion) SetReducedMotion(reducedMotion);
             Feedback?.Tick(Time.unscaledTimeAsDouble);
             if (!UpdateReactions(Time.timeAsDouble)) return;
+            if (IsScriptedTransferring) return;
             PlayerCommand command = IsControlLocked ? default : input.Sample();
+            if (command.GlitchPressed) GlitchPressed?.Invoke();
             GlitchPreview = default;
             SetMovementInput(command.Move.x, command.JumpHeld);
             if (IsUnderground)
@@ -144,7 +212,8 @@ namespace ActionPlatformer.Player
                     RequestJumpRelease();
                 if ((command.HasAim || command.GlitchPressed) && Glitch != null && aimCamera != null)
                 {
-                    Ray ray = aimCamera.ScreenPointToRay(command.AimScreenPosition);
+                    Ray ray = Feedback != null ? Feedback.ScreenPointToRay(command.AimScreenPosition) :
+                        aimCamera.ScreenPointToRay(command.AimScreenPosition);
                     var plane = new Plane(Vector3.forward, new Vector3(0f, 0f, transform.position.z));
                     if (plane.Raycast(ray, out float distance))
                     {
@@ -193,6 +262,7 @@ namespace ActionPlatformer.Player
                 }
                 return;
             }
+            if (IsScriptedTransferring) return;
             if (!IsUnderground)
             {
                 Motor.RefreshContacts();
@@ -304,14 +374,22 @@ namespace ActionPlatformer.Player
         private void ApplyImpactFeedback()
         {
             if (Combat != null && Combat.ConsumeImpact(out var impact))
-                Feedback?.Play(impact, Time.unscaledTimeAsDouble);
+                Feedback?.Play(impact, Time.unscaledTimeAsDouble, false);
+            while (Combat != null && Combat.ConsumeHit(out var hit))
+            {
+                visual?.PresentHit(hit);
+                Feedback?.PlayHit(hit, Time.unscaledTimeAsDouble);
+            }
         }
 
         private bool UpdateReactions(double now)
         {
             if (health == null) return true;
             if (observedDamage != health.DamageVersion || (!health.IsAlive && double.IsNegativeInfinity(deathStartedAt)))
+            {
+                EndScriptedTransfer();
                 ControlInterrupted?.Invoke();
+            }
             if (!health.IsAlive)
             {
                 if (double.IsNegativeInfinity(deathStartedAt))
@@ -322,7 +400,7 @@ namespace ActionPlatformer.Player
                     if (observedDamage != health.DamageVersion)
                     {
                         observedDamage = health.DamageVersion;
-                        Feedback?.PlayDamage(new Vector2(-facing, .35f), Time.unscaledTimeAsDouble);
+                        PresentDamage();
                     }
                 }
                 if (now >= deathStartedAt + Mathf.Max(0f, deathDuration)) gameObject.SetActive(false);
@@ -331,11 +409,10 @@ namespace ActionPlatformer.Player
             if (observedDamage != health.DamageVersion)
             {
                 observedDamage = health.DamageVersion;
-                hitStartedAt = now;
                 if (Combat != null && (Combat.IsDescending || Combat.IsPreparingSlam)) Motor.StopSlam();
                 Combat?.Interrupt(now);
                 Feedback?.Reset();
-                Feedback?.PlayDamage(new Vector2(-facing, .35f), Time.unscaledTimeAsDouble);
+                PresentDamage();
                 Glitch?.CancelUnderground();
                 pendingGlitch = pendingAttack = pendingCancel = false;
             }
@@ -344,19 +421,22 @@ namespace ActionPlatformer.Player
 
         protected override void OnUnitDisabled()
         {
+            EndScriptedTransfer();
             ControlInterrupted?.Invoke();
             ClearActions();
             Feedback?.Dispose();
-            hitStartedAt = double.NegativeInfinity;
+            hitVisualStartedAt = double.NegativeInfinity;
+            pendingDamageFeedback.Clear();
             if (health != null) observedDamage = health.DamageVersion;
             if (visual != null) visual.ResetActions();
         }
 
-        private void ClearActions()
+        private void ClearActions(bool preserveGlitchCooldown = false)
         {
             Feedback?.Reset();
             GlitchPreview = default;
-            Glitch?.Reset();
+            if (preserveGlitchCooldown) Glitch?.CancelUnderground();
+            else Glitch?.Reset();
             if (Combat != null && (Combat.IsDescending || Combat.IsPreparingSlam)) Motor?.StopSlam();
             Combat?.Reset();
             pendingGlitch = pendingAttack = pendingCancel = false;
@@ -364,6 +444,12 @@ namespace ActionPlatformer.Player
             ClearJumpState();
             horizontalInput = 0f;
             jumpHeld = false;
+        }
+
+        private void OnDestroy()
+        {
+            if (health != null) health.DamageApplied -= OnDamageApplied;
+            Feedback?.Dispose();
         }
 
         private void FaceArrival()
