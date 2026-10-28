@@ -56,8 +56,9 @@ namespace ActionPlatformer.Player
         public bool IsDescending => Phase == PlayerAttackPhase.Descending;
         public bool IsPreparingSlam => Attack == PlayerAttack.Slam && Phase == PlayerAttackPhase.Windup;
         public bool IsAttacking => Phase != PlayerAttackPhase.Ready;
-        // Air swings keep steering until landing; other attacks own their movement.
-        public bool BlocksMovement(bool grounded) => IsAttacking && (Attack != PlayerAttack.Air || grounded);
+        // Basic swings allow locomotion; special attacks retain their authored motion.
+        public bool BlocksMovement(bool grounded) => IsAttacking &&
+            Attack != PlayerAttack.Side && Attack != PlayerAttack.Air;
         public bool CanReposition(double now) => now >= stunnedUntil &&
             (Phase == PlayerAttackPhase.Ready || Phase == PlayerAttackPhase.Recovery);
         public bool CanAttack(double now) => now >= stunnedUntil && Phase == PlayerAttackPhase.Ready;

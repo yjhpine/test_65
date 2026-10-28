@@ -10,6 +10,7 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(1f)] private float groundAcceleration = 125f;
         [SerializeField, Min(1f)] private float groundBraking = 110f;
         [SerializeField, Min(1f)] private float airAcceleration = 45f;
+        [SerializeField, Min(0f)] private float airBraking = 3f;
         [Header("Jump")]
         [SerializeField, Min(0.1f)] private float jumpHeight = 3.2f;
         [SerializeField, Min(1f)] private float riseGravity = 32f;
@@ -23,6 +24,7 @@ namespace ActionPlatformer.Player
         public float GroundAcceleration => groundAcceleration;
         public float GroundBraking => groundBraking;
         public float AirAcceleration => airAcceleration;
+        public float AirBraking => airBraking;
         public float JumpSpeed => MovementMath.JumpSpeed(jumpHeight, riseGravity);
         public float RiseGravity => riseGravity;
         public float FallGravity => fallGravity;

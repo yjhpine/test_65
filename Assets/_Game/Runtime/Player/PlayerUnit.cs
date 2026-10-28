@@ -38,6 +38,9 @@ namespace ActionPlatformer.Player
         private UnitHealth health;
         private uint observedDamage;
         private float facing = 1f;
+        private bool hasAim;
+        private Vector2 aimScreenPosition;
+        private const float AimFacingDeadZone = 0.1f;
         private int controlLocks;
         private System.IDisposable transferLock;
         private Vector2 transferOrigin;
@@ -196,16 +199,20 @@ namespace ActionPlatformer.Player
             if (command.GlitchPressed) GlitchPressed?.Invoke();
             GlitchPreview = default;
             SetMovementInput(command.Move.x, command.JumpHeld);
+            hasAim = command.HasAim;
+            aimScreenPosition = command.AimScreenPosition;
+            // Locomotion owns idle facing; the cursor is consulted only when an attack can start.
+            if ((Combat == null || !Combat.IsAttacking) && Mathf.Abs(command.Move.x) > 0.01f)
+                facing = Mathf.Sign(command.Move.x);
             if (IsUnderground)
             {
                 if (command.JumpPressed) pendingCancel = true;
             }
             else
             {
-                if (Combat == null || !Combat.IsAttacking)
+                if (Combat == null || !Combat.BlocksMovement(Motor.IsGrounded))
                 {
                     if (command.JumpPressed) RequestJump();
-                    if (Mathf.Abs(command.Move.x) > 0.01f) facing = Mathf.Sign(command.Move.x);
                 }
                 // Releasing an existing jump still cuts its height during an air swing.
                 if (command.JumpReleased && (Combat == null || !Combat.BlocksMovement(Motor.IsGrounded)))
@@ -238,6 +245,18 @@ namespace ActionPlatformer.Player
         }
 
         private bool CanReposition(double now) => Combat == null || Combat.CanReposition(now);
+
+        private bool RefreshAimFacing()
+        {
+            if (!hasAim || aimCamera == null || !float.IsFinite(aimScreenPosition.x) || !float.IsFinite(aimScreenPosition.y))
+                return false;
+            Ray ray = Feedback != null ? Feedback.ScreenPointToRay(aimScreenPosition) : aimCamera.ScreenPointToRay(aimScreenPosition);
+            var plane = new Plane(Vector3.forward, new Vector3(0f, 0f, transform.position.z));
+            if (!plane.Raycast(ray, out float distance)) return false;
+            float delta = ray.GetPoint(distance).x - Motor.Position.x;
+            if (Mathf.Abs(delta) > AimFacingDeadZone) facing = Mathf.Sign(delta);
+            return true;
+        }
 
         private void SetMovementInput(float horizontal, bool holdingJump)
         {
@@ -284,6 +303,7 @@ namespace ActionPlatformer.Player
                         FaceArrival();
                         Motor.RefreshContacts();
                         Combat?.ObserveArrival(false);
+                        if (Combat != null) RefreshAimFacing();
                         Combat?.TryAttack(Glitch.ArrivalTarget, facing, true, now, Motor.IsGrounded);
                     }
                 }
@@ -300,9 +320,10 @@ namespace ActionPlatformer.Player
                     ClearJumpState();
                     FaceArrival();
                 }
-                if (pendingAttack && !IsUnderground)
+                if (pendingAttack && !IsUnderground && Combat != null && Combat.CanAttack(now))
                 {
                     Motor.RefreshContacts();
+                    RefreshAimFacing();
                     Combat?.TryAttack(Glitch?.ArrivalTarget, facing, false, now, Motor.IsGrounded);
                 }
             }
@@ -318,14 +339,14 @@ namespace ActionPlatformer.Player
             if (Combat != null && Combat.ConsumeBufferedAttack(now))
             {
                 Motor.RefreshContacts();
+                RefreshAimFacing();
                 Combat.TryAttack(Glitch?.ArrivalTarget, facing, false, now, Motor.IsGrounded);
             }
             ApplyImpactFeedback();
-            bool attacking = Combat != null && Combat.IsAttacking;
             bool movementLocked = Combat != null && Combat.BlocksMovement(Motor.IsGrounded);
-            if (attacking)
+            if (movementLocked)
             {
-                // Never queue a fresh jump from an attack, including a swing that lands.
+                // Attack-time jump presses must not escape into the first free physics step.
                 jumpBuffer.Clear();
                 jumpGraceAvailable = false;
                 lastGroundedAt = double.NegativeInfinity;
@@ -358,7 +379,7 @@ namespace ActionPlatformer.Player
                 Motor.Simulate(0f, jumpHeld, Time.fixedDeltaTime);
                 return;
             }
-            if (!attacking && Motor.IsGrounded) { lastGroundedAt = now; jumpGraceAvailable = true; }
+            if (Motor.IsGrounded) { lastGroundedAt = now; jumpGraceAvailable = true; }
             if (jumpGraceAvailable && now - lastGroundedAt <= tuning.CoyoteTime &&
                 jumpBuffer.TryConsume(now, tuning.InputBufferTime))
             {
@@ -444,6 +465,8 @@ namespace ActionPlatformer.Player
             ClearJumpState();
             horizontalInput = 0f;
             jumpHeld = false;
+            hasAim = false;
+            aimScreenPosition = Vector2.zero;
         }
 
         private void OnDestroy()

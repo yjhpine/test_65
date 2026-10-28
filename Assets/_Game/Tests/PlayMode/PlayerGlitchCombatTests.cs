@@ -352,45 +352,92 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
         }
 
-        [UnityTest] public IEnumerator AttackStopsRunningBlocksJumpThroughRecoveryAndResumesHeldMovement()
+        [UnityTest] public IEnumerator MouseFacingChangesOnlyWhenAttackStartsWithoutGlitch()
         {
-            // Basic combat must enforce the same movement lock without a glitch object.
             RebuildPlayer(false, true);
-            Set(combatSettings, "activeDuration", 0.12f);
-            input.Command = new PlayerCommand { Move = Vector2.right };
-            yield return null;
-            for (int i = 0; i < 5; i++) yield return Step;
-            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
-            float startX = player.Motor.Position.x;
-            input.Command = new PlayerCommand { AttackPressed = true, JumpPressed = true,
-                JumpHeld = true, Move = Vector2.right };
-            float deadline = Time.realtimeSinceStartup + 2f;
+            PlacePlayer(new Vector2(-10f, 61.32f));
+            input.Command = new PlayerCommand { HasAim = true, Move = Vector2.left,
+                AimScreenPosition = camera.WorldToScreenPoint(new Vector3(-6f, 68f, 0f)) };
+            yield return null; yield return Step; yield return null;
+            Assert.That(player.Facing, Is.EqualTo(-1f), "Walking ignores the cursor.");
+            input.Command.Move = Vector2.zero;
+            yield return null; yield return null;
+            Assert.That(player.Facing, Is.EqualTo(-1f), "Idle ignores the cursor too.");
+            input.Command.AttackPressed = true;
+            float deadline = Time.realtimeSinceStartup + 3f;
             while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Windup));
-            var phases = new HashSet<PlayerAttackPhase>();
-            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
+            Assert.That(Combat.Facing, Is.EqualTo(1f), "Only execution reads the cursor X, regardless of Y.");
+            input.Command.AimScreenPosition = camera.WorldToScreenPoint(new Vector3(-15f, 55f, 0f));
+            input.Command.AttackPressed = true; // Windup cannot start a second attack or alter idle facing.
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            yield return null; yield return null;
+            Assert.That(player.Facing, Is.EqualTo(1f), "Recovery does not turn toward a moved cursor.");
+            input.Command.AimScreenPosition = camera.WorldToScreenPoint((Vector3)player.Motor.Position + new Vector3(-.05f, 8f, 0f));
+            input.Command.AttackPressed = true;
+            while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(Combat.IsAttacking, Is.True);
+            Assert.That(Combat.Facing, Is.EqualTo(1f), "Center dead zone preserves the previous facing at execution.");
+        }
+
+        [UnityTest] public IEnumerator MouseFacingCommitsPerSwingAndBufferedAttackAllowsMovement()
+        {
+            RebuildPlayer(false, true);
+            PlacePlayer(new Vector2(-10f, 61.32f));
+            input.Command = new PlayerCommand { HasAim = true, Move = Vector2.left, AttackPressed = true,
+                AimScreenPosition = camera.WorldToScreenPoint(new Vector3(-6f, 61f, 0f)) };
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(Combat.Facing, Is.EqualTo(1f));
+            uint first = player.AttackPresentation.Version;
+            float origin = player.Motor.Position.x;
+            input.Command = new PlayerCommand { HasAim = true, Move = Vector2.right,
+                AimScreenPosition = camera.WorldToScreenPoint(new Vector3(-15f, 65f, 0f)) };
+            while ((Combat.Phase != PlayerAttackPhase.Recovery || player.AttackPresentation.PhaseProgress < .65f) &&
+                Time.realtimeSinceStartup < deadline)
             {
-                phases.Add(Combat.Phase);
-                Assert.That(player.Motor.Velocity.x, Is.Zero, "Stop existing momentum immediately, not by deceleration.");
-                Assert.That(player.Motor.Position.x, Is.EqualTo(startX).Within(0.15f));
-                Assert.That(player.Motor.IsGrounded, Is.True, "Attack and jump together must not jump.");
-                // Send late-recovery presses, then stop before Ready so the driver cannot create a fresh post-attack press.
-                bool pressJump = Combat.Phase != PlayerAttackPhase.Recovery ||
-                    Combat.GetPresentation(Time.timeAsDouble).PhaseProgress < 0.6f;
-                input.Command = new PlayerCommand { Move = Vector2.left, JumpPressed = pressJump, JumpHeld = true };
+                Assert.That(player.Facing, Is.EqualTo(1f));
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
                 yield return null;
             }
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
+            input.Command.AttackPressed = true;
+            while (player.AttackPresentation.Version == first && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                yield return null;
+            }
+            Assert.That(player.AttackPresentation.Version, Is.EqualTo(first + 1));
+            Assert.That(Combat.Facing, Is.EqualTo(-1f));
+            Assert.That(player.Motor.Position.x, Is.GreaterThan(origin));
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                yield return null;
+            }
+            yield return Step; yield return null;
+            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+            Assert.That(player.Motor.IsGrounded, Is.True, "No jump input was sent.");
+            Assert.That(player.Facing, Is.EqualTo(1f), "After recovery, held movement owns facing again.");
+        }
+
+        [UnityTest] public IEnumerator BasicAttackAllowsMovementAndJumpWhileKeepingCommittedDirection()
+        {
+            RebuildPlayer(false, true);
+            PlacePlayer(new Vector2(-10f, 61.32f));
+            input.Command = new PlayerCommand { Move = Vector2.right, AttackPressed = true, JumpPressed = true, JumpHeld = true };
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
             input.Command = new PlayerCommand { Move = Vector2.left, JumpHeld = true };
-            Assert.That(phases, Does.Contain(PlayerAttackPhase.Windup));
-            Assert.That(phases, Does.Contain(PlayerAttackPhase.Active));
-            Assert.That(phases, Does.Contain(PlayerAttackPhase.Recovery));
-            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
-            yield return Step;
-            Assert.That(player.Motor.Velocity.x, Is.LessThan(0f), "Held movement resumes when recovery ends.");
-            Assert.That(player.Motor.IsGrounded, Is.True, "Jump presses during the attack must not remain buffered.");
-            input.Command = new PlayerCommand { JumpPressed = true, JumpHeld = true };
-            yield return null; yield return Step; yield return null;
-            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f), "A fresh jump after the attack remains available.");
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                Assert.That(player.Facing, Is.EqualTo(1f));
+                yield return null;
+            }
+            Assert.That(Combat.IsAttacking, Is.False);
+            Assert.That(player.Motor.Velocity.x, Is.LessThan(0f));
         }
 
         [UnityTest] public IEnumerator EmergenceAttackBlocksHorizontalInputButKeepsItsLaunch()
@@ -418,6 +465,10 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator NormalAirInputUsesBasicDamageWithoutHoverOrDownwardReaction()
         {
+            // Use the authored windup with authored movement: the fixture's slow .12s windup
+            // would let a full-speed swing pass this nearby stationary target before becoming active.
+            Set(combatSettings, "windup", AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>(
+                "Assets/_Game/Data/PlayerCombatTuning.asset").Windup);
             for (int configuration = 0; configuration < 2; configuration++)
             {
                 RebuildPlayer(configuration == 0, true);
@@ -432,7 +483,7 @@ namespace ActionPlatformer.Tests
                 Assert.That(enemy.DamageVersion, Is.EqualTo(oldVersion + 1));
                 Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
                 Assert.That(Combat.IsPreparingSlam || Combat.IsDescending, Is.False);
-                Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f), "Air attacks retain horizontal control while gravity continues.");
+                Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f), "Air attacks retain steering while gravity continues.");
                 Assert.That(player.Motor.Velocity.y, Is.LessThan(0f));
                 Assert.That(Movement.IsForcedMoving, Is.True, "Ordinary air side attacks also use light knockback.");
                 Assert.That(Movement.Velocity.y, Is.Zero.Within(.001f), "Light side hits must not become a downward reaction.");
@@ -440,7 +491,7 @@ namespace ActionPlatformer.Tests
             }
         }
 
-        [UnityTest] public IEnumerator AirSwingKeepsSteeringGravityAndAnimationAcrossAllPhases()
+        [UnityTest] public IEnumerator AirSwingAllowsHorizontalMovementAndGravityAcrossAllPhases()
         {
             RebuildPlayer(false, true);
             Set(combatSettings, "windup", .18f); Set(combatSettings, "activeDuration", .18f);
@@ -461,13 +512,11 @@ namespace ActionPlatformer.Tests
                 yield return null;
             }
             CollectionAssert.AreEquivalent(new[] { PlayerAttackPhase.Windup, PlayerAttackPhase.Active, PlayerAttackPhase.Recovery }, phases);
-            Assert.That(player.Motor.Position.x, Is.GreaterThan(startX + 2f));
             Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
-            // Steering can reverse independently of the locked swing/hitbox direction.
-            input.Command = new PlayerCommand { Move = Vector2.left, AttackPressed = true };
-            while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
-            while (player.Motor.Velocity.x >= 0f && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(Combat.IsAttacking, Is.True);
+            input.Command = new PlayerCommand { Move = Vector2.left };
+            yield return null;
+            // Recovery can already have applied one rightward step; allow normal air braking/reversal.
+            for (int i = 0; i < 8; i++) yield return Step;
             Assert.That(player.Motor.Velocity.x, Is.LessThan(0f));
         }
 
@@ -496,30 +545,21 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.BlocksMovement(false), Is.False);
         }
 
-        [UnityTest] public IEnumerator AirSwingLandingLocksRemainingAttackAndDoesNotQueueJump()
+        [UnityTest] public IEnumerator AirSwingLandingKeepsMovementAndAllowsJump()
         {
             Set(combatSettings, "activeDuration", .4f);
-            PlacePlayer(new Vector2(-3f, 62f));
+            PlacePlayer(new Vector2(-10f, 62f));
             player.Motor.Relocate(player.Motor.Position, new Vector2(6f, -6f));
             input.Command = new PlayerCommand { Move = Vector2.right, AttackPressed = true };
             float deadline = Time.realtimeSinceStartup + 3f;
             while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
-            while (!player.Motor.IsGrounded && Time.realtimeSinceStartup < deadline)
-            {
-                input.Command = new PlayerCommand { Move = Vector2.right, JumpPressed = true, JumpHeld = true };
-                yield return null;
-            }
+            while (!player.Motor.IsGrounded && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(Combat.IsAttacking, Is.True);
-            Assert.That(player.Motor.IsGrounded, Is.True);
-            yield return Step;
-            Assert.That(player.Motor.Velocity.x, Is.Zero);
-            Assert.That(Combat.BlocksMovement(true), Is.True);
-            input.Command = new PlayerCommand { Move = Vector2.right, JumpPressed = true, JumpHeld = true };
-            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
-            yield return Step;
-            Assert.That(player.Motor.IsGrounded, Is.True, "Air-attack jump presses must not fire on landing or recovery end.");
+            Assert.That(Combat.BlocksMovement(true), Is.False);
             Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+            input.Command.JumpPressed = input.Command.JumpHeld = true;
+            yield return null; yield return Step; yield return null;
+            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
         }
 
         [UnityTest] public IEnumerator OtherGlitchDirectionsDoNotEnableAirSlam()
@@ -1581,7 +1621,7 @@ namespace ActionPlatformer.Tests
             Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Slam));
         }
 
-        [UnityTest] public IEnumerator LateRecoveryInputDuringHitStopQueuesOneAttackWithoutUnlockingMovement()
+        [UnityTest] public IEnumerator LateRecoveryInputDuringHitStopQueuesOneAttackWhileMoving()
         {
             input.Command=new PlayerCommand { AttackPressed=true, Move=Vector2.right };
             float deadline=Time.realtimeSinceStartup+3f;
@@ -1599,7 +1639,7 @@ namespace ActionPlatformer.Tests
             while (player.AttackPresentation.Version==version && Time.realtimeSinceStartup<deadline) yield return null;
             Assert.That(player.AttackPresentation.Version, Is.EqualTo(version+1));
             Assert.That(Combat.Strike, Is.EqualTo(2));
-            Assert.That(player.Motor.Velocity.x, Is.Zero);
+            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
             Assert.That(Combat.HasBufferedAttack, Is.False);
             while(Combat.IsAttacking && Time.realtimeSinceStartup<deadline) yield return null;
             yield return new WaitForSeconds(.15f);

@@ -12,14 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 91f5de5dbef2b614fbf69519a3f00e98, type: 3}
   m_Name: PlayerTuning
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerTuning
-  runSpeed: 10.5
-  groundAcceleration: 125
-  groundBraking: 110
-  airAcceleration: 45
+  runSpeed: 12
+  groundAcceleration: 240
+  groundBraking: 300
+  airAcceleration: 180
+  airBraking: 150
   jumpHeight: 4
-  riseGravity: 48
-  fallGravity: 55
-  maxFallSpeed: 28
+  riseGravity: 64
+  fallGravity: 80
+  maxFallSpeed: 32
   jumpCutMultiplier: 0.45
   coyoteTime: 0.1
   inputBufferTime: 0.13

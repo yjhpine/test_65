@@ -6,6 +6,24 @@ namespace ActionPlatformer.Tests
 {
     public sealed class MovementRulesTests
     {
+        [TestCase(true, 3, 5, 2)]
+        [TestCase(false, 4, 7, 4)]
+        public void AuthoredMovementReachesReversesAndStopsWithinResponsiveBudget(
+            bool grounded, int startSteps, int reverseSteps, int stopSteps)
+        {
+            var tuning = UnityEditor.AssetDatabase.LoadAssetAtPath<PlayerTuning>("Assets/_Game/Data/PlayerTuning.asset");
+            float velocity = 0f;
+            for (int i = 0; i < startSteps; i++)
+                velocity = MovementMath.HorizontalSpeed(velocity, 1f, grounded, tuning, .02f);
+            Assert.That(velocity, Is.EqualTo(tuning.RunSpeed).Within(.001f));
+            for (int i = 0; i < reverseSteps; i++)
+                velocity = MovementMath.HorizontalSpeed(velocity, -1f, grounded, tuning, .02f);
+            Assert.That(velocity, Is.EqualTo(-tuning.RunSpeed).Within(.001f));
+            for (int i = 0; i < stopSteps; i++)
+                velocity = MovementMath.HorizontalSpeed(velocity, 0f, grounded, tuning, .02f);
+            Assert.That(velocity, Is.Zero.Within(.001f));
+        }
+
         [Test] public void MotorsOnlyModifyTheirInjectedPhysicsBodies()
         {
             var firstObject = new GameObject("First motor body");
