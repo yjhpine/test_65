@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5de04f306cc83094989c934b6c3247fb, type: 3}
+  m_Name: PlayerSfx
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerSfxDefinition
+  swings:
+  - {fileID: 8300000, guid: e3608ed7919e9f64589b17aef6980051, type: 3}
+  - {fileID: 8300000, guid: dfd73f7d572baae4099450a6e322dac1, type: 3}
+  hits:
+  - {fileID: 8300000, guid: 82245d3455a910d498a0b20992430b03, type: 3}
+  - {fileID: 8300000, guid: 94d720427be686a42be50c09f441f236, type: 3}
+  landings:
+  - {fileID: 8300000, guid: 673d4eb65372b7f4597fd85b32cdcdbf, type: 3}
+  - {fileID: 8300000, guid: 3a35d325a0e6d4046834cdfe6ec5f724, type: 3}
+  heavySwing: {fileID: 8300000, guid: 43afcf3e796300c489b79ee1fa368dda, type: 3}
+  heavyHit: {fileID: 8300000, guid: 68553562bcc5e6e4680c6920990a784a, type: 3}
+  slamLanding: {fileID: 8300000, guid: 01e35f0639dee6e4ba1a1d3ffee9ae04, type: 3}
+  glitch: {fileID: 8300000, guid: e8e9756111efd1846a23d770e8d5a07e, type: 3}
+  swingVolume: 0.32
+  hitVolume: 0.42
+  landingVolume: 0.24
+  glitchVolume: 0.38

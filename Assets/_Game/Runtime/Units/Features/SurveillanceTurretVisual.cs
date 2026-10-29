@@ -96,6 +96,8 @@ namespace ActionPlatformer.Units.Features
             renderer.sharedMaterial = source.sharedMaterial;
             renderer.sortingLayerID = source.sortingLayerID;
             renderer.sortingOrder = source.sortingOrder + order;
+            // These parts replace the hidden source renderer, so each needs its own hit flash.
+            if (source.GetComponent<UnitDamageFlash>() != null) go.AddComponent<UnitDamageFlash>();
             renderer.enabled = false;
             return renderer;
         }

@@ -1,0 +1,9 @@
+STOPPED
+frames=2391
+fps=60
+seconds=39.85
+glitches=18
+attacks=62
+health=-1
+record=True
+size=1280x720

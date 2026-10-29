@@ -27,10 +27,13 @@ namespace ActionPlatformer.Tests
             var go = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/" + name + ".prefab"), position, Quaternion.identity);
             created.Add(go); return go;
         }
-        private static SpriteRenderer Part(EnemyLaserVisual view, string label) => view.transform.Find("Laser " + label).GetComponent<SpriteRenderer>();
+        private static SpriteRenderer Part(EnemyLaserVisual view, string label)
+        { ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate"); return view.SessionRoot.Find("Laser " + label).GetComponent<SpriteRenderer>(); }
         private static void AssertHidden(EnemyLaserVisual view)
         {
-            foreach (var renderer in view.GetComponentsInChildren<SpriteRenderer>(true))
+            ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate");
+            if(view.SessionRoot==null)return;
+            foreach (var renderer in view.SessionRoot.GetComponentsInChildren<SpriteRenderer>(true))
                 if (renderer.name.StartsWith("Laser ")) Assert.That(renderer.enabled, Is.False, renderer.name);
         }
         [TearDown] public void Cleanup()
@@ -59,7 +62,7 @@ namespace ActionPlatformer.Tests
                     var shot = combat.LastShot;
                     Assert.That(Part(view, "start 0").enabled && Part(view, "end 0").enabled, Is.True);
                     Assert.That(Part(view, "start 1").enabled, Is.False);
-                    Assert.That(view.transform.Find("Attack telegraph").GetComponent<SpriteRenderer>().enabled, Is.False, "No solid placeholder over the imported beam.");
+                    Assert.That(view.SessionRoot.Find("Attack telegraph").GetComponent<SpriteRenderer>().enabled, Is.False, "No solid placeholder over the imported beam.");
                     Assert.That(Vector2.Distance(Part(view, "start 0").transform.position, shot.Start), Is.LessThan(.001f));
                     Assert.That(Vector2.Distance(Part(view, "end 0").transform.position, shot.End), Is.LessThan(.001f));
                     if (aim.x > 0) Assert.That(shot.End.x, Is.EqualTo(3.9f).Within(.002f));

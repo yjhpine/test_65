@@ -77,7 +77,7 @@ namespace ActionPlatformer.Flow
         {
             if (goalHint == null || (!show && !transferHintVisible)) return;
             transferHintVisible = show;
-            goalHint.text = "SHIFT  >  REST AREA";
+            goalHint.text = "REST AREA OPEN  >  WALK OR SHIFT";
             goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
 

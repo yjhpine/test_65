@@ -741,3 +741,59 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 신규 검사는 양 색상, charge/on/loop/off 프레임 동기화, 시작/끝 피벗과 타일 몸통 연결, 사선·좌우·수직 발사, 벽에 잘린 길이, 추적 방향 변경 후 발사 경로 고정, 아주 짧은/길이 0인 빔, 표시 종료·사망·비활성화·재시작을 확인한다. 기존 검사는 포탑 반회전·정면 감지·추적/고정/발사/재추적, 포신 시작점, 피해 및 드론/방패병 행동을 포함한다.
 - 원본 적 프리팹 두 개를 Play Mode 검증용 위치에 임시 생성하고 실제 Fire 결과를 ARCBIT 프레임으로 렌더링했다. `Library/PrototypeValidation/ArcbitEnemyLasers.png`에서 위쪽 포탑의 파랑, 아래쪽 드론의 빨강 및 몸통/끝 조각 연결을 직접 확인했다. 이미지의 배치는 연출 검증용이며 저장된 레벨을 바꾸지 않았다.
 - 현재 CoreLoopStage의 원래 SurveillanceTurret와 FlyingDrone에도 각각 blue/red 프레임과 EnemyLaserVisual이 연결된 것을 확인했다. Play Mode 종료, scene dirty=false, timeScale=1, 검증 구간의 새 Console 오류 0건이다. 이번 수정에서 전투 수치·판정·FSM·플레이어 글리치 효과는 변경하지 않았다.
+
+
+## 2026-10-29 ? Pimen dust / kekkorider impact VFX
+
+- Player prefab: 8 jump/stop smoke frames, 7 running/landing dust frames, 8 hit and 8 finisher impact frames. Imported original PNGs; existing slash, glitch spark and laser references preserved.
+- Presentation only: motion state drives foot dust, accepted hit results drive contact effects. No combat/physics tuning changes. Glitch/underground/discontinuous movement suppresses false dust transitions; 8 reusable dust slots; reset clears them. Contact effects retain target-local tracking and unscaled 0.05/0.10/0.15-second lifetimes.
+- Unity 6000.3.23f1 compilation completed, no errors. PlayMode MovementImpactVfxTests 4/4 and CombatPresentationTests 3/3 passed (fresh JSON results in Library/PrototypeValidation).
+- CoreLoopStage runtime verification at 1920x1080: 24-second input-driven session, 36 attacks / 11 glitches, first encounter clear, rest and next encounter reached. JumpSmoke, GroundDust, HitImpact and FinisherImpact frames observed and screenshots inspected; no Console errors. Video recording disabled. Editor returned to stopped state.
+
+
+## 2026-10-29 ? Combat SFX integration
+
+- Added 12 selected/derived CC0 clips from Swishes, Kenney Impact and Kenney Sci-fi. PlayerSfx.asset controls separate swing/hit/landing/glitch levels; ranged prefabs hold distinct shot clips and volumes. CoreLoopStage main rendering camera now has one AudioListener (previously none).
+- Actual attack and glitch presentation versions drive sounds once. Accepted hit results drive contact audio, coalesced within 0.04 unscaled seconds to avoid multi-target stacking. Ground contact drives landing; shockwave version drives one heavy landing sound. Scripted rest transfer plays one glitch sound on actual start. Enemy ShotVersion drives one sound per shot, including bidirectional drone beams.
+- Six player voices and two per ranged enemy, reused; no per-event object allocation, global manager, mixer override or volume reset. AudioListener pause/volume respected, no timescale-driven pitch changes. Disabled presentation stops voices and snapshots versions. Existing combat/movement data unchanged.
+- Unity compilation succeeded. Fresh PlayMode results: CombatSfxTests 5/5, MovementImpactVfxTests 4/4, CombatPresentationTests 3/3. JSON evidence under Library/PrototypeValidation.
+- CoreLoopStage input-driven runtime: 24 seconds, 33 attacks, 9 glitches; first encounter, rest, second encounter. Observed playing clips for swing A/B, heavy swing, hit A/B/heavy, normal/slam landing, glitch, turret and drone shots. AudioListener output measured nonzero with sampled peak 0.4737694 (<1). This verifies engine playback/output, not subjective speaker listening. No video recording. No Console errors; stopped afterward.
+
+
+## 2026-10-29 ? Open rest entrance after combat; walk or Shift
+
+- Reproduced before fix: ClearedGateAllowsWalkingIntoEachRestAndHealsOnlyOnce failed because ExitGate stayed locked after combat clear. Before-fix JSON: Library/PrototypeValidation/RestWalkingBeforeFix.json.
+- Cause: ExitGate was unlocked only after successful scripted transfer; TransferBlocked returned before any rest detection.
+- Fix: current combat exit unlocks on clear. Player body entering rest on foot consumes the existing single visit/heal and opens the next entrance; Shift remains optional. TransferBlocked can recover by walking or an explicit new Shift press (no automatic retry). Shared EnterRest completion keeps both paths consistent and clears the hint/request. Existing next-fight rear gate and death priority unchanged.
+- Fresh Unity compilation succeeded. RestCycleTests PlayMode 19/19 passed in 45.13s, including all three walking rest transitions, original four-wave Shift cycle, failed-transfer walk recovery/retry, single heal, airborne/underground departures, pause/disable/death and gate regression checks. After-fix JSON: Library/PrototypeValidation/RestWalkingAfterFix.json.
+- Console contains four intentional blocked-destination/arrival errors asserted by those tests; no unexpected errors. No scene/prefab, combat tuning or user GlitchTuning changes made for this fix.
+
+### 2026-10-29 적 피격 외형 보강
+- 포탑에서 숨겨진 원본 대신 표시하는 포신/받침대에도 UnitDamageFlash를 연결했다. 기존 0.06초 비스케일 밝기 변화와 비활성화 초기화를 유지한다.
+- 드론은 피해 버전 변화에 따라 Visual만 최대 8도 기울이고 비스케일 0.12초에 복귀한다. 재피격은 갱신하며 사망/비활성화 시 복원한다. 몸체, FSM, 사격 애니메이션과 전투 설정은 변경하지 않았다.
+- Unity 컴파일 성공. EnemyHitVisualTests PlayMode 2/2 통과: 표시 부품 밝기/소멸, 드론 몸체·FSM 불변 및 복귀/비활성화/사망 초기화. 결과 Library/PrototypeValidation/EnemyHitVisualResults.json. 새 런타임 오류 없음. 전체 전투 회귀 및 수동 플레이 육안 확인은 이번 검증에 포함하지 않았다.
+
+### 2026-10-29 전역 VFX/SFX 리팩토링
+- EffectsRuntime의 영속 루트에 VfxManager/SfxManager를 두고, 캐릭터별 세대 핸들·재사용 뱅크·씬 언로드 정리를 구현했다. 플레이어 이동/접지·글리치 버전 관찰과 적 사격 버전 관찰은 요청자에 남겼다. 렌더러·오디오 생성은 관리자만 수행한다.
+- Player/포탑/드론/방패병 프리팹의 설정을 Data/Presentation 프로필로 이전했다. 이전 직렬화 필드 30항목(프레임/재질/배율/간격/음량)과 프로필을 비교해 30/30 일치 확인 후 구형 필드를 제거했다. 씬별 해당 효과 오버라이드는 없었다. 전투·물리·FSM·카메라 코드는 이번 리팩토링에서 변경하지 않았다.
+- Unity 컴파일 통과. 전체 PlayMode 최초 실행 292개 중 273 통과/19 실패. 새 풀 경로로 갱신이 필요했던 PlayerVisualTests 3개를 수정한 후 해당 클래스 9/9 재실행 통과. 남은 16개는 CutsceneTests 11, FinalWaveCutsceneTests 3, StageFlowTests 2의 카메라 크기 6.5 기대/실제 8 불일치다. HEAD 씬에도 orthographic size=8이며 이번 씬 변경은 없다. 전체 재실행 통과로 보고하지 않는다.
+- 이번 범위 관련 검사 최신 결과: CombatSfx 5, MovementImpactVfx 4, EnemyLaserVisual 2, EnemyHitVisual 2, CombatPresentation 3, GlobalEffects 6, PlayerVisual 9, RestCycle 19, 총 50개 통과. 전역 검사에는 풀 재사용/오래된 핸들 무효/소유자 격리/비활성·파괴 정리/씬 언로드/비스케일 소멸/리스너 일시정지/미제출 지속 효과 숨김을 포함한다.
+- 전체 EditMode 최종 실행 46개 중 45 통과/1 실패. 남은 CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership은 Timeline 미리보기의 IsBubbleVisible 기대가 실패했다. 이번 변경 영역 밖이며 원인 수정은 하지 않았다.
+- 실제 CoreLoopStage 1920x1080, Domain Reload 켜짐: 24초/36회 공격/11회 글리치, 휴식 체력100 회복 후 2웨이브 진입. 꺼짐: 24초/38회 공격/10회 글리치 및 2웨이브 진입. 두 실행 모두 VFX/SFX 관리자 각1개, 먼지·명중·처치 프레임 및 플레이어/적 오디오 재생 관측. Unity 출력 샘플 피크 각각 0.4737694/0.44498. 스피커 청취 평가는 하지 않았다.
+- PlayerVisualTests가 생성한 1120x660/1920x1080 연출 캡처 및 실제 레벨 1120x660 캡처 확인. 실제 플레이 입력 검증은 1920x1080에서 수행했다. 녹화는 하지 않았다. 종료 시 에디터 옵션 원복, 씬 저장 변경 없음, timeScale=1/captureDeltaTime=0 확인.
+- 결과: Library/PrototypeValidation/GlobalEffectsFullPlayMode.json, GlobalEffectsPlayerVisualTests.json, GlobalEffectsFullEditMode.json, EffectsProfileMigrationCheck.json, GlobalEffectsRuntime/, GlobalEffectsNoReloadRuntime/. 실제 플레이 구간에 새 게임 런타임 오류는 관측되지 않았다. 전체 검사 중 의도된 오류와 Timeline 관련 편집기 오류는 별도이며 Console을 지우지 않았다.
+
+### 2026-10-29 카메라 8 고정 및 Timeline 미리보기 실패 수정
+- 카메라 크기는 사용자 지정 고정값 8을 유지한다. CutsceneTests/FinalWaveCutsceneTests/StageFlowTests의 이전 기대값 6.5를 8로 변경했다. 크기 8에서 X=12는 화면 반폭(1920x1080 기준 약14.22)보다 작으므로 플레이어 중심을 그대로 기대하던 컷신 복원 검사도 정상 경계 제한을 반영했다. 씬, Timeline 에셋, 런타임 컷신/카메라 코드는 수정하지 않았다.
+- Timeline 실패를 수정 전 재현했다. 테스트가 고정한 1.9초/2.3초에는 현재 IntroConversation의 대사가 없다. 실제 말풍선 클립은 2.6333~3.0333(Guide), 3.0333~3.4333(Player), 3.4333~3.8333(Guide)에 배치돼 있었다. 테스트는 실제 클립의 중간 시점, 연결 화자와 대사로 검증하고 미리보기 갱신을 제한 시간 내 기다리도록 수정했다.
+- 대사 검사 수정 후 추가한 렌즈 복원 검사에서 ClearTimeline 직후 크기가 8 대신4.5에 남는 에디터 복원 지연을 재현했다. CutscenePreview에서 orthographic size를 AnimationMode의 복원 항목에 등록하여 다음 Editor update 없이 원래 크기를 복원한다. 기존 컷신 줌/재생 시간은 유지한다.
+- Unity 컴파일 통과. 전체 EditMode 46/46 통과. 인트로/최종 컷신 PlayMode 21/21, StageFlowTests 12/12 통과(관련 PlayMode 총33개). 완료/취소/스킵/피격/재시작/카메라 경계와 말풍선 표시/되감기/종료 즉시 복원을 검증했다. 전체292개 PlayMode를 이번 수정 후 다시 실행한 것은 아니다.
+- 중간 실행의 VirtualKeyboard 검사에서 입력 직후 표시 검사 실패가 관측됐으나 임시 진단을 제거한 최종21개 실행에서 통과했다. 입력 런타임이나 해당 가상 입력 테스트 로직은 변경하지 않았으며 간헐 실패 원인을 확정하지 않았다.
+- 결과: Library/PrototypeValidation/TimelinePreviewBeforeFix.json, TimelineImmediateLensBeforeFix.json, CameraTimelineEditModeAfterFix.json, CameraTimelineCutscenePlayModeAfterFix.json, CameraTimelineStageFlowAfterFix.json.
+
+### 2026-10-29 최종 전체 PlayMode 재검증
+- 필터 없이 전체 PlayMode를 새로 실행: **292/292 통과, 실패0, 건너뜀0, 미결정0**, 소요221.32초.
+- 이번 실행의 Error 로그6건은 RestCycleTests의 차단/도착 무효 검사4건과 UnitLifecycleTests의 필수 설정 누락 검사2건으로, 모두 LogAssert.Expect로 검증하는 의도된 로그다. 예상하지 않은 새 콘솔 오류는 관측되지 않았다.
+- 종료 후 PlayMode 중지, 씬 dirty=false, 카메라 크기8, timeScale=1, captureDeltaTime=0 확인. 코드·에셋·설정 변경 없이 검증했다.
+- 앞선 부분 실행에서 관측된 가상 키보드 검사도 이번 전체 실행에서 통과했다. 과거 실패 기록은 이력으로 남기며 이번 실행 결과와 구분한다.
+- 결과: Library/PrototypeValidation/FullPlayMode-20261029-Final.json.

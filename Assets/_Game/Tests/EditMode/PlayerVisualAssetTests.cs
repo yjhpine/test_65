@@ -13,7 +13,7 @@ namespace ActionPlatformer.Tests
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");
             var visual = prefab.GetComponentInChildren<PlayerVisual>();
-            var data = new SerializedObject(visual);
+            var data = new SerializedObject(new SerializedObject(visual).FindProperty("vfxProfile").objectReferenceValue);
             foreach (var pair in new[] { new[] { "basicAttackEffectFrames", "white_slash" }, new[] { "glitchEffectFrames", "white_spark" } })
             {
                 var frames = data.FindProperty(pair[0]); Assert.That(frames.arraySize, Is.EqualTo(16));

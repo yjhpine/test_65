@@ -41,33 +41,48 @@ namespace ActionPlatformer.Tests
             var follow = runner.Coordinator.CameraRig.Output.transform.parent.GetComponent<ActionPlatformer.Flow.StageCameraFollow>();
             var window = UnityEditor.Timeline.TimelineEditor.GetOrCreateWindow();
             bool followEnabled = follow.enabled, brainEnabled = runner.Coordinator.CameraRig.Brain.enabled;
+            float cameraSize = runner.Coordinator.CameraRig.Output.orthographicSize;
+            var timeline = (TimelineAsset)runner.Director.playableAsset;
+            var dialogueClips = timeline.GetOutputTracks().OfType<SpeechBubbleTrack>()
+                .Where(t => !t.muted).SelectMany(t => t.GetClips().Select(c => new {
+                    Clip = c, Speaker = runner.Director.GetGenericBinding(t) as DialogueSpeaker
+                })).OrderBy(c => c.Clip.start).ToArray();
+            Assert.That(dialogueClips.Length, Is.GreaterThanOrEqualTo(2));
+            var first = dialogueClips[0]; var second = dialogueClips[1];
+            Assert.That(first.Speaker, Is.Not.Null); Assert.That(second.Speaker, Is.Not.Null);
+            Assert.That(second.Speaker, Is.Not.SameAs(first.Speaker));
+            string firstText = ((DialogueClip)first.Clip.asset).Text;
+            string secondText = ((DialogueClip)second.Clip.asset).Text;
+            // Sample inside the authored clips, not obsolete absolute timestamps or blend boundaries.
+            double firstTime = first.Clip.start + first.Clip.duration * .5;
+            double secondTime = second.Clip.start + second.Clip.duration * .5;
+            Assert.That(first.Clip.start, Is.GreaterThan(0), "The intro must have a pre-dialogue interval.");
+            IEnumerator Scrub(double time, Func<bool> ready)
+            {
+                window.playbackControls.SetCurrentTime(time);
+                double deadline = EditorApplication.timeSinceStartup + 2;
+                do { yield return null; }
+                while (!ready() && EditorApplication.timeSinceStartup < deadline);
+                Assert.That(ready(), Is.True, "Timeline preview did not present the authored clip at " + time);
+            }
             try
             {
                 window.SetTimeline(runner.Director);
                 window.playbackControls.Play(); window.playbackControls.Pause();
-                window.playbackControls.SetCurrentTime(1.9);
-                // The custom preview runs on the next Editor update.
-                for (int i = 0; i < 10 && !runner.Coordinator.CameraRig.IsAcquired; i++) yield return null;
-                Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.True);
+                yield return Scrub(firstTime, () => runner.Coordinator.CameraRig.IsAcquired &&
+                    runner.View.IsBubbleVisible && runner.View.VisibleText == firstText);
                 Assert.That(follow.enabled, Is.False);
-                yield return null; yield return null;
-                Assert.That(runner.View.IsBubbleVisible, Is.True);
-                Assert.That(runner.View.VisibleText, Is.EqualTo("앞쪽 발판을 따라 이동해 보세요."));
+                Assert.That(runner.CurrentSpeaker, Is.SameAs(first.Speaker));
                 Assert.That(runner.State, Is.EqualTo(CutsceneState.Idle));
-                window.playbackControls.SetCurrentTime(2.3);
-                yield return null; yield return null;
-                Assert.That(runner.CurrentSpeaker.DisplayName, Is.EqualTo("플레이어"));
-                Assert.That(runner.View.VisibleText, Is.EqualTo("출구는 어떻게 열죠?"));
-                window.playbackControls.SetCurrentTime(.15);
-                yield return null; yield return null;
-                Assert.That(runner.View.IsDialogueVisible, Is.False);
-                window.playbackControls.SetCurrentTime(1.9);
-                yield return null; yield return null;
-                Assert.That(runner.View.VisibleText, Is.EqualTo("앞쪽 발판을 따라 이동해 보세요."));
+                yield return Scrub(secondTime, () => runner.View.IsBubbleVisible && runner.View.VisibleText == secondText);
+                Assert.That(runner.CurrentSpeaker, Is.SameAs(second.Speaker));
+                yield return Scrub(first.Clip.start * .5, () => !runner.View.IsDialogueVisible);
+                yield return Scrub(firstTime, () => runner.View.IsBubbleVisible && runner.View.VisibleText == firstText);
                 window.ClearTimeline();
                 // No extra Editor update or manual End call may be needed to restore ownership.
                 Assert.That(follow.enabled, Is.EqualTo(followEnabled));
                 Assert.That(runner.Coordinator.CameraRig.Brain.enabled, Is.EqualTo(brainEnabled));
+                Assert.That(runner.Coordinator.CameraRig.Output.orthographicSize, Is.EqualTo(cameraSize).Within(.001f));
             }
             finally
             {

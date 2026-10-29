@@ -1,0 +1,99 @@
+[
+  {
+    "clip": "SwingA.wav",
+    "sources": [
+      "swishes/swishes/swish-1.wav"
+    ],
+    "duration": 0.10058956916099773,
+    "peak": 0.8
+  },
+  {
+    "clip": "SwingB.wav",
+    "sources": [
+      "swishes/swishes/swish-2.wav"
+    ],
+    "duration": 0.07401360544217687,
+    "peak": 0.8
+  },
+  {
+    "clip": "SwingHeavy.wav",
+    "sources": [
+      "swishes/swishes/swish-7.wav"
+    ],
+    "duration": 0.1687981859410431,
+    "peak": 0.8
+  },
+  {
+    "clip": "HitA.wav",
+    "sources": [
+      "impact/Audio/impactPunch_medium_000.ogg"
+    ],
+    "duration": 0.22,
+    "peak": 0.8
+  },
+  {
+    "clip": "HitB.wav",
+    "sources": [
+      "impact/Audio/impactPunch_medium_001.ogg"
+    ],
+    "duration": 0.22,
+    "peak": 0.8
+  },
+  {
+    "clip": "HitHeavy.wav",
+    "sources": [
+      "impact/Audio/impactPunch_heavy_000.ogg"
+    ],
+    "duration": 0.3,
+    "peak": 0.8
+  },
+  {
+    "clip": "LandA.wav",
+    "sources": [
+      "impact/Audio/footstep_concrete_000.ogg"
+    ],
+    "duration": 0.10301587301587302,
+    "peak": 0.8
+  },
+  {
+    "clip": "LandB.wav",
+    "sources": [
+      "impact/Audio/footstep_concrete_001.ogg"
+    ],
+    "duration": 0.1046485260770975,
+    "peak": 0.8
+  },
+  {
+    "clip": "SlamLand.wav",
+    "sources": [
+      "impact/Audio/impactSoft_heavy_000.ogg"
+    ],
+    "duration": 0.32,
+    "peak": 0.8
+  },
+  {
+    "clip": "TurretShot.wav",
+    "sources": [
+      "scifi/Audio/laserLarge_000.ogg"
+    ],
+    "duration": 0.3,
+    "peak": 0.8
+  },
+  {
+    "clip": "DroneShot.wav",
+    "sources": [
+      "scifi/Audio/laserSmall_000.ogg"
+    ],
+    "duration": 0.2,
+    "peak": 0.8
+  },
+  {
+    "clip": "Glitch.wav",
+    "sources": [
+      "scifi/Audio/forceField_000.ogg",
+      "scifi/Audio/computerNoise_001.ogg"
+    ],
+    "duration": 0.32,
+    "peak": 0.8
+  }
+]

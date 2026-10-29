@@ -8,6 +8,7 @@ Shader "ActionPlatformer/Player Action Two Tone"
         _AccentBoundary ("Red boundary (local Y)", Range(-0.5,0.5)) = -0.12
         _AccentSlope ("Boundary diagonal", Range(-1,1)) = 0.3
         _Highlight ("White core strength", Range(0,1)) = 0.18
+        _Desaturate ("Neutralize source color", Range(0,1)) = 0
         [HideInInspector] _Color ("Tint", Color) = (1,1,1,1)
     }
     SubShader
@@ -38,7 +39,7 @@ Shader "ActionPlatformer/Player Action Two Tone"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/2D/Include/2DCommon.hlsl"
             CBUFFER_START(UnityPerMaterial)
                 half4 _Color, _PrimaryColor, _AccentColor;
-                float _AccentBoundary, _AccentSlope, _Highlight;
+                float _AccentBoundary, _AccentSlope, _Highlight, _Desaturate;
             CBUFFER_END
 
             Varyings EffectVertex(Attributes input)
@@ -60,6 +61,7 @@ Shader "ActionPlatformer/Player Action Two Tone"
                 half accent = 1 - smoothstep(_AccentBoundary - 0.025, _AccentBoundary + 0.025, diagonal);
                 half3 palette = lerp(_PrimaryColor.rgb, _AccentColor.rgb, accent);
                 half brightness = max(source.r, max(source.g, source.b));
+                source.rgb = lerp(source.rgb, brightness.xxx, _Desaturate);
                 palette = lerp(palette, half3(1,1,1), smoothstep(0.8,1,brightness) * _Highlight);
                 // Retain the source shading, silhouette, and fade without adding opaque pixels.
                 return half4(source.rgb * palette * input.color.rgb, source.a * input.color.a);

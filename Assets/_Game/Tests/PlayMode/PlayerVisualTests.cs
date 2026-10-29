@@ -67,7 +67,7 @@ namespace ActionPlatformer.Tests
         {
             var state = new State(); var visual = Visual(state);
             yield return RenderFrame();
-            var slash = visual.transform.Find("Basic attack slash").GetComponent<SpriteRenderer>();
+            var slash = visual.EffectsRoot.Find("Basic attack slash").GetComponent<SpriteRenderer>();
             foreach (float facing in new[] { -1f, 1f })
             foreach (var kind in new[] { PlayerAttack.Side, PlayerAttack.Air })
             for (int strike = 1; strike <= 3; strike++)
@@ -102,12 +102,17 @@ namespace ActionPlatformer.Tests
             var state = new State(); var visual = Visual(state);
             // Separate the bursts enough to observe their order even at a low Editor frame rate.
             var settings = new SerializedObject(visual);
-            settings.FindProperty("glitchTrailInterval").floatValue = .06f;
+            var profile = Object.Instantiate(settings.FindProperty("vfxProfile").objectReferenceValue);
+            created.Add(profile);
+            settings.FindProperty("vfxProfile").objectReferenceValue=profile;
             settings.ApplyModifiedPropertiesWithoutUndo();
+            var profileData=new SerializedObject(profile);
+            profileData.FindProperty("glitchTrailInterval").floatValue=.06f;
+            profileData.ApplyModifiedPropertiesWithoutUndo();
             yield return RenderFrame();
             Assert.That(visual.transform.Find("Glitch teleport line"), Is.Null);
             var sparks = new List<SpriteRenderer>();
-            foreach (var renderer in visual.GetComponentsInChildren<SpriteRenderer>())
+            foreach (var renderer in visual.EffectsRoot.GetComponentsInChildren<SpriteRenderer>())
                 if (renderer.name.StartsWith("Glitch spark ")) sparks.Add(renderer);
             Assert.That(sparks.Count, Is.EqualTo(16), "A bounded pool is reused for every teleport.");
             foreach (var spark in sparks) Assert.That(spark.enabled, Is.False);
@@ -120,7 +125,7 @@ namespace ActionPlatformer.Tests
             {
                 state.GlitchPresentation = new PlayerGlitchPresentation {
                     Version = state.GlitchPresentation.Version + 1, From = from, To = to };
-                visual.SendMessage("LateUpdate");
+                visual.SendMessage("LateUpdate"); ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate");
                 int count = Mathf.CeilToInt(Vector2.Distance(from, to) / .6f) + 1;
                 Assert.That(sparks[0].enabled && sparks[count - 1].enabled, Is.True, "Both original endpoint bursts start immediately.");
                 Assert.That(sparks[1].enabled, Is.False, "Interior bursts are delayed.");
@@ -144,7 +149,7 @@ namespace ActionPlatformer.Tests
             }
             finally { Time.timeScale = savedTime; }
             state.GlitchPresentation = new PlayerGlitchPresentation { Version = 4, From = from, To = from };
-            visual.SendMessage("LateUpdate");
+            visual.SendMessage("LateUpdate"); ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate");
             Assert.That(sparks[0].enabled, Is.True, "A zero-length teleport plays one local burst.");
             for (int i = 1; i < sparks.Count; i++) Assert.That(sparks[i].enabled, Is.False);
             state.GlitchPresentation = new PlayerGlitchPresentation { Version = 5, From = from, To = Vector2.right };
@@ -260,7 +265,7 @@ namespace ActionPlatformer.Tests
             state.GlitchPresentation = new PlayerGlitchPresentation { Version = 1, From = Vector2.left, To = Vector2.right };
             state.AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 2, StartedAt = 10.2 };
             yield return RenderFrame(); AssertFrame(visual, "Attack2", "attack_v7_punch_04");
-            Assert.That(visual.transform.Find("Basic attack slash").GetComponent<SpriteRenderer>().flipY, Is.True);
+            Assert.That(visual.EffectsRoot.Find("Basic attack slash").GetComponent<SpriteRenderer>().flipY, Is.True);
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1,
                 HasDirection = true, Direction = Vector2.right, Progress = .4f };
             yield return RenderFrame(); Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);

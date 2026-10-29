@@ -1,0 +1,430 @@
+fileFormatVersion: 2
+guid: 9d03f02dc89cd3748b75d7f837b1c8b6
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7079208055512508185
+    second: FinisherImpact_0
+  - first:
+      213: 8522038302790077787
+    second: FinisherImpact_1
+  - first:
+      213: -7396579781423898348
+    second: FinisherImpact_2
+  - first:
+      213: -6651362248269003395
+    second: FinisherImpact_3
+  - first:
+      213: 3652768881718812763
+    second: FinisherImpact_4
+  - first:
+      213: 2066715385019928200
+    second: FinisherImpact_5
+  - first:
+      213: -6227250675096021677
+    second: FinisherImpact_6
+  - first:
+      213: -3021594682380267088
+    second: FinisherImpact_7
+  - first:
+      213: 257453821135927920
+    second: FinisherImpact_8
+  - first:
+      213: -6046778224506987943
+    second: FinisherImpact_9
+  - first:
+      213: 3730292312354425118
+    second: FinisherImpact_10
+  - first:
+      213: -7669315017524078687
+    second: FinisherImpact_11
+  - first:
+      213: 459242569237813437
+    second: FinisherImpact_12
+  - first:
+      213: -2224758788766300047
+    second: FinisherImpact_13
+  - first:
+      213: 5040846690439332158
+    second: FinisherImpact_14
+  - first:
+      213: 5507249023543346690
+    second: FinisherImpact_15
+  - first:
+      213: 4744702716964640232
+    second: FinisherImpact_16
+  - first:
+      213: -8769518889454570766
+    second: FinisherImpact_17
+  - first:
+      213: -721966567148937110
+    second: FinisherImpact_18
+  - first:
+      213: 3471928349139423407
+    second: FinisherImpact_19
+  - first:
+      213: -6337722752360077115
+    second: FinisherImpact_20
+  - first:
+      213: -1004677858872603095
+    second: FinisherImpact_21
+  - first:
+      213: -5578518996742509
+    second: FinisherImpact_22
+  - first:
+      213: -2312710508215903225
+    second: FinisherImpact_23
+  - first:
+      213: 2949432442620673002
+    second: FinisherImpact_24
+  - first:
+      213: 6878746503500163125
+    second: FinisherImpact_25
+  - first:
+      213: 4654663381841270539
+    second: FinisherImpact_26
+  - first:
+      213: 6003059668178176566
+    second: FinisherImpact_27
+  - first:
+      213: 7569728411953181414
+    second: FinisherImpact_28
+  - first:
+      213: -8393725217168229805
+    second: FinisherImpact_29
+  - first:
+      213: 1734090576945499964
+    second: FinisherImpact_30
+  - first:
+      213: -8903371536449494740
+    second: FinisherImpact_31
+  - first:
+      213: 802309118728080472
+    second: FinisherImpact_32
+  - first:
+      213: -5003065183357233861
+    second: FinisherImpact_33
+  - first:
+      213: 6196723559255009673
+    second: FinisherImpact_34
+  - first:
+      213: -3100755563290538754
+    second: FinisherImpact_35
+  - first:
+      213: 4485249050750621465
+    second: FinisherImpact_36
+  - first:
+      213: -7717639746067713525
+    second: FinisherImpact_37
+  - first:
+      213: -6640574994124442117
+    second: FinisherImpact_38
+  - first:
+      213: -3520450158363014052
+    second: FinisherImpact_39
+  - first:
+      213: -9138139570168415071
+    second: FinisherImpact_40
+  - first:
+      213: -8034997633273342773
+    second: FinisherImpact_41
+  - first:
+      213: -8119291786614230890
+    second: FinisherImpact_42
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 128
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: FinisherImpact_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3dcfe991638a96f4ba8cb84fc84e853d
+      internalID: -749959582
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_01
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3d26e4c2539608848afa6fc89959791c
+      internalID: 1142816147
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_02
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4024e5c5e463ff545a1066ed105af60f
+      internalID: -1146644182
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_03
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 772b2cb84f68e2342b6323dbc6c090cb
+      internalID: 2034701985
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_04
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 680248947159c934cb0839d5e558241f
+      internalID: -924879045
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_05
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2947e5fb4b5acdb49ba8f18afb04fd7e
+      internalID: -1813046068
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_06
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2a687539c7d7b77428bf4374b82fe470
+      internalID: -1880886505
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: FinisherImpact_07
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 252d4e4b3355c82489e41a5efa05c3c0
+      internalID: -1213412202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 0e23af20a68a0d744baeab6476cb7eb7
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      FinisherImpact_00: -749959582
+      FinisherImpact_01: 1142816147
+      FinisherImpact_02: -1146644182
+      FinisherImpact_03: 2034701985
+      FinisherImpact_04: -924879045
+      FinisherImpact_05: -1813046068
+      FinisherImpact_06: -1880886505
+      FinisherImpact_07: -1213412202
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

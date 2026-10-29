@@ -16,12 +16,15 @@ namespace ActionPlatformer.Player
         private readonly Slot[] slots = new Slot[32];
         private readonly Transform owner;
         private readonly Sprite[] frames;
+        private readonly Sprite[] impactFrames, finisherFrames;
         private readonly int sortingLayer, sortingOrder;
         private readonly MaterialPropertyBlock palette = new MaterialPropertyBlock();
         private int next;
-        public PlayerContactEffects(Transform owner, SpriteRenderer source, Sprite[] frames, Material material)
+        public PlayerContactEffects(Transform owner, SpriteRenderer source, Sprite[] frames, Material material,
+            Sprite[] impactFrames = null, Sprite[] finisherFrames = null)
         {
             this.owner = owner; this.frames = frames;
+            this.impactFrames = impactFrames; this.finisherFrames = finisherFrames;
             sortingLayer = source.sortingLayerID; sortingOrder = source.sortingOrder + 3;
             for (int i = 0; i < slots.Length; i++) slots[i] = new Slot {
                 Flash = Create("Contact flash " + i, source, material), Fragments = Create("Contact fragments " + i, source, material) };
@@ -39,7 +42,7 @@ namespace ActionPlatformer.Player
             ? new Color(1f, .66f, .18f) : new Color(.42f, 1f, .8f);
         public void Spawn(PlayerHitPresentation hit)
         {
-            if (frames == null || frames.Length == 0) return;
+            if ((impactFrames == null || impactFrames.Length == 0) && (frames == null || frames.Length == 0)) return;
             var slot = slots[next]; next = (next + 1) % slots.Length;
             slot.Hit = hit; slot.Position = hit.Point; slot.Started = Time.unscaledTimeAsDouble;
             slot.Active = true; slot.Dust = false; slot.Following = hit.Target != null && hit.Target.gameObject.activeInHierarchy;
@@ -63,6 +66,7 @@ namespace ActionPlatformer.Player
             renderer.GetPropertyBlock(palette);
             palette.SetColor("_PrimaryColor", color); palette.SetColor("_AccentColor", color);
             palette.SetFloat("_Highlight", .1f); renderer.SetPropertyBlock(palette);
+            palette.SetFloat("_Desaturate", 1f); renderer.SetPropertyBlock(palette);
         }
         private static void SetSorting(Slot slot, int layer, int order)
         {
@@ -84,16 +88,20 @@ namespace ActionPlatformer.Player
                     else slot.Following = false;
                 }
                 float progress = Mathf.Clamp01(age / duration);
-                int frame = Mathf.Min(frames.Length - 1, (int)(progress * frames.Length));
-                float size = slot.Hit.Killed ? .85f : .6f;
+                bool imported = !slot.Dust && impactFrames != null && impactFrames.Length > 0;
+                var sequence = imported ? (slot.Hit.Killed && finisherFrames != null && finisherFrames.Length > 0
+                    ? finisherFrames : impactFrames) : frames;
+                int frame = Mathf.Min(sequence.Length - 1, (int)(progress * sequence.Length));
+                float size = imported ? (slot.Hit.Killed ? 1.55f : 1.15f) : (slot.Hit.Killed ? .85f : .6f);
                 var direction = slot.Dust ? Vector2.up : slot.Hit.Direction;
-                Place(slot.Fragments, frames[frame], slot.Position + direction * (.2f * progress),
-                    slot.Dust ? new Vector2(1.4f, .3f) : new Vector2(size * 1.35f, size * .7f),
+                Place(slot.Fragments, sequence[frame], slot.Position + direction * (.2f * progress),
+                    slot.Dust ? new Vector2(1.4f, .3f) : imported ? Vector2.one * size : new Vector2(size * 1.35f, size * .7f),
                     slot.Dust ? 0 : Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg,
                     (1 - progress) * (slot.Dust ? .5f : 1f));
                 slot.Flash.enabled = !slot.Dust && age < .05f;
                 if (slot.Flash.enabled)
-                    Place(slot.Flash, frames[0], slot.Position, Vector2.one * size * .55f, 0, 1 - age / .05f);
+                    Place(slot.Flash, sequence[imported ? Mathf.Min(2, sequence.Length - 1) : 0], slot.Position,
+                        Vector2.one * size * .55f, 0, 1 - age / .05f);
             }
         }
         private void Place(SpriteRenderer renderer, Sprite frame, Vector2 point, Vector2 size, float rotation, float alpha)

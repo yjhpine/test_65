@@ -73,7 +73,7 @@ namespace ActionPlatformer.Tests
             Assert.That(player.GetComponent<PlayerInput>().inputIsActive, Is.True);
             Assert.That(Object.FindFirstObjectByType<StageCameraFollow>().enabled, Is.True);
             Assert.That(reveal.Coordinator.CameraRig.IsAcquired, Is.False);
-            Assert.That(Camera.main.orthographicSize, Is.EqualTo(6.5f).Within(.01f));
+            Assert.That(Camera.main.orthographicSize, Is.EqualTo(8f).Within(.01f));
             Assert.That(Time.timeScale, Is.EqualTo(1)); Assert.That(Time.fixedDeltaTime, Is.EqualTo(fixedDelta));
         }
 

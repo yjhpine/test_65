@@ -529,3 +529,19 @@ CoreLoopStage의 IntroCutscene 인스턴스는 별도 `IntroConversation.playabl
 - 최신 요청으로 Side/Air 일반 공격 중 수평 이동·점프를 다시 허용한다. 띄우기·출현·내려찍기의 전용 이동은 유지한다.
 - 공격 실행 순간에만 마우스 좌우를 판정하고 현재 검격 방향은 종료까지 고정한다. 이동으로 공격 방향이 바뀌거나 상시 커서를 따라 돌아보지 않는다. 일반 공격 도중 점프 해제도 정상 처리한다.
 - 검증: Unity 컴파일 오류 없음, PlayerGlitchCombatTests 122/122 통과.
+
+## 전역 VFX·SFX 관리 (2026-10-29)
+
+- `EffectsRuntime`이 플레이 시작 시 `Global presentation` 루트와 `VfxManager`/`SfxManager`를 생성한다. 루트는 DontDestroyOnLoad이며 별도 씬 배치가 필요 없다. SubsystemRegistration에서 정적 접근 상태를 초기화하고 종료 중에는 재생성하지 않는다.
+- 캐릭터 표시 계층이 공격·글리치·사격 버전, 이동/접지 변화와 공격 교대를 관찰해 요청한다. 피해/공격 판정, 물리, FSM, 카메라/시간 연출, 피격 셰이더와 외형 기울기는 기존 담당에 남는다.
+- PlayerVisual의 Vfx Profile은 `Data/Presentation/PlayerVfx.asset`, Sound Effects는 기존 `Audio/Combat/PlayerSfx.asset`이다. EnemyVisual2D의 Vfx/Sfx Profile은 `Data/Presentation/`의 적별 에셋이다. EnemyLaserVisual은 설정을 중복 보관하지 않는 요청 어댑터다.
+- 관리자의 RegisterOwner가 발급한 EffectOwnerHandle은 관리자 인스턴스/슬롯/세대 번호를 포함한다. ResetOwner는 같은 세션의 재생을 지우고, ReleaseOwner는 세션을 해제한다. 이전 세대 핸들의 요청은 무시한다.
+- 플레이어별 slash 1, 글리치 경로 spark 16, 구역 이동 spark 8, 접촉 슬롯 32, 먼지 8을 유지한다. 적은 레이저 두 방향분과 기존 예고 표시를 가진다. 같은 프로필·재질·정렬 설정의 해제된 VFX 뱅크를 재사용한다.
+- SFX는 플레이어별 6, 사격 적별 2 AudioSource를 유지하며 같은 소유자 안에서만 순환 교체한다. 플레이어는 2D, 적은 기존 spatialBlend 0.85/거리 10~38/우선순위 150을 유지한다. 플레이어 우선순위는 100이며 AudioListener.pause/volume을 존중한다.
+- 관리자 LateUpdate는 표시 요청자 뒤(실행 순서 10000)에 처리한다. 현재 프레임에 요청되지 않은 지속형 공격/레이저는 숨긴다. 접촉·먼지의 비스케일 소멸과 공격/레이저의 전투 진행률 동기화는 유지한다.
+- 모든 효과 객체는 전역 루트의 세션 아래에 있다. 소유자 비활성화/파괴 때 재생을 정리하고, 씬 언로드 때 해당 씬 세션과 사용하지 않는 뱅크를 회수한다. 다른 씬의 활성 세션은 유지한다. 테스트에서 GetSessionRoot(handle)로 해당 소유자의 표시/오디오 객체만 확인할 수 있다.
+
+### 카메라 크기 고정 기준 (2026-10-29)
+- CoreLoopStage의 일반 플레이 카메라 Orthographic Size는 사용자 지정값 **8**로 고정한다. 컷신 중 기존 줌은 유지하고 완료·취소·스킵 후에는 8로 복원한다. 카메라 경계 검사의 화면 반폭도 8 × aspect를 사용한다.
+- Timeline 미리보기 테스트는 IntroConversation의 실제 SpeechBubbleTrack 클립 내부 시점을 사용한다. 대사 편집으로 클립이 이동해도 오래된 1.9초/2.3초를 대사 시점으로 가정하지 않는다.
+- 에디터 미리보기는 카메라 소유권 플래그와 Orthographic Size를 AnimationMode의 복원 항목에 함께 등록한다. Timeline을 닫으면 다음 Editor update를 기다리지 않고 미리보기 전 크기로 복원한다. 런타임 컷신 재생 코드는 변경하지 않는다.

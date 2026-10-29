@@ -69,7 +69,7 @@ namespace ActionPlatformer.Tests
             Assert.That(runner.View.IsDialogueVisible, Is.False);
             Assert.That(Object.FindFirstObjectByType<StageCameraFollow>().enabled, Is.True);
             Assert.That(Object.FindObjectsByType<Unit>(FindObjectsSortMode.None).All(u => u.Fsm == null || !u.Fsm.IsPaused), Is.True);
-            Assert.That(Camera.main.orthographicSize, Is.EqualTo(6.5f).Within(.001f));
+            Assert.That(Camera.main.orthographicSize, Is.EqualTo(8f).Within(.001f));
         }
         [UnityTest] public IEnumerator TriggerFreezesWorldTypesThreeSpeakersAndRestoresGameplay()
         {
@@ -123,7 +123,9 @@ namespace ActionPlatformer.Tests
                 {
                     player.Motor.Teleport(new Vector2(x, 5f));
                     yield return new WaitForFixedUpdate(); yield return null; yield return null;
-                    Assert.That(Camera.main.transform.position.x, Is.EqualTo(player.Motor.Position.x).Within(.03f));
+                    float halfWidth = 8f * Camera.main.aspect;
+                    Assert.That(Camera.main.transform.position.x,
+                        Is.EqualTo(Mathf.Clamp(player.Motor.Position.x, halfWidth, 217f - halfWidth)).Within(.03f));
                     Assert.That(Camera.main.transform.localPosition.x, Is.EqualTo(0).Within(.001f));
                 }
             }

@@ -64,6 +64,7 @@ namespace ActionPlatformer.Player
             visual?.ResetActions();
             transferOrigin = Motor.Position;
             Motor.BeginTransfer();
+            visual?.PresentTransferSound();
             unchecked { RepositionVersion++; }
             return true;
         }

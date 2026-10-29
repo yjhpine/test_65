@@ -75,6 +75,33 @@ namespace ActionPlatformer.Tests
             Assert.That(flow.Phase, Is.EqualTo(EncounterPhase.Combat));
             Assert.That(previousRest.NextEntry.IsLocked, Is.True);
         }
+        [UnityTest] public IEnumerator ClearedGateAllowsWalkingIntoEachRestAndHealsOnlyOnce()
+        {
+            for (int wave = 0; wave < 3; wave++)
+            {
+                var area = flow.CurrentRestArea;
+                var exit = Object.FindObjectsByType<StageGate>(FindObjectsSortMode.None)
+                    .Where(g => g.EntryX < area.NextEntry.EntryX).OrderByDescending(g => g.EntryX).First();
+                Assert.That(exit.IsLocked, Is.True);
+                health.ApplyDamage(10); yield return null;
+                KillRoom(); yield return Until(EncounterPhase.TransferPending);
+                Assert.That(exit.IsLocked, Is.False, "Clearing a room must open the walking route before Shift is pressed.");
+                Assert.That(area.NextEntry.IsLocked, Is.True, "Next fight stays locked until rest is visited.");
+                player.Motor.Teleport(new Vector2(exit.EntryX - 1.2f, .82f));
+                driver.Command = new PlayerCommand { Move = Vector2.right };
+                yield return Until(EncounterPhase.Rest);
+                driver.Command = default;
+                Assert.That(player.IsScriptedTransferring || player.IsControlLocked, Is.False);
+                Assert.That(area.Visited, Is.True); Assert.That(area.NextEntry.IsLocked, Is.False);
+                Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
+                health.ApplyDamage(5);
+                yield return null;
+                Assert.That(area.TryVisit(health, player.GetComponent<Collider2D>()), Is.False);
+                Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth - 5));
+                yield return EnterNextRoom();
+            }
+        }
+
         [UnityTest] public IEnumerator WholeCycleHealsOnceActivatesNextRoomAndCompletes()
         {
             Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(2));
@@ -165,6 +192,38 @@ namespace ActionPlatformer.Tests
             Assert.That(flow.Phase, Is.EqualTo(EncounterPhase.TransferBlocked)); AssertRestored();
             Assert.That(player.Motor.Position.x, Is.EqualTo(3f).Within(.1f)); Assert.That(rest.Visited, Is.False);
             Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth - 10)); Time.timeScale = 1;
+        }
+        [UnityTest] public IEnumerator FailedTransferKeepsGateOpenAndAllowsExplicitShiftRetry()
+        {
+            var obstruction = new GameObject("Blocked optional transfer");
+            obstruction.AddComponent<BoxCollider2D>().size = new Vector2(3, 3);
+            obstruction.transform.position = new Vector3(66, 1, 0); Physics2D.SyncTransforms();
+            KillRoom();
+            LogAssert.Expect(LogType.Error, "Rest transfer destination is blocked or unsupported; player control is preserved.");
+            yield return RequestTransfer(); yield return Until(EncounterPhase.TransferBlocked);
+            var exit = Object.FindObjectsByType<StageGate>(FindObjectsSortMode.None)
+                .Where(g => g.EntryX < rest.NextEntry.EntryX).OrderByDescending(g => g.EntryX).First();
+            Assert.That(exit.IsLocked, Is.False);
+            Object.Destroy(obstruction); yield return null;
+            yield return RequestTransfer(); yield return Until(EncounterPhase.Rest);
+            AssertRestored(); Assert.That(rest.Visited, Is.True);
+        }
+        [UnityTest] public IEnumerator WalkingRecoversFromBlockedTransferWithoutUsingItsArrivalPoint()
+        {
+            var obstruction = new GameObject("Blocked transfer destination with open walking entrance");
+            obstruction.AddComponent<BoxCollider2D>().size = new Vector2(3, 3);
+            obstruction.transform.position = new Vector3(66, 1, 0); Physics2D.SyncTransforms();
+            health.ApplyDamage(10); yield return null; KillRoom();
+            LogAssert.Expect(LogType.Error, "Rest transfer destination is blocked or unsupported; player control is preserved.");
+            yield return RequestTransfer(); yield return Until(EncounterPhase.TransferBlocked);
+            var exit = Object.FindObjectsByType<StageGate>(FindObjectsSortMode.None)
+                .Where(g => g.EntryX < rest.NextEntry.EntryX).OrderByDescending(g => g.EntryX).First();
+            player.Motor.Teleport(new Vector2(exit.EntryX - 1.2f, .82f));
+            driver.Command = new PlayerCommand { Move = Vector2.right };
+            yield return Until(EncounterPhase.Rest);
+            driver.Command = default; Object.Destroy(obstruction);
+            Assert.That(rest.Visited, Is.True); Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth));
+            Assert.That(player.IsScriptedTransferring || player.IsControlLocked, Is.False);
         }
         [UnityTest] public IEnumerator DeathWinsOverFinalKillAndResetsTheWholeLoop()
         {

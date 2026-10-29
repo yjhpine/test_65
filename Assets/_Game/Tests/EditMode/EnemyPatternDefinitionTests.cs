@@ -42,7 +42,7 @@ namespace ActionPlatformer.Tests
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/" + name + ".prefab");
             var view = prefab.GetComponentInChildren<EnemyLaserVisual>(); Assert.That(view.IsConfigured, Is.True);
-            var data = new SerializedObject(view);
+            var data = new SerializedObject(view.GetComponent<EnemyVisual2D>().EffectsProfile);
             foreach (string part in new[] { "start", "body", "end" })
             {
                 var frames = data.FindProperty(part + "Frames");

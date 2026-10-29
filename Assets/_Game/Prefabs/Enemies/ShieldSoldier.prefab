@@ -308,8 +308,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.EnemyVisual2D
   stateSource: {fileID: 2157661488461133436}
-  shapeSprite: {fileID: 2537882373423050008, guid: 388ad2e908298d04bad8c352166b49ad, type: 3}
   spriteFacesRight: 0
+  vfxProfile: {fileID: 11400000, guid: c3827f5626f6dbb4e883a1917c9e3689, type: 2}
+  sfxProfile: {fileID: 0}
 --- !u!114 &6344475906623357488
 MonoBehaviour:
   m_ObjectHideFlags: 0

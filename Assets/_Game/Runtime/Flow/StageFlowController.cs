@@ -53,7 +53,8 @@ namespace ActionPlatformer.Flow
         public StageRestArea CurrentRestArea => UsesEncounters ? encounters[CurrentEncounterIndex].FollowingRest : null;
         public IReadOnlyList<UnitHealth> ActiveEnemies => UsesEncounters ? encounters[CurrentEncounterIndex].Enemies : requiredEnemies;
         public bool CanRequestTransfer => initialized && isActiveAndEnabled && UsesEncounters && State == StageState.Playing &&
-            Phase == EncounterPhase.TransferPending && Time.timeScale > 0 && Time.timeAsDouble >= transferReadyAt &&
+            (Phase == EncounterPhase.TransferPending || Phase == EncounterPhase.TransferBlocked) &&
+            Time.timeScale > 0 && Time.timeAsDouble >= transferReadyAt &&
             player != null && player.isActiveAndEnabled && playerHealth != null && playerHealth.IsAlive &&
             !player.IsControlLocked && !(player.Feedback?.IsTimeEffectActive ?? false) && !(cinematics != null && cinematics.IsBusy);
 
@@ -215,7 +216,6 @@ namespace ActionPlatformer.Flow
                 if (!player.IsScriptedTransferring || !player.isActiveAndEnabled) CancelTransfer();
                 return true;
             }
-            if (Phase == EncounterPhase.TransferBlocked) return true;
             if (Phase == EncounterPhase.Rest)
             {
                 var rest = CurrentRestArea;
@@ -241,6 +241,15 @@ namespace ActionPlatformer.Flow
             {
                 Phase = EncounterPhase.TransferPending;
                 transferReadyAt = Time.timeAsDouble + .35;
+            }
+            // Clearing combat opens the physical route independently of the optional Shift transfer.
+            // Keep this available after a failed/cancelled transfer as well.
+            encounters[CurrentEncounterIndex].ExitGate.SetLocked(false);
+            if (Time.timeScale > 0 && player.isActiveAndEnabled && !player.IsUnderground &&
+                !player.IsControlLocked && CurrentRestArea.TryVisit(playerHealth, playerBody))
+            {
+                EnterRest();
+                return true;
             }
             bool requested = transferRequested;
             transferRequested = false;
@@ -312,9 +321,16 @@ namespace ActionPlatformer.Flow
                 route = null;
                 return;
             }
+            route = null;
+            EnterRest();
+        }
+
+        private void EnterRest()
+        {
             encounters[CurrentEncounterIndex].ExitGate.SetLocked(false);
             CurrentRestArea.NextEntry.SetLocked(false);
-            route = null;
+            transferRequested = false;
+            view.ShowTransferHint(false);
             Phase = EncounterPhase.Rest;
         }
 

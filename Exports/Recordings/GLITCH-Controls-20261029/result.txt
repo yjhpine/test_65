@@ -1,0 +1,4 @@
+COMPLETED
+frames=1110
+fps=60
+size=1280x720

@@ -170,3 +170,25 @@ Archive SHA-256:
 - Unity slices 21 start frames and 13 body/end frames per color (94 sprites total), 32 PPU, Point, Full Rect, no mipmaps/compression. Pivots are converted from the source top-left coordinates: start `(12,17)`, body `(0,17)`, end `(17,17)` in Unity pixel coordinates.
 - Project-authored `EnemyLaserVisual` uses the original palettes with an unlit sprite material. Charge follows existing preparation/lock; on/loop/off frames are retimed to the existing 0.16-second beam display. Tiled body fills the gap between source/impact caps; native source dimensions are retained and render scale fits the existing beam width. Very short clipped beams shrink caps together.
 - Enemy targeting, aim lock, muzzle position, wall clipping, attack timing, damage, and the player's glitch spark effects are unchanged. FlyingDrone's existing bidirectional vertical shot is displayed as two segments from the emitter to the already-calculated endpoints.
+
+
+## Movement dust and contact impacts (2026-10-29)
+
+- [pimen ? Smoke N Dust 01](https://pimen.itch.io/smoke-vfx-1): imported original Smoke VFX 1 and VFX 3 sheets as JumpSmoke and GroundDust. 8 nonempty 48x32 jump frames, 7 nonempty 32x16 ground frames; trailing empty cells omitted.
+- [kekkorider ? Pixel Art Impact VFX](https://kekkorider.itch.io/free-pixel-art-impact-vfx): imported original variants 02 and 03, grey/spritesheet.png, as HitImpact and FinisherImpact. Each uses 8 nonempty 128x128 cells in row-major order; empty padding cells omitted.
+- Both permit personal/commercial use and modification, attribution optional; standalone sprite resale/redistribution prohibited. Source terms retained beside imported sheets.
+- Original PNG bytes are unchanged. Point filtering, Full Rect geometry, no compression/mipmaps. Smoke anchors at bottom center; impact anchors at center. Runtime source-color neutralization is applied only to contact effects, preserving the existing slash/glitch palette.
+- Source archive `smoke.rar` SHA-256: `1a434aecd39e404fbc07cb8272bca477a2d78eb678a29f65906de19e0fdfa415`.
+- Source archive `impact.zip` SHA-256: `ba76006fa8d6987a6cc4b92314ec386401f531e7614a88a688a931e4fa89265a`.
+
+
+## Combat SFX (2026-10-29)
+
+- Swishes Sound Pack by artisticdude: https://opengameart.org/content/swishes-sound-pack ? CC0.
+- Impact Sounds 1.0 by Kenney: https://kenney.nl/assets/impact-sounds ? CC0.
+- Sci-fi Sounds 1.0 by Kenney: https://kenney.nl/assets/sci-fi-sounds ? CC0.
+- Downloaded archives and unchanged extracted sources are retained in Library/SfxDownloads. The 12 selected/derived mono 44.1 kHz PCM clips are under Assets/_Game/Audio/Combat, with original Kenney license notices and a Swishes source notice. Sources.json maps every game clip to its source recording.
+- Project processing: leading silence removal, short tails, fade-out, peak normalization to 0.8. Glitch combines a 0.32-second force-field excerpt with filtered/tremolo computer noise. No other packs, music, voices or UI sounds were imported.
+- `swishes.zip` SHA-256: `7980215241b739a787dcf26f660ce510bb237900968789395a86911619795693`.
+- `impact.zip` SHA-256: `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8`.
+- `scifi.zip` SHA-256: `119340f351a5098ad814f78719438c0da355a9ce8a4c8a3af6a8d48aa3d49e04`.

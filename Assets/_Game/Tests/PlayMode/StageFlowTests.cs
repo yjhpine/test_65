@@ -197,7 +197,7 @@ namespace ActionPlatformer.Tests
             Assert.That(player.Motor.Velocity, Is.EqualTo(Vector2.zero));
             Assert.That(player.AttackPhase, Is.EqualTo(PlayerAttackPhase.Ready));
             Assert.That(camera.transform.localPosition, Is.EqualTo(new Vector3(0, 0, -10)));
-            Assert.That(camera.orthographicSize, Is.EqualTo(6.5f).Within(.001f));
+            Assert.That(camera.orthographicSize, Is.EqualTo(8f).Within(.001f));
             Assert.That(Time.fixedDeltaTime, Is.EqualTo(savedFixed).Within(.00001f));
             Assert.That(Time.timeScale, Is.Zero);
         }
@@ -276,7 +276,7 @@ namespace ActionPlatformer.Tests
             Assert.That(rig.position.x, Is.EqualTo(StageWidth / 2f).Within(.03f));
             Assert.That(camera.transform.localPosition.x, Is.EqualTo(0f).Within(.001f));
             Assert.That(camera.transform.localPosition.y, Is.EqualTo(0f).Within(.001f));
-            Assert.That(camera.orthographicSize, Is.EqualTo(6.5f).Within(.001f));
+            Assert.That(camera.orthographicSize, Is.EqualTo(8f).Within(.001f));
         }
 
 
@@ -302,7 +302,7 @@ namespace ActionPlatformer.Tests
         private void AssertCameraX(float expected)
         {
             var camera = Camera.main;
-            float halfWidth = 6.5f * camera.aspect;
+            float halfWidth = 8f * camera.aspect;
             Assert.That(camera.transform.parent.position.x,
                 Is.EqualTo(Mathf.Clamp(expected, halfWidth, StageWidth - halfWidth)).Within(.03f));
             Assert.That(camera.transform.parent.position.y, Is.EqualTo(3.4f).Within(.001f));

@@ -14,7 +14,7 @@ namespace ActionPlatformer.Player
         private Vector2 glitchFrom, glitchTo;
         private float glitchAge;
         private int sparkCount;
-        private uint previousGlitchVersion;
+        private int glitchStartedFrame = -1;
         private readonly SpriteRenderer[] transferSparks = new SpriteRenderer[8];
         private readonly Vector2[] transferPositions = new Vector2[8];
         private readonly double[] transferStarted = new double[8];
@@ -90,16 +90,7 @@ namespace ActionPlatformer.Player
                 slash.SetPropertyBlock(palette);
             }
 
-            var glitch = actions.GlitchPresentation;
-            if (glitch.Version != previousGlitchVersion)
-            {
-                previousGlitchVersion = glitch.Version;
-                glitchFrom = glitch.From; glitchTo = glitch.To; glitchAge = 0;
-                float distance = Vector2.Distance(glitchFrom, glitchTo);
-                sparkCount = !HasFrames(sparkFrames) ? 0 : distance < .001f ? 1 :
-                    Mathf.Clamp(Mathf.CeilToInt(distance / sparkSpacing) + 1, 2, sparks.Length);
-            }
-            else glitchAge += Mathf.Max(0, deltaTime);
+            if (glitchStartedFrame != Time.frameCount) glitchAge += Mathf.Max(0, deltaTime);
             for (int i = 0; i < sparks.Length; i++)
             {
                 var spark = sparks[i];
@@ -116,9 +107,16 @@ namespace ActionPlatformer.Player
             }
         }
 
+        public void PlayGlitch(PlayerGlitchPresentation glitch)
+        {
+            glitchFrom=glitch.From; glitchTo=glitch.To; glitchAge=0; glitchStartedFrame=Time.frameCount;
+            float distance=Vector2.Distance(glitchFrom,glitchTo);
+            sparkCount=!HasFrames(sparkFrames)?0:distance<.001f?1:Mathf.Clamp(Mathf.CeilToInt(distance/sparkSpacing)+1,2,sparks.Length);
+        }
+
         public void Reset(uint glitchVersion)
         {
-            previousGlitchVersion = glitchVersion;
+            glitchStartedFrame = -1;
             slash.enabled = false;
             foreach (var spark in sparks) spark.enabled = false;
             glitchAge = 0;

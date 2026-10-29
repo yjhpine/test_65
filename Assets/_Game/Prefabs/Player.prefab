@@ -297,43 +297,5 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerVisual
   showAttackArea: 0
-  basicAttackEffectFrames:
-  - {fileID: 593589843, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: -1128318936, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 2054381382, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 1148273597, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: -1105911208, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: -1973505728, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 770211074, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 796812261, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 1819895602, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 1650651132, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 8586418696436754587, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: -8975856296395430227, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 959743285589234281, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: -3604989180583348394, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 3012627756306751091, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  - {fileID: 8290099524988671646, guid: eaf021c8cf709cb45ac2aa6bd73201ed, type: 3}
-  glitchEffectFrames:
-  - {fileID: 2112256109, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -37386870, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 389439993, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 249156834, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -382572648, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 751585459, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -1932180155, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 250196589, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 1001742312, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 1576805918, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -6576013197693214916, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 2482088511146837554, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -292515966485922187, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -5479663247036965447, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: 2662799152390058004, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  - {fileID: -7573759715938626397, guid: 34f1722206b4d1b459b1edc347afd564, type: 3}
-  actionEffectMaterial: {fileID: 2100000, guid: b3eaeace8aea28b4fa1750ee5e110d59, type: 2}
-  basicAttackEffectSize: 2.5
-  glitchEffectSize: 2.5
-  glitchEffectFps: 30
-  glitchTrailSpacing: 0.6
-  glitchTrailInterval: 0.025
+  vfxProfile: {fileID: 11400000, guid: e49104076c3f3224f9283c31ac8fbfc9, type: 2}
+  soundEffects: {fileID: 11400000, guid: c4051214ea8288245a46df9ca8f32d27, type: 2}
