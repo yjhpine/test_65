@@ -81,7 +81,11 @@ namespace ActionPlatformer.Tests
                 Assert.That(slash.enabled, Is.True);
                 Assert.That(slash.flipX, Is.EqualTo(facing < 0f));
                 Assert.That(slash.transform.position, Is.EqualTo(visual.transform.TransformPoint(new Vector3(.65f * facing, .3f))));
-                Assert.That(slash.sprite.name, Does.StartWith("white_slash_"));
+                Assert.That(slash.sprite.name, Does.StartWith("glitch-slash-" + strike + "-"));
+                Assert.That(slash.flipY, Is.False, "Authored combo direction must not be flipped again by animation alternation.");
+                var colors = new MaterialPropertyBlock(); slash.GetPropertyBlock(colors);
+                Assert.That(colors.GetColor("_PrimaryColor"), Is.EqualTo(Color.white));
+                Assert.That(colors.GetColor("_AccentColor"), Is.EqualTo(Color.white));
                 var impactFrame = slash.sprite;
                 Attack(state, kind, strike, kind == PlayerAttack.Air, PlayerAttackPhase.Recovery, .5f);
                 yield return RenderFrame(); Assert.That(slash.sprite, Is.Not.EqualTo(impactFrame));
@@ -90,6 +94,7 @@ namespace ActionPlatformer.Tests
             }
             Attack(state, PlayerAttack.Lift, 1, false, PlayerAttackPhase.Active);
             yield return RenderFrame(); Assert.That(slash.enabled, Is.True);
+            Assert.That(slash.sprite.name, Does.StartWith("white_slash_"));
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Active);
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1 };
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
@@ -265,7 +270,8 @@ namespace ActionPlatformer.Tests
             state.GlitchPresentation = new PlayerGlitchPresentation { Version = 1, From = Vector2.left, To = Vector2.right };
             state.AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 2, StartedAt = 10.2 };
             yield return RenderFrame(); AssertFrame(visual, "Attack2", "attack_v7_punch_04");
-            Assert.That(visual.EffectsRoot.Find("Basic attack slash").GetComponent<SpriteRenderer>().flipY, Is.True);
+            Assert.That(visual.EffectsRoot.Find("Basic attack slash").GetComponent<SpriteRenderer>().flipY, Is.False,
+                "Combo VFX uses authored strike directions independently of animation A/B.");
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1,
                 HasDirection = true, Direction = Vector2.right, Progress = .4f };
             yield return RenderFrame(); Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);

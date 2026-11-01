@@ -38,7 +38,7 @@ namespace ActionPlatformer.Presentation
                 var root=new GameObject(profile.name+" VFX session"); root.transform.SetParent(transform,false);
                 bank=new Bank { Root=root,Profile=profile,Material=source.sharedMaterial,Layer=source.sortingLayerID,Order=source.sortingOrder };
                 if(profile is PlayerVfxProfile p) {
-                    bank.Action=new PlayerActionEffects(root.transform,source,p.BasicAttackEffectFrames,p.GlitchEffectFrames,p.BasicAttackEffectSize,p.GlitchEffectSize,p.GlitchEffectFps,p.GlitchTrailSpacing,p.GlitchTrailInterval,p.ActionEffectMaterial);
+                    bank.Action=new PlayerActionEffects(root.transform,source,p.BasicAttackEffectFrames,p.GlitchEffectFrames,p.BasicAttackEffectSize,p.GlitchEffectSize,p.GlitchEffectFps,p.GlitchTrailSpacing,p.GlitchTrailInterval,p.ActionEffectMaterial,p);
                     bank.Contact=new PlayerContactEffects(root.transform,source,p.GlitchEffectFrames,p.ActionEffectMaterial,p.HitImpactFrames,p.FinisherImpactFrames);
                     bank.Movement=new PlayerMovementEffects(root.transform,source,p.JumpDustFrames,p.GroundDustFrames,p.ActionEffectMaterial);
                 } else if(profile is EnemyVfxProfile e) {

@@ -545,3 +545,11 @@ CoreLoopStage의 IntroCutscene 인스턴스는 별도 `IntroConversation.playabl
 - CoreLoopStage의 일반 플레이 카메라 Orthographic Size는 사용자 지정값 **8**로 고정한다. 컷신 중 기존 줌은 유지하고 완료·취소·스킵 후에는 8로 복원한다. 카메라 경계 검사의 화면 반폭도 8 × aspect를 사용한다.
 - Timeline 미리보기 테스트는 IntroConversation의 실제 SpeechBubbleTrack 클립 내부 시점을 사용한다. 대사 편집으로 클립이 이동해도 오래된 1.9초/2.3초를 대사 시점으로 가정하지 않는다.
 - 에디터 미리보기는 카메라 소유권 플래그와 Orthographic Size를 AnimationMode의 복원 항목에 함께 등록한다. Timeline을 닫으면 다음 Editor update를 기다리지 않고 미리보기 전 크기로 복원한다. 런타임 컷신 재생 코드는 변경하지 않는다.
+
+## PixelFX combo slash (2026-11-01)
+
+Normal Side/Air attacks use PlayerVfxProfile.comboSlash1Frames/2Frames/3Frames selected by the actual PlayerAttackPresentation.Strike, independently of the character animation A/B alternation. Each strip is rendered independently, so it cannot contain the next attack or a previous attack tail. Missing optional strips fall back to BasicAttackEffectFrames. Lift/Emergence/Slam retain the original white slash and their existing tint/orientation.
+
+Generated cyan/red source colors are preserved with white per-renderer palette overrides; shared material and teleport sparks remain unchanged. Existing phase progress drives windup/active/recovery frames and Ready, reaction cancellation and underground state hide the renderer. Existing size 2.5 and local offset are retained; generated frames preserve their aspect ratio.
+
+Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (repeat for 2/3), then Game > Effects > Import Generated Glitch Combo. The explicit importer edits only generated textures and the three PlayerVfx profile arrays, preserving existing GUIDs on reimport. No damage, range, combo rule, movement, cooldown, hit-stop, or attack phase duration changes.

@@ -6,6 +6,7 @@ namespace ActionPlatformer.Player
     internal sealed class PlayerActionEffects
     {
         private readonly Transform owner;
+        private readonly ActionPlatformer.Presentation.PlayerVfxProfile profile;
         private const int MaxGlitchSparks = 16;
         private readonly Sprite[] slashFrames, sparkFrames;
         private readonly float slashSize, sparkSize, sparkFps, sparkSpacing, sparkInterval;
@@ -22,9 +23,11 @@ namespace ActionPlatformer.Player
         private readonly MaterialPropertyBlock palette = new MaterialPropertyBlock();
 
         public PlayerActionEffects(Transform owner, SpriteRenderer source, Sprite[] slashFrames, Sprite[] sparkFrames,
-            float slashSize, float sparkSize, float sparkFps, float sparkSpacing, float sparkInterval, Material effectMaterial)
+            float slashSize, float sparkSize, float sparkFps, float sparkSpacing, float sparkInterval, Material effectMaterial,
+            ActionPlatformer.Presentation.PlayerVfxProfile profile = null)
         {
             this.owner = owner;
+            this.profile = profile;
             this.slashFrames = slashFrames;
             this.sparkFrames = sparkFrames;
             this.slashSize = Mathf.Max(.01f, slashSize);
@@ -70,22 +73,31 @@ namespace ActionPlatformer.Player
             var phase = actions.AttackPhase;
             bool down = attack.Kind == PlayerAttack.Slam;
             bool up = attack.Kind == PlayerAttack.Lift || attack.Kind == PlayerAttack.Emergence;
-            slash.enabled = !actions.IsUnderground && HasFrames(slashFrames) &&
+            var comboFrames = attack.Kind == PlayerAttack.Side || attack.Kind == PlayerAttack.Air
+                ? profile?.ComboSlashFrames(attack.Strike) : null;
+            bool authoredCombo = HasFrames(comboFrames);
+            var frames = authoredCombo ? comboFrames : slashFrames;
+            slash.enabled = !actions.IsUnderground && HasFrames(frames) &&
                 (down ? phase == PlayerAttackPhase.Descending : phase != PlayerAttackPhase.Ready);
             if (slash.enabled)
             {
                 // The leading frames wind up the arc. Show its crest with the hit, then its tail in recovery.
                 float progress = down ? .4f : phase == PlayerAttackPhase.Windup ? .2f : phase == PlayerAttackPhase.Active
                     ? Mathf.Lerp(.2f, .55f, attack.PhaseProgress) : Mathf.Lerp(.55f, 1f, attack.PhaseProgress);
-                slash.sprite = slashFrames[Mathf.Min(slashFrames.Length - 1, (int)(progress * slashFrames.Length))];
+                slash.sprite = frames[Mathf.Min(frames.Length - 1, (int)(progress * frames.Length))];
                 slash.flipX = actions.Facing < 0f;
-                slash.flipY = !up && !down && variant == 1;
+                slash.flipY = !authoredCombo && !up && !down && variant == 1;
                 Vector2 offset = up ? new Vector2(.15f * actions.Facing, .55f) : down ?
                     new Vector2(.3f * actions.Facing, -.35f) : new Vector2(.65f * actions.Facing, .3f);
                 Place(slash, owner.TransformPoint(offset), slashSize);
+                if (authoredCombo)
+                    slash.transform.localScale = Vector3.Scale(slash.transform.localScale,
+                        new Vector3(1, slash.sprite.bounds.size.y / slash.sprite.bounds.size.x, 1));
                 slash.transform.rotation = Quaternion.Euler(0, 0, up ? 90 * actions.Facing : down ? -90 * actions.Facing : 0);
                 if (up || down) slash.transform.localScale = Vector3.Scale(slash.transform.localScale, new Vector3(.8f, .45f, 1));
-                Color color = PlayerContactEffects.ColorFor(attack.Kind);
+                // Authored cyan/red pixels already carry their palette. Keep the same material,
+                // but neutralize its tint only on this renderer (never on shared glitch sparks).
+                Color color = authoredCombo ? Color.white : PlayerContactEffects.ColorFor(attack.Kind);
                 slash.GetPropertyBlock(palette); palette.SetColor("_PrimaryColor", color); palette.SetColor("_AccentColor", color);
                 slash.SetPropertyBlock(palette);
             }

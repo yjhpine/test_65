@@ -6,6 +6,14 @@ namespace ActionPlatformer.Presentation
     {
         [SerializeField] private Sprite[] basicAttackEffectFrames;
         public Sprite[] BasicAttackEffectFrames => basicAttackEffectFrames;
+        [SerializeField] private Sprite[] comboSlash1Frames;
+        [SerializeField] private Sprite[] comboSlash2Frames;
+        [SerializeField] private Sprite[] comboSlash3Frames;
+        public Sprite[] ComboSlash1Frames => comboSlash1Frames;
+        public Sprite[] ComboSlash2Frames => comboSlash2Frames;
+        public Sprite[] ComboSlash3Frames => comboSlash3Frames;
+        public Sprite[] ComboSlashFrames(int strike) => strike == 3 ? comboSlash3Frames :
+            strike == 2 ? comboSlash2Frames : comboSlash1Frames;
         [SerializeField] private Sprite[] glitchEffectFrames;
         public Sprite[] GlitchEffectFrames => glitchEffectFrames;
         [SerializeField] private Sprite[] jumpDustFrames;

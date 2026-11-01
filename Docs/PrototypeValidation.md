@@ -797,3 +797,12 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 종료 후 PlayMode 중지, 씬 dirty=false, 카메라 크기8, timeScale=1, captureDeltaTime=0 확인. 코드·에셋·설정 변경 없이 검증했다.
 - 앞선 부분 실행에서 관측된 가상 키보드 검사도 이번 전체 실행에서 통과했다. 과거 실패 기록은 이력으로 남기며 이번 실행 결과와 구분한다.
 - 결과: Library/PrototypeValidation/FullPlayMode-20261029-Final.json.
+
+## 2026-11-01: PixelFX three-hit slash integration
+
+- Imported 70 independent frames (20/20/30) and bound the three optional arrays in the existing PlayerVfx profile. Actual Strike chooses normal ground/air VFX, not the visual A/B counter. Special attacks retain prior slash assets. Per-renderer neutral tint preserves authored cyan/red while teleport colors remain unchanged.
+- Unity 6000.3.23f1 batch import/compilation succeeded. The interactive Editor belonged to another project, so validation used this project in a separate batch Editor without changing the other Editor.
+- Fresh PlayMode: PlayerVisualTests, CombatPresentationTests, GlobalEffectsTests: 18/18 passed, 0 skipped (Library/PixelFxPipeline/PlayMode.xml).
+- Fresh PlayMode: PlayerGlitchCombatTests: 122/122 passed, 0 skipped (Library/PixelFxPipeline/CombatPlayMode.xml). Total relevant tests: 140 passed.
+- Inspected current Unity camera render at Library/PrototypeValidation/PlayerArtAttacks.png; distinct 1/2/3 slash shapes and authored palette visible; special attack colors retained. Copy: Exports/Effects/glitch-triple-slash/UnityApplied.png.
+- No combat tuning, gameplay state machine, player physics, scene, prefab or camera configuration edits. Restored the SENTIS_ANALYTICS_ENABLED define removed by Editor/package startup. Test-only scenes emit missing-AudioListener warnings; no test failures. Full stage manual playthrough and standalone player build were not run.

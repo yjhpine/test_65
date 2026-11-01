@@ -192,3 +192,10 @@ Archive SHA-256:
 - `swishes.zip` SHA-256: `7980215241b739a787dcf26f660ce510bb237900968789395a86911619795693`.
 - `impact.zip` SHA-256: `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8`.
 - `scifi.zip` SHA-256: `119340f351a5098ad814f78719438c0da355a9ce8a4c8a3af6a8d48aa3d49e04`.
+
+## PixelFX glitch combo (2026-11-01)
+
+- Generator: https://github.com/patch-gg/pixelfx, MIT; pinned commit a84159688af3ca37a4be05a0d422b94451b2e24e.
+- Project-authored effect: Tools/PixelFx/effects/glitch-triple-slash.mjs and glitch-slash-1/2/3.mjs. Cyan/red procedural crescents and pixel fragments rendered using PixelFX core.
+- Imported frames: Assets/_Game/Art/Effects/PixelFxGlitchCombo/Strike1, Strike2, Strike3. Each includes the upstream LICENSE and NOTICE.md plus a reproducibility manifest.
+- Patch Pixel gallery font is not imported. Original gameplay timing and hit-stop data are not imported from PixelFX.

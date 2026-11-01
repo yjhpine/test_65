@@ -1,0 +1,8 @@
+{
+  "fps": 60,
+  "seed": 7,
+  "options": {
+    "palette": ["#123d48", "#14665f", "#21ab98", "#42dfb9", "#9bffe0", "#dcfff3", "#ffffff"],
+    "sparks": ["#ffffff", "#b9ffe7", "#42dfb9", "#159685"]
+  }
+}
