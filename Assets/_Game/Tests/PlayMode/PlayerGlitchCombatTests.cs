@@ -51,6 +51,7 @@ namespace ActionPlatformer.Tests
             // These deterministic timing/geometry tests own their cloned fixture values, not the live tuning asset.
             Set(combatSettings, "windup", .12f); Set(combatSettings, "activeDuration", .06f);
             Set(combatSettings, "recovery", .18f); Set(combatSettings, "slamHoverDuration", .5f);
+            Set(combatSettings, "reach", 1.2f); Set(combatSettings, "width", 1.6f);
             Set(glitchSettings, "undergroundMoveSpeed", 3f);
             var parent = new GameObject("Glitch test setup"); parent.SetActive(false); created.Add(parent);
             var go = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab"),

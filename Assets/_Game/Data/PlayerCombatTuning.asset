@@ -21,8 +21,8 @@ MonoBehaviour:
   activeDuration: 0.1
   recovery: 0.08
   comboWindow: 1
-  reach: 1.2
-  width: 1.6
+  reach: 2.4
+  width: 3.2
   lightKnockbackSpeed: 3
   lightKnockbackDeceleration: 30
   knockbackSpeed: 12

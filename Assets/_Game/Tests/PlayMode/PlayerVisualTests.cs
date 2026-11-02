@@ -80,7 +80,7 @@ namespace ActionPlatformer.Tests
                 yield return RenderFrame();
                 Assert.That(slash.enabled, Is.True);
                 Assert.That(slash.flipX, Is.EqualTo(facing < 0f));
-                Assert.That(slash.transform.position, Is.EqualTo(visual.transform.TransformPoint(new Vector3(.65f * facing, .3f))));
+                Assert.That(slash.transform.position, Is.EqualTo(visual.transform.position), "Slashes anchor at the player's center.");
                 Assert.That(slash.sprite.name, Does.StartWith("glitch-slash-" + strike + "-"));
                 Assert.That(slash.flipY, Is.False, "Authored combo direction must not be flipped again by animation alternation.");
                 var colors = new MaterialPropertyBlock(); slash.GetPropertyBlock(colors);
@@ -95,6 +95,7 @@ namespace ActionPlatformer.Tests
             Attack(state, PlayerAttack.Lift, 1, false, PlayerAttackPhase.Active);
             yield return RenderFrame(); Assert.That(slash.enabled, Is.True);
             Assert.That(slash.sprite.name, Does.StartWith("white_slash_"));
+            Assert.That(slash.transform.position, Is.EqualTo(visual.transform.position));
             Attack(state, PlayerAttack.Side, 1, false, PlayerAttackPhase.Active);
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1 };
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
@@ -390,19 +391,19 @@ namespace ActionPlatformer.Tests
                 var state = new State();
                 Attack(state,kinds[i],i<3?i+1:1,i==3||i==5||i==6,
                     i==5?PlayerAttackPhase.Windup:i==6?PlayerAttackPhase.Descending:PlayerAttackPhase.Active);
-                Visual(state,new Vector3((i%4)*3.2f-4.8f,102f-(i/4)*3f,0f));
+                Visual(state,new Vector3((i%4)*6f-9f,102f-(i/4)*4.5f,0f));
             }
             yield return RenderFrame();
             var go = new GameObject("Player capture camera"); created.Add(go);
             var camera = go.AddComponent<Camera>(); camera.enabled=false; camera.orthographic=true;
-            camera.orthographicSize=3.5f; camera.transform.position=new Vector3(.25f,101.5f,-10f);
+            camera.orthographicSize=6f; camera.transform.position=new Vector3(0f,99.75f,-10f);
             camera.clearFlags=CameraClearFlags.SolidColor; camera.backgroundColor=new Color(.08f,.1f,.15f);
-            var target = new RenderTexture(1200,600,24); var texture = new Texture2D(1200,600,TextureFormat.RGB24,false);
+            var target = new RenderTexture(1800,900,24); var texture = new Texture2D(1800,900,TextureFormat.RGB24,false);
             created.Add(target); created.Add(texture); var previous = RenderTexture.active;
             try
             {
                 camera.targetTexture=target; camera.Render(); RenderTexture.active=target;
-                texture.ReadPixels(new Rect(0,0,1200,600),0,0); texture.Apply();
+                texture.ReadPixels(new Rect(0,0,1800,900),0,0); texture.Apply();
                 System.IO.Directory.CreateDirectory("Library/PrototypeValidation");
                 System.IO.File.WriteAllBytes("Library/PrototypeValidation/PlayerArtAttacks.png",texture.EncodeToPNG());
             }

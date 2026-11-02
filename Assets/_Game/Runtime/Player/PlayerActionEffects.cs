@@ -87,9 +87,9 @@ namespace ActionPlatformer.Player
                 slash.sprite = frames[Mathf.Min(frames.Length - 1, (int)(progress * frames.Length))];
                 slash.flipX = actions.Facing < 0f;
                 slash.flipY = !authoredCombo && !up && !down && variant == 1;
-                Vector2 offset = up ? new Vector2(.15f * actions.Facing, .55f) : down ?
-                    new Vector2(.3f * actions.Facing, -.35f) : new Vector2(.65f * actions.Facing, .3f);
-                Place(slash, owner.TransformPoint(offset), slashSize);
+                // Both slash sources draw their arc beside the pivot (combo art pivots on the character), so the
+                // player's center keeps the arc in front of, above or below the body without rising as it grows.
+                Place(slash, owner.position, slashSize);
                 if (authoredCombo)
                     slash.transform.localScale = Vector3.Scale(slash.transform.localScale,
                         new Vector3(1, slash.sprite.bounds.size.y / slash.sprite.bounds.size.x, 1));

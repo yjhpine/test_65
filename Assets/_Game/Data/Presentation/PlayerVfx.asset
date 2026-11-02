@@ -156,7 +156,7 @@ MonoBehaviour:
   - {fileID: -1213412202, guid: 9d03f02dc89cd3748b75d7f837b1c8b6, type: 3}
   dustFootOffset: {x: 0, y: -0.83}
   actionEffectMaterial: {fileID: 2100000, guid: b3eaeace8aea28b4fa1750ee5e110d59, type: 2}
-  basicAttackEffectSize: 2.5
+  basicAttackEffectSize: 5
   glitchEffectSize: 2.5
   glitchEffectFps: 30
   glitchTrailSpacing: 0.6

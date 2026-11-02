@@ -553,3 +553,10 @@ Normal Side/Air attacks use PlayerVfxProfile.comboSlash1Frames/2Frames/3Frames s
 Generated cyan/red source colors are preserved with white per-renderer palette overrides; shared material and teleport sparks remain unchanged. Existing phase progress drives windup/active/recovery frames and Ready, reaction cancellation and underground state hide the renderer. Existing size 2.5 and local offset are retained; generated frames preserve their aspect ratio.
 
 Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (repeat for 2/3), then Game > Effects > Import Generated Glitch Combo. The explicit importer edits only generated textures and the three PlayerVfx profile arrays, preserving existing GUIDs on reimport. No damage, range, combo rule, movement, cooldown, hit-stop, or attack phase duration changes.
+
+## 2026-11-02 — 공격 범위·검격 2배와 플레이어 중심 정렬
+
+- `PlayerCombatTuning.asset`의 Reach/Width를 1.2/1.6에서 2.4/3.2로 2배 키웠다. 옆·공중 공격, 띄우기, 출현, 내려찍기 하강 전방 판정과 띄우기 자동 선택 거리가 모두 이 값을 쓴다. 착지 충격파 반경(2)은 별도 값이라 유지했다. 코드 기본값(새 Tuning 에셋)은 1.2/1.6 그대로다.
+- `PlayerVfx.asset`의 Basic Attack Effect Size를 2.5에서 5로 키웠다. 3타 검격(PixelFX)과 띄우기·출현·내려찍기 흰 검격에 모두 적용된다.
+- 검격 위치: 기존에는 앞쪽 0.65·위쪽 0.3(띄우기 0.15/0.55, 내려찍기 0.3/-0.35)만큼 띄워 놓았다. 이제는 피벗을 플레이어 Visual 중심에 둔다. PixelFX 원화는 피벗(0.4, 0.5)이 캐릭터 자리이고, 흰 검격은 칸 중앙 피벗 바깥쪽에 호가 그려져 있다. 그래서 일반 공격은 앞, 띄우기는 위, 내려찍기는 아래에 자연스럽게 놓이며 커진 이펙트가 위로 솟지 않는다.
+- 공격 타이밍·피해·넉백·콤보 규칙·글리치 이펙트(2.5)는 바꾸지 않았다.
