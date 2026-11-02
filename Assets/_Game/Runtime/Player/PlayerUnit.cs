@@ -116,6 +116,10 @@ namespace ActionPlatformer.Player
         public Bounds AttackBounds => Combat == null ? default : Combat.AttackBounds;
         public PlayerShockwave Shockwave => Combat == null ? default : Combat.GetShockwave(Time.timeAsDouble);
         public Camera AimCamera => aimCamera;
+        public float GlitchMaxDistance => glitchTuning != null ? glitchTuning.MaxDistance : 0f;
+        // Shared combo progress for the HUD: landed strikes in the live chain and the strike count of a full combo.
+        public int ComboCount => Combat == null ? 0 : Combat.ComboCount(Time.timeAsDouble);
+        public int ComboLength => Combat == null ? 0 : Combat.ComboLength;
         public void SetAimCamera(Camera camera)
         {
             aimCamera = camera;
@@ -240,7 +244,7 @@ namespace ActionPlatformer.Player
                     }
                 }
             }
-            // Glitch may cancel Recovery in this physics step. Validate attack eligibility after it executes.
+            // A glitch in this physics step changes the attack's position. Validate the attack after it executes.
             if (command.AttackPressed && !pendingAttack && (Combat != null || IsUnderground))
             {
                 pendingAttack = true;
@@ -286,11 +290,7 @@ namespace ActionPlatformer.Player
                 return;
             }
             if (IsScriptedTransferring) return;
-            if (!IsUnderground)
-            {
-                Motor.RefreshContacts();
-                Combat?.ObserveGrounded(Motor.IsGrounded);
-            }
+            if (!IsUnderground) Motor.RefreshContacts();
             bool wasUnderground = IsUnderground;
             Glitch?.Tick(now);
             bool relocated = false;
@@ -306,7 +306,7 @@ namespace ActionPlatformer.Player
                         relocated = true;
                         FaceArrival();
                         Motor.RefreshContacts();
-                        Combat?.ObserveArrival(false);
+                        Combat?.ExtendCombo(now);
                         if (Combat != null) RefreshAimFacing();
                         Combat?.TryAttack(Glitch.ArrivalTarget, facing, true, now, Motor.IsGrounded);
                     }
@@ -317,9 +317,9 @@ namespace ActionPlatformer.Player
             {
                 if (pendingGlitch && Glitch != null && CanReposition(now) && Glitch.TryExecute(glitchRequest, now))
                 {
+                    // Repositioning never shortens the attack interval; a follow-up waits for Ready.
                     unchecked { RepositionVersion++; }
-                    Combat?.CancelRecovery();
-                    Combat?.ObserveArrival(glitchRequest.Direction == GlitchDirection.Up && !IsUnderground);
+                    Combat?.ExtendCombo(now);
                     relocated = true;
                     ClearJumpState();
                     FaceArrival();

@@ -105,16 +105,16 @@ namespace ActionPlatformer.Tests
             Assert.That(health.CurrentHealth, Is.EqualTo(100));
         }
 
-        [UnityTest] public IEnumerator SlamHitsDummyOnceAcrossDescentAndLandingShockwave()
+        [UnityTest] public IEnumerator SlamFromAboveHitsDummyOnceOnTheWayDown()
         {
             Assert.That(player.Glitch.TryExecute(new GlitchRequest { Target = health, Direction = GlitchDirection.Up }, Time.timeAsDouble), Is.True);
-            player.Combat.ObserveArrival(true);
             Assert.That(player.Combat.TryAttack(health, 1, false, Time.timeAsDouble, false), Is.True);
-            Assert.That(player.Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
+            Assert.That(player.Combat.Attack, Is.EqualTo(PlayerAttack.Slam), "Above the dummy an air attack slams.");
             float deadline = Time.realtimeSinceStartup + 2f;
-            while (!player.Shockwave.Visible && Time.realtimeSinceStartup < deadline) yield return null;
+            while (!player.Combat.IsDescending && Time.realtimeSinceStartup < deadline) yield return null;
+            while ((player.Combat.IsDescending || !player.Motor.IsGrounded) && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(health.DamageVersion, Is.EqualTo(1));
-            Assert.That(player.Shockwave.Visible, Is.True);
+            Assert.That(player.Shockwave.Visible, Is.False, "A basic slam lands without a shockwave.");
             Assert.That(player.Motor.IsGrounded, Is.True);
             yield return Step;
             TestContext.WriteLine($"grounded slam hit={health.DamageVersion}, health={health.CurrentHealth}, velocity={dummy.GetComponent<Rigidbody2D>().linearVelocity}");

@@ -36,7 +36,8 @@ namespace ActionPlatformer.Player
             {
                 attackVersion = attack.Version;
                 if (state.AttackPhase != PlayerAttackPhase.Ready && state.ReactionPresentation.Kind != PlayerReaction.Die)
-                    Play(attack.Kind == PlayerAttack.Side || attack.Kind == PlayerAttack.Air
+                    // The combo's strong strike always uses the heavy swing, whatever its attack kind.
+                    Play((attack.Kind == PlayerAttack.Side || attack.Kind == PlayerAttack.Air) && !attack.Finisher
                         ? Next(settings.Swings, ref swingIndex) : settings.HeavySwing, settings.SwingVolume);
             }
             if (state.GlitchPresentation.Version != glitchVersion)

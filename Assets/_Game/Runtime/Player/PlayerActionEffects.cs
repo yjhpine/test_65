@@ -95,9 +95,13 @@ namespace ActionPlatformer.Player
                         new Vector3(1, slash.sprite.bounds.size.y / slash.sprite.bounds.size.x, 1));
                 slash.transform.rotation = Quaternion.Euler(0, 0, up ? 90 * actions.Facing : down ? -90 * actions.Facing : 0);
                 if (up || down) slash.transform.localScale = Vector3.Scale(slash.transform.localScale, new Vector3(.8f, .45f, 1));
+                // A strong lift or slam keeps its kind's look, larger and brighter; side strikes use their own third arc.
+                bool strongSpecial = attack.Finisher && (up || down);
+                if (strongSpecial) slash.transform.localScale *= 1.3f;
                 // Authored cyan/red pixels already carry their palette. Keep the same material,
                 // but neutralize its tint only on this renderer (never on shared glitch sparks).
                 Color color = authoredCombo ? Color.white : PlayerContactEffects.ColorFor(attack.Kind);
+                if (strongSpecial) color = Color.Lerp(color, Color.white, .35f);
                 slash.GetPropertyBlock(palette); palette.SetColor("_PrimaryColor", color); palette.SetColor("_AccentColor", color);
                 slash.SetPropertyBlock(palette);
             }

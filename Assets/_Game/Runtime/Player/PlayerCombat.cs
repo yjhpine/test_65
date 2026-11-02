@@ -41,8 +41,8 @@ namespace ActionPlatformer.Player
         private PlayerAttackSelection selection;
         private Vector2 shockwaveCenter;
         private double shockwaveStartedAt = double.NegativeInfinity;
-        private bool slamReady;
         private bool bufferedAttack;
+        private bool launched, launchPending;
         private bool hasImpact;
         private int emittedImpactStages;
         private PlayerImpact pendingImpact;
@@ -51,22 +51,27 @@ namespace ActionPlatformer.Player
         public PlayerAttack Attack => selection.Kind;
         public PlayerAttackPhase Phase { get; private set; }
         public float Facing => selection.Facing == 0f ? 1f : selection.Facing;
-        public float LaunchSpeed => selection.LaunchSpeed;
+        public float LaunchSpeed => selection.LaunchSpeed *
+            (Attack == PlayerAttack.Lift && combo.IsFinisher ? tuning.FinisherLaunchMultiplier : 1f);
+        public int ComboLength => comboRule == null ? 1 : tuning.ComboLength;
+        // Strikes executed in the live combo chain; zero once it expires or after the finisher.
+        public int ComboCount(double now) => nextStrike > 1 && (IsAttacking || now <= comboExpiresAt) ? nextStrike - 1 : 0;
         public float SlamSpeed => tuning.SlamSpeed;
         public bool IsDescending => Phase == PlayerAttackPhase.Descending;
         public bool IsPreparingSlam => Attack == PlayerAttack.Slam && Phase == PlayerAttackPhase.Windup;
         public bool IsAttacking => Phase != PlayerAttackPhase.Ready;
-        // Basic swings allow locomotion; special attacks retain their authored motion.
+        // Grounded basic swings hold the player in place; airborne swings keep their momentum.
+        // Special attacks retain their authored motion.
         public bool BlocksMovement(bool grounded) => IsAttacking &&
-            Attack != PlayerAttack.Side && Attack != PlayerAttack.Air;
+            (Attack == PlayerAttack.Side ? grounded : Attack != PlayerAttack.Air);
         public bool CanReposition(double now) => now >= stunnedUntil &&
             (Phase == PlayerAttackPhase.Ready || Phase == PlayerAttackPhase.Recovery);
         public bool CanAttack(double now) => now >= stunnedUntil && Phase == PlayerAttackPhase.Ready;
 
+        // Any press during an attack keeps one follow-up for the next Ready step. Zero buffer time disables it.
         public bool BufferAttack(double pressedAt)
         {
-            if (Phase != PlayerAttackPhase.Recovery || tuning.AttackBufferTime <= 0f ||
-                pressedAt < phaseEndsAt - tuning.AttackBufferTime || pressedAt < phaseStartedAt) return false;
+            if (!IsAttacking || tuning.AttackBufferTime <= 0f || pressedAt < attackStartedAt) return false;
             bufferedAttack = true;
             return true;
         }
@@ -92,10 +97,6 @@ namespace ActionPlatformer.Player
             result = presentationHits.Dequeue(); return true;
         }
 
-        // The coordinator supplies arrival facts; combat owns the one-use follow-up state.
-        public void ObserveArrival(bool aboveTarget) => slamReady = aboveTarget;
-        public void ObserveGrounded(bool grounded) { if (grounded) slamReady = false; }
-
         public PlayerCombat(Unit owner, Collider2D body, PlayerCombatTuning tuning,
             IPlayerComboRule comboRule = null, IPlayerAttackSelector attackSelector = null, IPlayerHitReaction hitReaction = null)
         {
@@ -103,19 +104,22 @@ namespace ActionPlatformer.Player
             this.comboRule = comboRule; this.attackSelector = attackSelector; this.hitReaction = hitReaction;
         }
 
+        // Emergence keeps its glitch target. Other attacks keep a supplied target only while it is within reach,
+        // otherwise the nearest enemy when the attack starts decides the attack kind.
         public bool TryAttack(UnitHealth target, float facing, bool emergence, double now, bool grounded = true)
         {
             if (!CanAttack(now)) return false;
-            ObserveGrounded(grounded);
+            var targetBody = UnitPhysics2D.Body(target);
+            bool emerging = emergence && grounded;
+            if (!emerging && (!Damageable(target) || targetBody == null ||
+                !PlayerAttackSelection.WithinReach(body.bounds, targetBody.bounds, tuning))) target = NearestTarget();
             combo = comboRule?.Select(nextStrike, now > comboExpiresAt, target != previousComboTarget) ?? PlayerComboStep.Basic;
             pendingComboTarget = target;
             var forward = PlayerAttackSelection.Side(body.bounds, facing, tuning);
-            if (!grounded)
-                selection = new PlayerAttackSelection(slamReady ? PlayerAttack.Slam : PlayerAttack.Air, facing, forward.HitOffset, forward.HitSize);
-            else selection = attackSelector?.Select(body.bounds, target, facing, emergence) ?? forward;
-            if (Attack == PlayerAttack.Slam) slamReady = false;
+            selection = attackSelector?.Select(body.bounds, target, facing, emergence, grounded) ?? (grounded ? forward :
+                new PlayerAttackSelection(PlayerAttack.Air, facing, forward.HitOffset, forward.HitSize));
             hit.Clear();
-            bufferedAttack = false;
+            bufferedAttack = launched = launchPending = false;
             emittedImpactStages = 0;
             attackVersion++;
             attackStartedAt = now;
@@ -126,12 +130,39 @@ namespace ActionPlatformer.Player
             return true;
         }
 
+        // Candidates extend past Reach so the selector can measure large bodies; it applies the exact range.
+        private const float TargetSearchMargin = 2f;
+        private UnitHealth NearestTarget()
+        {
+            var bounds = body.bounds;
+            Physics2D.OverlapCircle(bounds.center, tuning.Reach + bounds.extents.magnitude + TargetSearchMargin,
+                UnitPhysics2D.Filter(tuning.TargetMask), candidates);
+            UnitHealth best = null;
+            float bestDistance = float.PositiveInfinity;
+            for (int i = 0; i < candidates.Count; i++)
+            {
+                var candidate = candidates[i].GetComponentInParent<UnitHealth>();
+                var candidateBody = UnitPhysics2D.Body(candidate);
+                if (!Damageable(candidate) || candidateBody == null) continue;
+                float distance = ((Vector2)candidateBody.bounds.center - (Vector2)bounds.center).sqrMagnitude;
+                if (distance >= bestDistance || !UnitPhysics2D.HasSight(bounds.center, candidateBody.bounds.center,
+                    tuning.ObstacleMask, obstacles)) continue;
+                best = candidate;
+                bestDistance = distance;
+            }
+            return best;
+        }
+
+        private bool Damageable(UnitHealth target) => UnitPhysics2D.IsAvailable(target) && target.Owner != owner &&
+            target.Owner.Kind == UnitKind.Monster && target.CanReceiveDamage;
+
         public Bounds AttackBounds => Attack == PlayerAttack.Slam && !IsDescending ? default :
             new Bounds((Vector2)body.bounds.center + selection.HitOffset, selection.HitSize);
 
         public PlayerAttackPresentation GetPresentation(double now) => new PlayerAttackPresentation
         {
-            Kind = Attack, Strike = Strike, Version = attackVersion, StartedAt = attackStartedAt, Airborne = airborneAttack,
+            Kind = Attack, Strike = Strike, Finisher = combo.IsFinisher, Version = attackVersion, StartedAt = attackStartedAt,
+            Airborne = airborneAttack,
             PhaseProgress = phaseEndsAt > phaseStartedAt
                 ? Mathf.Clamp01((float)((now - phaseStartedAt) / (phaseEndsAt - phaseStartedAt))) : 1f
         };
@@ -146,13 +177,21 @@ namespace ActionPlatformer.Player
         public void LandSlam(Vector2 contact, double now)
         {
             if (!IsDescending) return;
-            shockwaveCenter = contact + Vector2.up * 0.08f;
-            shockwaveStartedAt = now;
-            landingVersion++;
             Phase = PlayerAttackPhase.Active;
             phaseStartedAt = now;
             phaseEndsAt = now + tuning.ActiveDuration;
+            // A basic slam ends on landing; only the combo's finishing slam adds the landing shockwave.
+            if (!combo.IsFinisher) return;
+            shockwaveCenter = contact + Vector2.up * 0.08f;
+            shockwaveStartedAt = now;
+            landingVersion++;
             HitTargets(true);
+        }
+
+        // Repositioning keeps a live combo going so the player can choose where the next strike lands.
+        public void ExtendCombo(double now)
+        {
+            if (nextStrike > 1 && now <= comboExpiresAt) comboExpiresAt = now + tuning.ComboWindow;
         }
 
         // Returns a one-shot motion request from the selected attack; the player motor applies it.
@@ -164,9 +203,11 @@ namespace ActionPlatformer.Player
                 Phase = Attack == PlayerAttack.Slam ? PlayerAttackPhase.Descending : PlayerAttackPhase.Active;
                 phaseStartedAt = now;
                 phaseEndsAt = now + (IsDescending ? tuning.SlamTimeout : tuning.ActiveDuration);
+                // Every executed attack advances the shared combo, whether or not it lands.
                 nextStrike = combo.NextStrike;
                 previousComboTarget = pendingComboTarget;
-                launch = selection.LaunchSpeed > 0f;
+                // Emergence rises as it starts; a lift rises only with a target it actually hit.
+                launch = Attack == PlayerAttack.Emergence && selection.LaunchSpeed > 0f;
             }
             if (IsDescending && now >= phaseEndsAt) BeginRecovery(now);
             if (IsDescending) HitTargets(false);
@@ -179,6 +220,7 @@ namespace ActionPlatformer.Player
                 else if (Attack != PlayerAttack.Slam) HitTargets(false);
             }
             if (Phase == PlayerAttackPhase.Recovery && now >= phaseEndsAt) Phase = PlayerAttackPhase.Ready;
+            if (launchPending) { launchPending = false; launch = true; }
             return launch;
         }
 
@@ -200,8 +242,7 @@ namespace ActionPlatformer.Player
             for (int i = 0; i < candidates.Count; i++)
             {
                 var target = candidates[i].GetComponentInParent<UnitHealth>();
-                if (!UnitPhysics2D.IsAvailable(target) || target.Owner == owner || target.Owner.Kind != UnitKind.Monster ||
-                    !target.CanReceiveDamage || hit.Contains(target) ||
+                if (!Damageable(target) || hit.Contains(target) ||
                     !UnitPhysics2D.HasSight(shockwave ? shockwaveCenter : (Vector2)body.bounds.center,
                         candidates[i].bounds.center, tuning.ObstacleMask, obstacles)) continue;
                 hit.Add(target);
@@ -209,8 +250,13 @@ namespace ActionPlatformer.Player
                 Vector2 origin = shockwave ? shockwaveCenter : (Vector2)body.bounds.center;
                 Vector2 point = candidates[i].ClosestPoint(origin);
                 int healthBefore = target.CurrentHealth;
-                int damage = target.ApplyDamage(owner.Definition.AttackPower, body.bounds.center, bypassGuard);
+                int power = owner.Definition.AttackPower;
+                if (combo.IsFinisher) power = Mathf.RoundToInt(power * tuning.FinisherDamageMultiplier);
+                // Basic swings leave the target's attack running; launches, slams and emergence stop it.
+                bool interrupts = shockwave || (Attack != PlayerAttack.Side && Attack != PlayerAttack.Air);
+                int damage = target.ApplyDamage(power, body.bounds.center, bypassGuard, interrupts);
                 if (damage <= 0) continue;
+                if (Attack == PlayerAttack.Lift && !shockwave && !launched) launched = launchPending = true;
                 var kind = shockwave ? PlayerAttack.Shockwave : Attack;
                 Vector2 hitDirection = Attack == PlayerAttack.Slam ? Vector2.down :
                     Attack == PlayerAttack.Lift || Attack == PlayerAttack.Emergence ? Vector2.up : Vector2.right * Facing;
@@ -234,12 +280,6 @@ namespace ActionPlatformer.Player
             hasImpact = true;
         }
 
-        public void CancelRecovery()
-        {
-            if (Phase == PlayerAttackPhase.Recovery) Phase = PlayerAttackPhase.Ready;
-            bufferedAttack = false;
-        }
-
         public void Interrupt(double now)
         {
             Reset();
@@ -254,8 +294,7 @@ namespace ActionPlatformer.Player
             pendingComboTarget = previousComboTarget = null;
             comboExpiresAt = stunnedUntil = 0;
             shockwaveStartedAt = double.NegativeInfinity;
-            slamReady = false;
-            bufferedAttack = hasImpact = false;
+            bufferedAttack = launched = launchPending = hasImpact = false;
             emittedImpactStages = 0;
             pendingImpact = default;
             presentationHits.Clear();

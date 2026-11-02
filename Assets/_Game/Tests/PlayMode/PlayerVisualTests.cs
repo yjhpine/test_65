@@ -17,6 +17,7 @@ namespace ActionPlatformer.Tests
             public Vector2 Velocity { get; set; }
             public bool IsGrounded { get; set; } = true;
             public GlitchPreview GlitchPreview => default;
+            public float GlitchMaxDistance => 0f;
             public bool IsUnderground { get; set; }
             public bool CanEmerge { get; set; } = true;
             public Vector2 UndergroundPosition => Vector2.down;

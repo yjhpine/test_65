@@ -402,6 +402,20 @@ namespace ActionPlatformer.Tests
             Assert.That(view.IsGlitchHintVisible, Is.False);
         }
 
+        [UnityTest] public IEnumerator ComboHudShowsLandedStrikesAndTheStrongNext()
+        {
+            yield return null; yield return null;
+            Assert.That(view.IsComboVisible, Is.True, "The stage shows the shared combo while playing.");
+            Assert.That(view.ComboPipsLit, Is.Zero);
+            view.ShowCombo(2, 3);
+            Assert.That(view.ComboPipsLit, Is.EqualTo(2));
+            Assert.That(view.IsStrongNextVisible, Is.True);
+            view.ShowCombo(1, 3);
+            Assert.That(view.IsStrongNextVisible, Is.False);
+            view.ShowCombo(0, 1);
+            Assert.That(view.IsComboVisible, Is.False, "Without a combo there is nothing to show.");
+        }
+
         [UnityTest] public IEnumerator UnloadingCompletedStageRestoresGlobalTime()
         {
             KillEnemies();

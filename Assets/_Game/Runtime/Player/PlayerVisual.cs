@@ -8,6 +8,8 @@ namespace ActionPlatformer.Player
     {
         [Tooltip("Overlay the actual hit area while attacking (debug display).")]
         [SerializeField] private bool showAttackArea = true;
+        [Tooltip("Draw the glitch's maximum distance around the player (balance testing display).")]
+        [SerializeField] private bool showGlitchRange;
         [Header("Movement and contact VFX")]
         private VfxManager effects;
         private EffectOwnerHandle effectOwner;
@@ -44,8 +46,9 @@ namespace ActionPlatformer.Player
         private SpriteRenderer attackShape, groundMarker;
         private SpriteRenderer glitchFill;
         private SpriteRenderer glitchRing;
-        private Sprite previewDiscSprite, previewRingSprite;
-        private Texture2D previewDiscTexture, previewRingTexture;
+        private Sprite previewDiscSprite, previewRingSprite, rangeRingSprite;
+        private Texture2D previewDiscTexture, previewRingTexture, rangeRingTexture;
+        private SpriteRenderer glitchRange;
         private Sprite shapeSprite;
         private static readonly int Moving = Animator.StringToHash("Moving");
         private static readonly int Grounded = Animator.StringToHash("Grounded");
@@ -119,6 +122,10 @@ namespace ActionPlatformer.Player
                 glitchFill.sprite = previewDiscSprite;
                 glitchRing = CreateShape("Glitch preview ring", Color.white);
                 glitchRing.sprite = previewRingSprite;
+                // A finer texture keeps the large range ring thin.
+                rangeRingSprite = CreatePreviewCircle(true, out rangeRingTexture, 256, 3f);
+                glitchRange = CreateShape("Glitch range", new Color(0.15f, 1f, 1f, 0.35f));
+                glitchRange.sprite = rangeRingSprite;
             }
         }
 
@@ -185,6 +192,16 @@ namespace ActionPlatformer.Player
                 }
             }
             UpdateGlitchPreview(underground);
+            if (glitchRange != null)
+            {
+                float range = actions.GlitchMaxDistance;
+                glitchRange.enabled = showGlitchRange && !underground && range > 0f;
+                if (glitchRange.enabled)
+                {
+                    glitchRange.transform.position = transform.position;
+                    glitchRange.transform.localScale = new Vector3(range * 2f, range * 2f, 1f);
+                }
+            }
             while (pendingHits.Count > 0) { var hit = pendingHits.Dequeue(); effects?.PlayContact(effectOwner,hit); audioEffects?.Hit(hit); }
             var wave = actions?.Shockwave ?? default;
             bool slamLanding = wave.Visible && wave.Version != landingVersion;
@@ -286,19 +303,19 @@ namespace ActionPlatformer.Player
             SetPreviewShape(glitchRing, center, size, color);
         }
 
-        private static Sprite CreatePreviewCircle(bool ring, out Texture2D texture)
+        private static Sprite CreatePreviewCircle(bool ring, out Texture2D texture, int resolution = 64, float band = 4f)
         {
-            const int resolution = 64;
             texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false);
             texture.name = ring ? "Glitch preview ring" : "Glitch preview disc";
             texture.filterMode = FilterMode.Bilinear; texture.wrapMode = TextureWrapMode.Clamp;
             var pixels = new Color32[resolution * resolution];
+            float outer = resolution * .5f - .5f;
             for (int y = 0; y < resolution; y++)
                 for (int x = 0; x < resolution; x++)
                 {
                     float distance = new Vector2(x + .5f - resolution * .5f, y + .5f - resolution * .5f).magnitude;
-                    float alpha = Mathf.Clamp01(31.5f - distance);
-                    if (ring) alpha *= Mathf.Clamp01(distance - 27.5f);
+                    float alpha = Mathf.Clamp01(outer - distance);
+                    if (ring) alpha *= Mathf.Clamp01(distance - (outer - band));
                     pixels[y * resolution + x] = new Color32(255, 255, 255, (byte)(alpha * 255));
                 }
             texture.SetPixels32(pixels); texture.Apply(false, true);
@@ -370,6 +387,8 @@ namespace ActionPlatformer.Player
             if (previewRingSprite != null) Destroy(previewRingSprite);
             if (previewDiscTexture != null) Destroy(previewDiscTexture);
             if (previewRingTexture != null) Destroy(previewRingTexture);
+            if (rangeRingSprite != null) Destroy(rangeRingSprite);
+            if (rangeRingTexture != null) Destroy(rangeRingTexture);
         }
     }
 }

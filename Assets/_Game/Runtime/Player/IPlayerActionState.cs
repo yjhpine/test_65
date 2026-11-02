@@ -22,6 +22,8 @@ namespace ActionPlatformer.Player
     {
         public PlayerAttack Kind;
         public int Strike;
+        // The combo's strong strike, whatever attack kind carries it.
+        public bool Finisher;
         public uint Version;
         public double StartedAt;
         public bool Airborne;
@@ -60,6 +62,8 @@ namespace ActionPlatformer.Player
     public interface IPlayerActionState
     {
         GlitchPreview GlitchPreview { get; }
+        // Maximum glitch distance for the optional range display; zero without glitch tuning.
+        float GlitchMaxDistance { get; }
         bool IsUnderground { get; }
         bool CanEmerge { get; }
         Vector2 UndergroundPosition { get; }

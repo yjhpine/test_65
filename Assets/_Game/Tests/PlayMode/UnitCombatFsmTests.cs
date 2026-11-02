@@ -169,10 +169,20 @@ namespace ActionPlatformer.Tests
             Assert.That(target.CurrentHealth, Is.EqualTo(100));
         }
 
-        [Test] public void HitInterruptsAttackAndRepeatedDamageRestartsStun()
+        [Test] public void OrdinaryHitLeavesAnAttackInProgressRunning()
         {
             StartAttack();
             Health.ApplyDamage(1);
+            enemy.Fsm.Tick(0f);
+            Assert.That(State, Is.EqualTo("AttackState"));
+            enemy.Fsm.Tick(0.21f);
+            Assert.That(target.CurrentHealth, Is.EqualTo(95), "A basic hit does not cancel the windup.");
+        }
+
+        [Test] public void InterruptingHitStopsAttackAndRepeatedDamageRestartsStun()
+        {
+            StartAttack();
+            Health.ApplyDamage(1, Health.transform.position, true, true);
             enemy.Fsm.Tick(0f);
             Assert.That(State, Is.EqualTo("HitState"));
             enemy.Fsm.Tick(0.15f);
@@ -275,7 +285,7 @@ namespace ActionPlatformer.Tests
             var animator = enemy.GetComponentInChildren<Animator>();
             var renderer = enemy.GetComponentInChildren<SpriteRenderer>();
             yield return WaitForPresentation(() => animator.GetCurrentAnimatorStateInfo(0).IsName("Attack"), "Attack entry");
-            Health.ApplyDamage(1);
+            Health.ApplyDamage(1, Health.transform.position, true, true);
             yield return WaitForPresentation(() => animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), "Hit interruption");
             enemy.Fsm.Tick(0.16f);
             yield return WaitForPresentation(() => renderer.sprite.name == "Hit_1", "Hit final frame");

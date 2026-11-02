@@ -17,6 +17,8 @@ namespace ActionPlatformer.Units.Features
         public int CurrentHealth { get; private set; }
         public int MaxHealth { get; private set; }
         public uint DamageVersion { get; private set; }
+        // Advances with DamageVersion only for hits that stop an attack in progress.
+        public uint InterruptVersion { get; private set; }
         public UnitDamageResult LastDamage { get; private set; }
         public event System.Action<UnitDamageResult> DamageApplied;
         public bool IsAlive => initialized && CurrentHealth > 0;
@@ -51,12 +53,13 @@ namespace ActionPlatformer.Units.Features
         }
 
         // Context-free damage (tests/environment) retains its existing behavior.
-        public int ApplyDamage(int amount, Vector2 sourcePosition, bool bypassDirectionalGuard = false)
+        // An interrupting hit (launch/slam) also stops the target's attack in progress; see InterruptVersion.
+        public int ApplyDamage(int amount, Vector2 sourcePosition, bool bypassDirectionalGuard = false, bool interruptsAttack = false)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
             if (amount == 0 || !CanReceiveDamage) return 0;
             if (!bypassDirectionalGuard && damageGuard != null && damageGuard.BlocksDamage(sourcePosition)) return 0;
-            return ApplyDamageCore(amount, (Vector2)transform.position - sourcePosition);
+            return ApplyDamageCore(amount, (Vector2)transform.position - sourcePosition, interruptsAttack);
         }
 
         public int ApplyDamage(int amount)
@@ -66,13 +69,13 @@ namespace ActionPlatformer.Units.Features
         public int ApplyDirectedDamage(int amount, Vector2 direction)
             => ApplyDamageCore(amount, direction);
 
-        private int ApplyDamageCore(int amount, Vector2 direction)
+        private int ApplyDamageCore(int amount, Vector2 direction, bool interruptsAttack = false)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
             if (amount == 0 || !CanReceiveDamage) return 0;
             int applied = Mathf.Min(amount, CurrentHealth);
             if (!preserveHealthOnDamage) CurrentHealth -= applied;
-            unchecked { DamageVersion++; }
+            unchecked { DamageVersion++; if (interruptsAttack) InterruptVersion++; }
             LastDamage = new UnitDamageResult(this, DamageVersion, applied, preserveHealthOnDamage ? 0 : applied,
                 !IsAlive, direction);
             DamageApplied?.Invoke(LastDamage);

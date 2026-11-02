@@ -122,6 +122,19 @@ namespace ActionPlatformer.Tests
             Set(gate, "barrier", barrier); Set(gate, "marker", go.AddComponent<SpriteRenderer>());
             Physics2D.SyncTransforms(); return gate;
         }
+        // A slam starts only above a target in reach; a floating target lets one begin from any height.
+        private UnitHealth FloatingTarget(Vector2 point, UnitHealth target = null)
+        {
+            target = target != null ? target : CreateEnemy(point.x);
+            var body = target.GetComponent<Rigidbody2D>(); body.gravityScale = 0f; body.position = point; body.linearVelocity = Vector2.zero;
+            Physics2D.SyncTransforms(); return target;
+        }
+        // Only the combo's finishing slam lands with a shockwave. A one-strike combo makes every attack the finisher.
+        private void FinishEveryAttack()
+        {
+            Set(combatSettings, "comboLength", 1); Set(combatSettings, "finisherDamageMultiplier", 1f);
+            RebuildPlayer(true, true);
+        }
         private GlitchRequest Request(GlitchDirection direction) => new GlitchRequest { Target = enemy, Direction = direction };
         private void PlacePlayer(Vector2 point) { player.Motor.Teleport(point); Physics2D.SyncTransforms(); }
         private void EnterUnderground(double now = 0)
@@ -263,13 +276,15 @@ namespace ActionPlatformer.Tests
                 Assert.That(Combat.Strike, Is.EqualTo(comboEnabled ? i + 1 : 1));
                 Combat.Tick(now + 0.13); Combat.Tick(now + 0.2); Combat.Tick(now + 0.4);
             }
-            Assert.That(enemy.CurrentHealth, Is.EqualTo(170));
+            // With the combo enabled the third hit is its finisher and carries the finisher damage multiplier.
+            int finisher = comboEnabled ? Mathf.RoundToInt(10 * combatSettings.FinisherDamageMultiplier) : 10;
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(200 - 10 - 10 - finisher));
             Assert.That(Movement.IsForcedMoving, Is.EqualTo(reactionsEnabled));
         }
 
         private sealed class FixedBoxSelector : IPlayerAttackSelector
         {
-            public PlayerAttackSelection Select(Bounds body, UnitHealth target, float facing, bool emergence) =>
+            public PlayerAttackSelection Select(Bounds body, UnitHealth target, float facing, bool emergence, bool grounded) =>
                 new PlayerAttackSelection(PlayerAttack.Side, -1, new Vector2(0.975f, 0), Vector2.one);
         }
         private sealed class CountingReaction : IPlayerHitReaction
@@ -280,7 +295,7 @@ namespace ActionPlatformer.Tests
             { Count++; Strike = combo.Strike; Finisher = combo.IsFinisher; HealthAfterHit = target.CurrentHealth; }
         }
 
-        [Test] public void ReplacedRulesControlGeometryFinisherAndReactionWithoutChangingDamage()
+        [Test] public void ReplacedRulesControlGeometryFinisherAndReaction()
         {
             PlacePlayer(new Vector2(-0.975f, 61.32f));
             var reaction = new CountingReaction();
@@ -301,11 +316,13 @@ namespace ActionPlatformer.Tests
                     Assert.That(independent.Strike, Is.EqualTo(1), "Shared rules must not inherit another combat's next strike.");
                 }
             }
-            Assert.That(enemy.CurrentHealth, Is.EqualTo(180));
+            // The replacement rule's second strike is its finisher, so it carries the finisher damage.
+            int expected = 200 - 10 - Mathf.RoundToInt(10 * combatSettings.FinisherDamageMultiplier);
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(expected));
             Assert.That(reaction.Count, Is.EqualTo(2));
             Assert.That(reaction.Strike, Is.EqualTo(2));
             Assert.That(reaction.Finisher, Is.True);
-            Assert.That(reaction.HealthAfterHit, Is.EqualTo(180));
+            Assert.That(reaction.HealthAfterHit, Is.EqualTo(expected));
             Assert.That(Movement.IsForcedMoving, Is.False);
             var another = new PlayerCombat(player, player.GetComponent<Collider2D>(), combatSettings, rule);
             Assert.That(another.TryAttack(enemy, 1, false, 0.8), Is.True);
@@ -319,7 +336,7 @@ namespace ActionPlatformer.Tests
             Set(combatSettings, "comboLength", 2);
             Set(combatSettings, "retainComboOnTargetChange", false);
             RebuildPlayer(true, true); PlacePlayer(new Vector2(-0.975f, 61.32f));
-            var other = CreateEnemy(4);
+            var other = CreateEnemy(-2.2f); // Behind the player but within reach, so it can be the attack's target.
             Combat.TryAttack(enemy, 1, false, 0); Combat.Tick(0.13); Combat.Tick(0.2); Combat.Tick(0.4);
             Assert.That(Movement.IsForcedMoving, Is.True);
             Assert.That(Movement.Velocity.x, Is.EqualTo(combatSettings.LightKnockbackSpeed));
@@ -333,34 +350,37 @@ namespace ActionPlatformer.Tests
             Assert.That(Movement.Velocity.x, Is.EqualTo(combatSettings.KnockbackSpeed));
         }
 
-        [Test] public void AboveArrivalEnablesOneAirSlamAndThenReturnsToBasicAttack()
+        [Test] public void AirAttackAboveATargetSlamsAndLaterKindsShareTheCombo()
         {
-            Combat.ObserveArrival(true);
-            Assert.That(Combat.TryAttack(enemy, 1, false, 0, false), Is.True);
+            PlacePlayer(new Vector2(0f, 62.6f));
+            Assert.That(Combat.TryAttack(null, 1, false, 0, false), Is.True, "The nearest enemy below decides the kind.");
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
-            Combat.Tick(0.5); Combat.LandSlam(new Vector2(0f, 60.5f), 0.51);
-            Combat.Tick(0.6); Combat.Tick(0.8);
-            Assert.That(Combat.TryAttack(enemy, 1, false, 0.8, false), Is.True);
-            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
+            Combat.Tick(0.5);
+            Assert.That(Combat.IsDescending, Is.True);
+            Assert.That(Combat.AttackBounds.max.y, Is.LessThanOrEqualTo(player.GetComponent<Collider2D>().bounds.min.y + 0.01f),
+                "The descending hitbox covers the column below the player.");
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
+            Combat.LandSlam(new Vector2(0f, 60.5f), 0.51); Combat.Tick(0.6); Combat.Tick(0.8);
+            PlacePlayer(new Vector2(-1.6f, 61.32f));
+            Assert.That(Combat.TryAttack(null, 1, false, 0.8, false), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air), "Beside a target an airborne attack is a basic swing.");
             Assert.That(Combat.Strike, Is.EqualTo(2), "Changing attack kind must not reset the combo.");
         }
 
-        [TestCase("landing")]
-        [TestCase("other_arrival")]
-        [TestCase("hit")]
-        [TestCase("reset")]
-        public void StaleAboveArrivalCannotTurnLaterAirAttacksIntoSlams(string cause)
+        [TestCase(true)]
+        [TestCase(false)]
+        public void LiftComesFromBelowATargetOnTheGroundOrInTheAir(bool grounded)
         {
-            Combat.ObserveArrival(true);
-            switch (cause)
-            {
-                case "landing": Combat.ObserveGrounded(true); break;
-                case "other_arrival": Combat.ObserveArrival(false); break;
-                case "hit": Combat.Interrupt(0); break;
-                default: Combat.Reset(); break;
-            }
-            Assert.That(Combat.TryAttack(enemy, 1, false, 1, false), Is.True);
-            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
+            FloatingTarget(new Vector2(0f, 63.6f), enemy);
+            PlacePlayer(new Vector2(0f, 61.32f));
+            Assert.That(Combat.TryAttack(null, 1, false, 0, grounded), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Lift));
+            PlacePlayer(new Vector2(0f, 65.5f)); Combat.Reset();
+            Assert.That(Combat.TryAttack(null, 1, false, 1, false), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam), "The same target slams from above.");
+            PlacePlayer(new Vector2(0f, 75f)); Combat.Reset();
+            Assert.That(Combat.TryAttack(null, 1, false, 2, false), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air), "Out of reach there is no position attack.");
         }
 
         [UnityTest] public IEnumerator MouseFacingChangesOnlyWhenAttackStartsWithoutGlitch()
@@ -378,8 +398,8 @@ namespace ActionPlatformer.Tests
             float deadline = Time.realtimeSinceStartup + 3f;
             while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(Combat.Facing, Is.EqualTo(1f), "Only execution reads the cursor X, regardless of Y.");
+            // Moving the cursor alone never turns the player; only an attack that starts reads it.
             input.Command.AimScreenPosition = camera.WorldToScreenPoint(new Vector3(-15f, 55f, 0f));
-            input.Command.AttackPressed = true; // Windup cannot start a second attack or alter idle facing.
             while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
             yield return null; yield return null;
             Assert.That(player.Facing, Is.EqualTo(1f), "Recovery does not turn toward a moved cursor.");
@@ -390,7 +410,7 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.Facing, Is.EqualTo(1f), "Center dead zone preserves the previous facing at execution.");
         }
 
-        [UnityTest] public IEnumerator MouseFacingCommitsPerSwingAndBufferedAttackAllowsMovement()
+        [UnityTest] public IEnumerator MouseFacingCommitsPerSwingAndGroundedSwingsHoldPosition()
         {
             RebuildPlayer(false, true);
             PlacePlayer(new Vector2(-10f, 61.32f));
@@ -407,22 +427,22 @@ namespace ActionPlatformer.Tests
                 Time.realtimeSinceStartup < deadline)
             {
                 Assert.That(player.Facing, Is.EqualTo(1f));
-                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.True);
                 yield return null;
             }
             Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
             input.Command.AttackPressed = true;
             while (player.AttackPresentation.Version == first && Time.realtimeSinceStartup < deadline)
             {
-                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.True);
                 yield return null;
             }
             Assert.That(player.AttackPresentation.Version, Is.EqualTo(first + 1));
             Assert.That(Combat.Facing, Is.EqualTo(-1f));
-            Assert.That(player.Motor.Position.x, Is.GreaterThan(origin));
+            Assert.That(player.Motor.Position.x, Is.EqualTo(origin).Within(0.01f), "Grounded swings hold the player in place.");
             while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
             {
-                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.True);
                 yield return null;
             }
             yield return Step; yield return null;
@@ -431,23 +451,24 @@ namespace ActionPlatformer.Tests
             Assert.That(player.Facing, Is.EqualTo(1f), "After recovery, held movement owns facing again.");
         }
 
-        [UnityTest] public IEnumerator BasicAttackAllowsMovementAndJumpWhileKeepingCommittedDirection()
+        [UnityTest] public IEnumerator GroundedBasicAttackHoldsPositionAndJumpUntilReady()
         {
             RebuildPlayer(false, true);
             PlacePlayer(new Vector2(-10f, 61.32f));
             input.Command = new PlayerCommand { Move = Vector2.right, AttackPressed = true, JumpPressed = true, JumpHeld = true };
             float deadline = Time.realtimeSinceStartup + 3f;
             while (!Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
-            Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
             input.Command = new PlayerCommand { Move = Vector2.left, JumpHeld = true };
             while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline)
             {
-                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.False);
+                Assert.That(Combat.BlocksMovement(player.Motor.IsGrounded), Is.True);
+                Assert.That(player.Motor.Velocity.x, Is.Zero.Within(0.001f));
+                Assert.That(player.Motor.IsGrounded, Is.True, "A jump pressed with the swing does not escape it.");
                 Assert.That(player.Facing, Is.EqualTo(1f));
                 yield return null;
             }
             Assert.That(Combat.IsAttacking, Is.False);
+            for (int i = 0; i < 3; i++) yield return Step;
             Assert.That(player.Motor.Velocity.x, Is.LessThan(0f));
         }
 
@@ -573,24 +594,26 @@ namespace ActionPlatformer.Tests
             Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0f));
         }
 
-        [UnityTest] public IEnumerator OtherGlitchDirectionsDoNotEnableAirSlam()
+        [UnityTest] public IEnumerator SideAndBelowGlitchesFollowUpWithAirSwingAndLiftNotSlam()
         {
             enemy.GetComponent<Rigidbody2D>().gravityScale = 0f;
             enemy.GetComponent<Rigidbody2D>().position = new Vector2(0f, 64f);
             yield return Step; yield return null;
-            foreach (Vector3 direction in new[] { Vector3.left, Vector3.right, Vector3.down })
+            var directions = new[] { Vector3.left, Vector3.right, Vector3.down };
+            var kinds = new[] { PlayerAttack.Air, PlayerAttack.Air, PlayerAttack.Lift };
+            for (int i = 0; i < directions.Length; i++)
             {
                 RebuildPlayer(true, true);
                 input.Command = new PlayerCommand { GlitchPressed = true, AttackPressed = true,
-                    AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + direction * 0.35f) };
+                    AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + directions[i] * 0.35f) };
                 yield return null; yield return Step; yield return null;
                 Assert.That(Glitch.SuccessVersion, Is.EqualTo(1));
-                Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
+                Assert.That(Combat.Attack, Is.EqualTo(kinds[i]), directions[i].ToString());
                 Assert.That(Combat.IsPreparingSlam, Is.False);
             }
         }
 
-        [UnityTest] public IEnumerator LandingAfterTopGlitchClearsSlamBeforeTheNextJump()
+        [UnityTest] public IEnumerator TopGlitchLeavesNoSlamStateForALaterJumpBesideTheTarget()
         {
             input.Command = new PlayerCommand { GlitchPressed = true,
                 AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.up * 0.35f) };
@@ -599,6 +622,9 @@ namespace ActionPlatformer.Tests
             float deadline = Time.realtimeSinceStartup + 2f;
             while (!player.Motor.IsGrounded && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(player.Motor.IsGrounded, Is.True);
+            // Only the position when the attack starts matters, so a jump beside the target swings.
+            PlacePlayer(new Vector2(enemy.transform.position.x - 1.8f, 61.32f));
+            yield return Step;
             input.Command = new PlayerCommand { JumpPressed = true, JumpHeld = true };
             yield return null; yield return Step; yield return null;
             Assert.That(player.Motor.Velocity.y, Is.GreaterThan(0));
@@ -607,39 +633,39 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
         }
 
-        [TestCase(-1f)]
-        [TestCase(1f)]
-        public void SlamFrontHitsFacingSideOnceAndShockwaveDoesNotRepeatThatHit(float facing)
+        [TestCase(false)]
+        [TestCase(true)]
+        public void SlamHitsTheColumnBelowOnceAndOnlyAFinisherAddsTheLandingShockwave(bool finisher)
         {
-            PlacePlayer(new Vector2(0f, 65f));
-            enemy.GetComponent<Rigidbody2D>().position = new Vector2(facing, 65f);
-            var behind = CreateEnemy(-facing);
-            behind.GetComponent<Rigidbody2D>().position = new Vector2(-facing, 65f);
+            if (finisher) FinishEveryAttack();
+            var beside = CreateEnemy(1.4f);
             enemy.gameObject.AddComponent<BoxCollider2D>(); Physics2D.SyncTransforms();
-            Combat.ObserveArrival(true);
-            Combat.TryAttack(enemy, facing, false, 0, false);
+            PlacePlayer(new Vector2(0f, 62.6f));
+            Combat.TryAttack(enemy, 1, false, 0, false);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
             Combat.Tick(0.49);
             Assert.That(enemy.DamageVersion, Is.Zero, "Hover has no attack hitbox.");
             Combat.Tick(0.5);
             Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
             Assert.That(Movement.Velocity.y, Is.EqualTo(-combatSettings.SlamKnockdownSpeed));
-            Assert.That(behind.CurrentHealth, Is.EqualTo(200), "The descending hitbox only faces forward.");
+            Assert.That(beside.CurrentHealth, Is.EqualTo(200), "The descending hitbox covers only the column below.");
             Combat.Tick(0.52);
-            Combat.LandSlam(new Vector2(0f, 64.5f), 0.54);
-            Assert.That(enemy.DamageVersion, Is.EqualTo(1), "Front and landing hits share one attack's hit history.");
-            Assert.That(behind.CurrentHealth, Is.EqualTo(190), "Landing still hits previously untouched nearby enemies.");
-            Assert.That(behind.GetComponent<GroundMovement2D>().IsForcedMoving, Is.False, "The shockwave retains its damage-only reaction.");
+            Combat.LandSlam(new Vector2(0f, 60.5f), 0.54);
+            Assert.That(enemy.DamageVersion, Is.EqualTo(1), "Descent and landing hits share one attack's hit history.");
+            Assert.That(Combat.GetShockwave(0.55).Visible, Is.EqualTo(finisher));
+            Assert.That(beside.CurrentHealth, Is.EqualTo(finisher ? 190 : 200), "Only a finishing slam's landing reaches beside it.");
+            Assert.That(beside.GetComponent<GroundMovement2D>().IsForcedMoving, Is.False, "The shockwave retains its damage-only reaction.");
         }
 
-        [Test] public void SlamFrontHitChecksTerrainAndTargetDamagePermission()
+        [Test] public void SlamHitChecksTerrainAndTargetDamagePermission()
         {
-            PlacePlayer(new Vector2(0f, 65f));
-            enemy.GetComponent<Rigidbody2D>().position = new Vector2(1f, 65f);
-            var wall = Block(new Vector2(0.65f, 65f), new Vector2(0.1f, 2f));
-            Combat.ObserveArrival(true);
-            Combat.TryAttack(enemy, 1, false, 0, false); Combat.Tick(0.5);
+            PlacePlayer(new Vector2(0f, 62.6f));
+            Combat.TryAttack(enemy, 1, false, 0, false);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
+            var shelf = Block(new Vector2(0f, 61.6f), new Vector2(2f, 0.06f));
+            Combat.Tick(0.5);
             Assert.That(enemy.DamageVersion, Is.Zero);
-            Object.DestroyImmediate(wall); enemy.SetDamageEnabled(false);
+            Object.DestroyImmediate(shelf); enemy.SetDamageEnabled(false);
             Combat.Tick(0.52); Assert.That(enemy.DamageVersion, Is.Zero);
             enemy.SetDamageEnabled(true); Combat.Tick(0.54);
             Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
@@ -652,21 +678,17 @@ namespace ActionPlatformer.Tests
         {
             Set(combatSettings, "enableHitReactions", reactionsEnabled);
             Set(enemyDefinition, "allowForcedMovement", allowForcedMovement);
-            RebuildPlayer(false, true); PlacePlayer(new Vector2(0f, 65f));
-            enemy.GetComponent<Rigidbody2D>().position = new Vector2(1f, 65f); Physics2D.SyncTransforms();
-            Combat.ObserveArrival(true);
+            RebuildPlayer(false, true); PlacePlayer(new Vector2(0f, 62.6f));
             Combat.TryAttack(enemy, 1, false, 0, false); Combat.Tick(0.5);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
             Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
             Assert.That(Movement.IsForcedMoving, Is.False);
         }
 
-        [UnityTest] public IEnumerator SlamFrontKnocksAirborneEnemyDownToFloorBeforePlayerLanding()
+        [UnityTest] public IEnumerator SlamKnocksAirborneEnemyBelowDownToFloorBeforePlayerLanding()
         {
-            var enemyBody = enemy.GetComponent<Rigidbody2D>();
-            enemyBody.gravityScale = 0f;
-            enemyBody.position = new Vector2(1f, 65f);
+            var enemyBody = FloatingTarget(new Vector2(0f, 63.6f), enemy).GetComponent<Rigidbody2D>();
             PlacePlayer(new Vector2(0f, 65.4f));
-            Combat.ObserveArrival(true);
             input.Command = new PlayerCommand { AttackPressed = true };
             float deadline = Time.realtimeSinceStartup + 3f;
             while (enemy.DamageVersion == 0 && Time.realtimeSinceStartup < deadline) yield return null;
@@ -675,8 +697,8 @@ namespace ActionPlatformer.Tests
             Assert.That(enemyBody.linearVelocity.y, Is.LessThan(-30f));
             yield return null;
             Assert.That(player.transform.Find("Visual/Attack area").GetComponent<SpriteRenderer>().enabled, Is.True);
-            while (!player.Shockwave.Visible && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(player.Shockwave.Visible, Is.True);
+            while ((Combat.IsDescending || !player.Motor.IsGrounded) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.Shockwave.Visible, Is.False, "A basic slam lands without a shockwave.");
             Assert.That(enemy.GetComponent<Collider2D>().bounds.min.y, Is.EqualTo(60.5f).Within(0.04f));
             Assert.That(enemy.DamageVersion, Is.EqualTo(1));
         }
@@ -684,7 +706,7 @@ namespace ActionPlatformer.Tests
         [Test] public void SlamHoverUsesItsOwnDurationAndSupportsImmediateDescent()
         {
             Assert.That(combatSettings.SlamHoverDuration, Is.EqualTo(0.5f));
-            Combat.ObserveArrival(true);
+            PlacePlayer(new Vector2(0f, 62.6f));
             Combat.TryAttack(null, 1, false, 0, false);
             Combat.Tick(0.499);
             Assert.That(Combat.IsPreparingSlam, Is.True);
@@ -695,15 +717,14 @@ namespace ActionPlatformer.Tests
             Combat.Tick(1.13);
             Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Active), "Ground attacks retain their 0.12-second windup.");
             Combat.Reset(); Set(combatSettings, "slamHoverDuration", 0f);
-            Combat.ObserveArrival(true);
             Combat.TryAttack(null, 1, false, 2, false); Combat.Tick(2);
             Assert.That(Combat.IsDescending, Is.True);
         }
 
         [UnityTest] public IEnumerator AirAttackHoversAtItsStartPositionThenDescendsAndHits()
         {
+            FloatingTarget(new Vector2(0f, 64.5f), enemy);
             player.Motor.Relocate(new Vector2(0f, 66f), new Vector2(3f, 8f));
-            Combat.ObserveArrival(true);
             input.Command = new PlayerCommand { AttackPressed = true, Move = Vector2.right, JumpHeld = true };
             float deadline = Time.realtimeSinceStartup + 3f;
             while (!Combat.IsPreparingSlam && Time.realtimeSinceStartup < deadline) yield return null;
@@ -726,17 +747,17 @@ namespace ActionPlatformer.Tests
             Assert.That(Time.timeAsDouble - observedStart, Is.InRange(0.45, 0.58));
             Assert.That(player.Motor.Velocity.y, Is.EqualTo(-combatSettings.SlamSpeed).Within(0.01f));
             input.Command = default;
-            while (!player.Shockwave.Visible && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(player.Shockwave.Visible, Is.True);
+            while ((Combat.IsDescending || !player.Motor.IsGrounded) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.Shockwave.Visible, Is.False, "A basic slam lands without a shockwave.");
             Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
         }
 
         [UnityTest] public IEnumerator HoverCancellationByHitDisableOrDeathLeavesNoFrozenState()
         {
+            FloatingTarget(new Vector2(0f, 66.4f), enemy);
             for (int attempt = 0; attempt < 3; attempt++)
             {
                 Combat.Reset(); player.enabled = true; PlacePlayer(new Vector2(0f, 68f));
-                Combat.ObserveArrival(true);
                 input.Command = new PlayerCommand { AttackPressed = true };
                 float deadline = Time.realtimeSinceStartup + 2f;
                 while (!Combat.IsPreparingSlam && Time.realtimeSinceStartup < deadline) yield return null;
@@ -775,15 +796,14 @@ namespace ActionPlatformer.Tests
             Assert.That(enemyBody.bounds.min.y, Is.EqualTo(60.5f).Within(0.04f));
         }
 
-        [UnityTest] public IEnumerator ArrivalSlamWithoutOptionalLinksDivesThenHitsBothSidesOnce()
+        [UnityTest] public IEnumerator FinishingSlamDivesThenShockwaveHitsBothSidesOnce()
         {
             Set(combatSettings, "shockwaveDuration", 0.6f);
-            Set(combatSettings, "enableCombo", false); Set(combatSettings, "enablePositionAttacks", false);
-            Set(combatSettings, "enableHitReactions", false); RebuildPlayer(false, true);
+            Set(combatSettings, "enableHitReactions", false); FinishEveryAttack();
             var left = CreateEnemy(-1.4f); var right = CreateEnemy(1.4f); var outside = CreateEnemy(4.5f);
+            var anchor = FloatingTarget(new Vector2(0f, 64.5f));
             enemy.gameObject.AddComponent<BoxCollider2D>();
-            PlacePlayer(new Vector2(0f, 66f));
-            Combat.ObserveArrival(true);
+            PlacePlayer(new Vector2(0f, 66.2f));
             input.Command = new PlayerCommand { AttackPressed = true, Move = Vector2.right, JumpHeld = true };
             yield return null; yield return Step; yield return null;
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
@@ -804,6 +824,7 @@ namespace ActionPlatformer.Tests
             Assert.That(descended, Is.True); Assert.That(player.Shockwave.Visible, Is.True);
             Assert.That(Vector2.Distance(outside.GetComponent<Collider2D>().ClosestPoint(player.Shockwave.Center),
                 player.Shockwave.Center), Is.GreaterThan(combatSettings.ShockwaveRadius));
+            Assert.That(anchor.CurrentHealth, Is.EqualTo(190), "The target below is hit on the way down.");
             Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
             Assert.That(left.CurrentHealth, Is.EqualTo(190)); Assert.That(right.CurrentHealth, Is.EqualTo(190));
             Assert.That(outside.CurrentHealth, Is.EqualTo(200));
@@ -829,12 +850,12 @@ namespace ActionPlatformer.Tests
             Block(new Vector2(0f, 63f), new Vector2(6f, 0.06f));
             var elevated = CreateEnemy(1.1f);
             elevated.GetComponent<Rigidbody2D>().position = new Vector2(1.1f, 63.55f);
-            PlacePlayer(new Vector2(0f, 66f)); Physics2D.SyncTransforms();
-            Combat.ObserveArrival(true);
+            PlacePlayer(new Vector2(1.1f, 65.4f)); Physics2D.SyncTransforms();
             input.Command = new PlayerCommand { AttackPressed = true };
             float deadline = Time.realtimeSinceStartup + 2f;
-            while (!player.Shockwave.Visible && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(player.Shockwave.Visible, Is.True);
+            // A fast slam can start and land within one frame; wait for the hover to end, then for the landing.
+            while ((!Combat.IsAttacking || Combat.IsPreparingSlam) && Time.realtimeSinceStartup < deadline) yield return null;
+            while ((Combat.IsDescending || !player.Motor.IsGrounded) && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(player.GetComponent<Collider2D>().bounds.min.y, Is.EqualTo(63.03f).Within(0.04f));
             Assert.That(elevated.CurrentHealth, Is.EqualTo(190));
             Assert.That(enemy.CurrentHealth, Is.EqualTo(200));
@@ -842,11 +863,12 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator ShockwaveDoesNotDamageThroughWalls()
         {
+            FinishEveryAttack();
             enemy.GetComponent<Rigidbody2D>().position = new Vector2(1.3f, 61.01f);
             Block(new Vector2(0.7f, 61.5f), new Vector2(0.1f, 2f));
+            FloatingTarget(new Vector2(0f, 63.3f));
             PlacePlayer(new Vector2(0f, 65f));
             input.Command = new PlayerCommand { AttackPressed = true };
-            Combat.ObserveArrival(true);
             float deadline = Time.realtimeSinceStartup + 2f;
             while (!player.Shockwave.Visible && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(player.Shockwave.Visible, Is.True);
@@ -864,35 +886,38 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Windup), "Reading visual facts cannot advance combat.");
             Combat.Tick(10.13);
             Assert.That(Combat.GetPresentation(10.16).PhaseProgress, Is.EqualTo(.5f).Within(.001f));
-            Combat.Tick(10.2); Combat.CancelRecovery();
-            Assert.That(Combat.TryAttack(null, 1f, false, 10.21), Is.True);
-            var second = Combat.GetPresentation(10.21);
+            Combat.Tick(10.2); Combat.Tick(10.39);
+            Assert.That(Combat.TryAttack(null, 1f, false, 10.39), Is.True);
+            var second = Combat.GetPresentation(10.39);
             Assert.That(second.Version, Is.EqualTo(first.Version + 1));
-            Assert.That(second.Strike, Is.EqualTo(2)); Assert.That(second.Airborne, Is.False);
+            Assert.That(second.Strike, Is.EqualTo(2), "Every executed swing advances the combo, even a miss.");
+            Assert.That(second.Airborne, Is.False);
             Combat.Interrupt(10.22);
             Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
         }
 
-        [Test] public void OrdinaryAirAttackUsesAirStateRegardlessOfRelativePositionOrEmergenceRequest()
+        [Test] public void AirAttackKindFollowsRelativePositionAndIgnoresAnAirborneEmergenceRequest()
         {
-            foreach (Vector2 position in new[] { Vector2.left, Vector2.right, Vector2.up, Vector2.down })
+            var positions = new[] { Vector2.left, Vector2.right, Vector2.up, Vector2.down };
+            var kinds = new[] { PlayerAttack.Air, PlayerAttack.Air, PlayerAttack.Slam, PlayerAttack.Lift };
+            for (int i = 0; i < positions.Length; i++)
             {
                 Combat.Reset();
-                PlacePlayer((Vector2)enemy.transform.position + position * 1.5f);
+                PlacePlayer((Vector2)enemy.transform.position + positions[i] * 1.5f);
                 Assert.That(Combat.TryAttack(enemy, 1, false, 0, false), Is.True);
-                Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
+                Assert.That(Combat.Attack, Is.EqualTo(kinds[i]), positions[i].ToString());
             }
-            Combat.Reset();
+            Combat.Reset(); PlacePlayer(new Vector2(0f, 75f));
             Combat.TryAttack(null, 1, true, 0, false);
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
         }
 
         [UnityTest] public IEnumerator DamageAndDisableCancelDescentWithoutLeavingMotionOrDamage()
         {
+            var anchor = FloatingTarget(new Vector2(0f, 67.6f));
             for (int attempt = 0; attempt < 2; attempt++)
             {
-                Combat.Reset(); PlacePlayer(new Vector2(0f, 70f));
-                Combat.ObserveArrival(true);
+                Combat.Reset(); PlacePlayer(new Vector2(0f, 70f)); FloatingTarget(new Vector2(0f, 67.6f), anchor);
                 input.Command = new PlayerCommand { AttackPressed = true };
                 float deadline = Time.realtimeSinceStartup + 2f;
                 while (!Combat.IsDescending && Time.realtimeSinceStartup < deadline) yield return null;
@@ -917,8 +942,8 @@ namespace ActionPlatformer.Tests
         [UnityTest] public IEnumerator MissingFloorTimesOutAndRestoresNormalMovementWithoutShockwave()
         {
             Set(combatSettings, "slamTimeout", 0.15f);
+            FloatingTarget(new Vector2(30f, 64.5f));
             PlacePlayer(new Vector2(30f, 66f));
-            Combat.ObserveArrival(true);
             input.Command = new PlayerCommand { AttackPressed = true, Move = Vector2.right };
             yield return null; yield return Step; yield return null;
             float deadline = Time.realtimeSinceStartup + 2f;
@@ -1426,10 +1451,74 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.CanReposition(0.2), Is.True);
             var other = CreateEnemy(3f); Physics2D.SyncTransforms();
             Assert.That(Glitch.TryExecute(new GlitchRequest { Target = other, Direction = GlitchDirection.Left }, 0.2), Is.True);
-            Combat.CancelRecovery(); Physics2D.SyncTransforms();
-            Assert.That(Combat.TryAttack(Glitch.ArrivalTarget, 1f, false, 0.21), Is.True);
-            Assert.That(Combat.Strike, Is.EqualTo(2)); Combat.Tick(0.34);
+            Physics2D.SyncTransforms();
+            Assert.That(Combat.TryAttack(Glitch.ArrivalTarget, 1f, false, 0.21), Is.False, "Repositioning keeps the recovery.");
+            Combat.Tick(0.39);
+            Assert.That(Combat.TryAttack(Glitch.ArrivalTarget, 1f, false, 0.39), Is.True);
+            Assert.That(Combat.Strike, Is.EqualTo(2)); Combat.Tick(0.52);
             Assert.That(other.CurrentHealth, Is.EqualTo(190));
+        }
+
+        [Test] public void LiftRaisesThePlayerOnlyWithATargetItHitsAndStopsItsAttack()
+        {
+            FloatingTarget(new Vector2(0f, 63.6f), enemy);
+            PlacePlayer(new Vector2(0f, 61.32f));
+            Assert.That(Combat.TryAttack(null, 1, false, 0), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Lift));
+            enemy.SetDamageEnabled(false);
+            Assert.That(Combat.Tick(0.13), Is.False, "A lift that hits nothing does not raise the player.");
+            Combat.Tick(0.2); Combat.Tick(0.39);
+            enemy.SetDamageEnabled(true);
+            uint interrupts = enemy.InterruptVersion;
+            Assert.That(Combat.TryAttack(null, 1, false, 0.39), Is.True);
+            Assert.That(Combat.Tick(0.52), Is.True, "A landed lift raises the player.");
+            Assert.That(Combat.LaunchSpeed, Is.EqualTo(combatSettings.LaunchSpeed));
+            Assert.That(Movement.Velocity.y, Is.EqualTo(combatSettings.LaunchSpeed).Within(0.01f), "Player and target share the launch speed.");
+            Assert.That(enemy.InterruptVersion, Is.EqualTo(interrupts + 1), "A lift stops the target's attack in progress.");
+        }
+
+        [Test] public void BasicSwingsLeaveTheTargetsAttackRunning()
+        {
+            PlacePlayer(new Vector2(-0.975f, 61.32f));
+            uint interrupts = enemy.InterruptVersion;
+            Combat.TryAttack(enemy, 1f, false, 0); Combat.Tick(0.13);
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
+            Assert.That(enemy.InterruptVersion, Is.EqualTo(interrupts));
+        }
+
+        [Test] public void FinisherStrengthensWhicheverKindCarriesIt()
+        {
+            PlacePlayer(new Vector2(-0.975f, 61.32f));
+            for (int i = 0; i < 2; i++)
+            {
+                double now = i * 0.5;
+                Assert.That(Combat.TryAttack(enemy, 1f, false, now), Is.True);
+                Combat.Tick(now + 0.13); Combat.Tick(now + 0.2); Combat.Tick(now + 0.4);
+            }
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(180));
+            Assert.That(Combat.ComboCount(1.0), Is.EqualTo(2));
+            FloatingTarget(new Vector2(-0.975f, 63.6f), enemy);
+            Assert.That(Combat.TryAttack(null, 1f, false, 1.0), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Lift));
+            Assert.That(Combat.GetPresentation(1.0).Finisher, Is.True);
+            Assert.That(Combat.Tick(1.13), Is.True);
+            float strong = combatSettings.LaunchSpeed * combatSettings.FinisherLaunchMultiplier;
+            Assert.That(Combat.LaunchSpeed, Is.EqualTo(strong).Within(0.01f));
+            Assert.That(Movement.Velocity.y, Is.EqualTo(strong).Within(0.01f));
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(180 - Mathf.RoundToInt(10 * combatSettings.FinisherDamageMultiplier)));
+            Assert.That(Combat.ComboCount(1.2), Is.Zero, "The landed finisher completes the combo.");
+        }
+
+        [Test] public void ComboExpiresButRepositioningKeepsALiveChainGoing()
+        {
+            PlacePlayer(new Vector2(-0.975f, 61.32f));
+            Combat.TryAttack(enemy, 1f, false, 0); Combat.Tick(0.13); Combat.Tick(0.2); Combat.Tick(0.4);
+            Assert.That(Combat.ComboCount(0.5), Is.EqualTo(1));
+            Assert.That(Combat.ComboCount(1.21), Is.Zero, "The chain expires one combo window after recovery starts.");
+            Combat.ExtendCombo(1.0);
+            Assert.That(Combat.ComboCount(1.9), Is.EqualTo(1), "A glitch keeps a live chain going.");
+            Combat.ExtendCombo(3.0);
+            Assert.That(Combat.ComboCount(3.0), Is.Zero, "An expired chain is not revived.");
         }
 
         [Test] public void MissConsumesStrikeAndInterruptedWindupDoesNotDamage()
@@ -1471,8 +1560,8 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.Tick(0.13), Is.True);
             Assert.That(enemy.CurrentHealth, Is.EqualTo(190));
             Assert.That(Movement.Velocity.y, Is.EqualTo(combatSettings.LaunchSpeed).Within(0.01f));
-            Combat.Tick(0.2); Combat.CancelRecovery();
-            Assert.That(Combat.TryAttack(null, 1f, false, 0.21), Is.True);
+            Combat.Tick(0.2); Combat.Tick(0.39);
+            Assert.That(Combat.TryAttack(null, 1f, false, 0.39), Is.True);
             Assert.That(Combat.Strike, Is.EqualTo(2));
         }
 
@@ -1590,20 +1679,21 @@ namespace ActionPlatformer.Tests
             Assert.That(player.gameObject.activeSelf, Is.False);
         }
 
-        [Test] public void AttackBufferAcceptsOnlyLateRecoveryAndConsumesOnceAcrossTargets()
+        [Test] public void AttackBufferKeepsOnePressFromAnyAttackPhaseAndConsumesOnceAcrossTargets()
         {
+            PlacePlayer(new Vector2(-0.975f, 61.32f));
+            Assert.That(Combat.BufferAttack(0), Is.False, "Nothing follows before an attack starts.");
             Combat.TryAttack(enemy, 1f, false, 0);
-            Assert.That(Combat.BufferAttack(.01), Is.False);
+            Assert.That(Combat.BufferAttack(.01), Is.True, "A press during the windup is kept.");
             Combat.Tick(.13);
-            Assert.That(Combat.BufferAttack(.14), Is.False);
+            Assert.That(Combat.BufferAttack(.14), Is.True);
             Combat.Tick(.2);
-            Assert.That(Combat.BufferAttack(.21), Is.False);
-            Assert.That(Combat.BufferAttack(.29), Is.True);
+            Assert.That(Combat.BufferAttack(.21), Is.True);
             Assert.That(Combat.BufferAttack(.31), Is.True);
             Assert.That(Combat.ConsumeBufferedAttack(.37), Is.False);
             Combat.Tick(.39);
             Assert.That(Combat.ConsumeBufferedAttack(.39), Is.True);
-            Assert.That(Combat.ConsumeBufferedAttack(.39), Is.False);
+            Assert.That(Combat.ConsumeBufferedAttack(.39), Is.False, "Repeated presses keep a single follow-up.");
             var second = CreateEnemy(2f);
             Assert.That(Combat.TryAttack(second,1f,false,.39), Is.True);
             Assert.That(Combat.Strike, Is.EqualTo(2));
@@ -1611,14 +1701,12 @@ namespace ActionPlatformer.Tests
 
         [TestCase("hit")]
         [TestCase("reset")]
-        [TestCase("glitch_cancel")]
         public void AttackBufferClearsOnInterruptionAndCanBeDisabled(string reason)
         {
             Combat.TryAttack(enemy,1f,false,0); Combat.Tick(.13); Combat.Tick(.2);
             Assert.That(Combat.BufferAttack(.3), Is.True);
             if(reason=="hit") Combat.Interrupt(.31);
-            else if(reason=="reset") Combat.Reset();
-            else Combat.CancelRecovery();
+            else Combat.Reset();
             Assert.That(Combat.HasBufferedAttack, Is.False);
             Assert.That(Combat.ConsumeBufferedAttack(1), Is.False);
             Combat.Reset(); Set(combatSettings,"attackBufferTime",0f);
@@ -1663,17 +1751,20 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.ConsumeImpact(out var impact), Is.True);
             Assert.That(impact.Direction, Is.EqualTo(Vector2.up));
             Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Heavy));
-            Combat.Reset(); PlacePlayer(new Vector2(0f,65f)); Combat.ObserveArrival(true);
-            Combat.TryAttack(enemy,1f,false,3,false); Combat.Tick(3.5);
-            Assert.That(Combat.ConsumeImpact(out _), Is.False);
-            Combat.LandSlam(new Vector2(0f,60.5f),3.51);
+            Combat.Reset(); PlacePlayer(new Vector2(0f,62.6f));
+            Combat.TryAttack(enemy,1f,false,3,false);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
+            Combat.Tick(3.49);
+            Assert.That(Combat.ConsumeImpact(out _), Is.False, "Hover deals no damage.");
+            Combat.Tick(3.5);
             Assert.That(Combat.ConsumeImpact(out impact), Is.True);
             Assert.That(impact.Direction, Is.EqualTo(Vector2.down));
             Assert.That(impact.Strength, Is.EqualTo(PlayerImpactStrength.Slam));
         }
 
-        [UnityTest] public IEnumerator LateRecoveryInputDuringHitStopQueuesOneAttackWhileMoving()
+        [UnityTest] public IEnumerator LateRecoveryInputDuringHitStopQueuesOneAttackAndHoldsPosition()
         {
+            PlacePlayer(new Vector2(-0.975f, 61.32f));
             input.Command=new PlayerCommand { AttackPressed=true, Move=Vector2.right };
             float deadline=Time.realtimeSinceStartup+3f;
             while ((Combat.Phase!=PlayerAttackPhase.Recovery || player.AttackPresentation.PhaseProgress<.65f) &&
@@ -1690,7 +1781,7 @@ namespace ActionPlatformer.Tests
             while (player.AttackPresentation.Version==version && Time.realtimeSinceStartup<deadline) yield return null;
             Assert.That(player.AttackPresentation.Version, Is.EqualTo(version+1));
             Assert.That(Combat.Strike, Is.EqualTo(2));
-            Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
+            Assert.That(player.Motor.Velocity.x, Is.Zero.Within(0.001f), "A grounded follow-up also holds position.");
             Assert.That(Combat.HasBufferedAttack, Is.False);
             while(Combat.IsAttacking && Time.realtimeSinceStartup<deadline) yield return null;
             yield return new WaitForSeconds(.15f);
@@ -1817,11 +1908,13 @@ namespace ActionPlatformer.Tests
             var enemyBody = enemy.GetComponent<Rigidbody2D>();
             enemyBody.gravityScale = 0;
             enemyBody.position = new Vector2(0, 64); Physics2D.SyncTransforms();
-            var groundedTarget = CreateEnemy(1.3f);
+            var groundedTarget = CreateEnemy(1.6f); // Beside the descent column, within a finishing shockwave's radius.
             // Settle the fixture's interpolated Transform before converting its aim point to screen coordinates.
             yield return Step; yield return null;
             if (recovery)
             {
+                // The follow-up waits out the recovery while falling; keep the authored short recovery.
+                Set(combatSettings, "recovery", .08f);
                 Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble), Is.True);
                 float readyDeadline = Time.realtimeSinceStartup + 2f;
                 while (Combat.Phase != PlayerAttackPhase.Recovery && Time.realtimeSinceStartup < readyDeadline) yield return null;
@@ -1840,14 +1933,17 @@ namespace ActionPlatformer.Tests
                 input.Command = new PlayerCommand { AttackPressed = true };
                 yield return null; yield return Step; yield return null;
             }
+            float deadline = Time.realtimeSinceStartup + 2f;
+            // Repositioning keeps the recovery, so a press made during it waits as the single follow-up.
+            while (recovery && Combat.Attack != PlayerAttack.Slam && Time.realtimeSinceStartup < deadline) yield return null;
             TestContext.WriteLine($"simultaneous={simultaneous}, recovery={recovery}, phase={Combat.Phase}, attack={Combat.Attack}, player={player.Motor.Position}, enemy={enemyBody.position}");
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Slam));
-            Assert.That(Combat.Strike, Is.EqualTo(recovery ? 2 : 1));
-            float deadline = Time.realtimeSinceStartup + 2f;
-            while (!player.Shockwave.Visible && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(player.Shockwave.Visible, Is.True);
-            Assert.That(groundedTarget.CurrentHealth, Is.EqualTo(190));
-            Assert.That(enemy.CurrentHealth, Is.EqualTo(190), "The descending forward hit also catches the target below the player.");
+            Assert.That(Combat.Strike, Is.EqualTo(recovery ? 2 : 1), "The missed first swing still counted.");
+            while ((!Combat.IsAttacking || Combat.IsPreparingSlam) && Time.realtimeSinceStartup < deadline) yield return null;
+            while ((Combat.IsDescending || !player.Motor.IsGrounded) && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.Shockwave.Visible, Is.False, "A basic slam lands without a shockwave.");
+            Assert.That(groundedTarget.CurrentHealth, Is.EqualTo(200), "Only a finishing slam's landing reaches beside it.");
+            Assert.That(enemy.CurrentHealth, Is.EqualTo(190), "The descending hit catches the target below the player.");
             Assert.That(enemy.DamageVersion, Is.EqualTo(1));
             Assert.That(player.GetComponent<Collider2D>().bounds.min.y, Is.EqualTo(60.5f).Within(0.04f));
         }

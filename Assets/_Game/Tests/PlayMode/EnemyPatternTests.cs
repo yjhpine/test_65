@@ -86,6 +86,19 @@ namespace ActionPlatformer.Tests
             Assert.That(Phase, Is.EqualTo(EnemyPhase.Recovery));
         }
 
+        [UnityTest] public IEnumerator InterruptingHitStopsPreparationButOrdinaryHitsDoNot()
+        {
+            yield return Spawn("ShieldSoldier", Vector2.left);
+            Tick(); Tick(.3f);
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing));
+            Health.ApplyDamage(1, Combat.Center + Vector2.right);
+            Tick();
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing), "A basic hit keeps the preparation.");
+            Health.ApplyDamage(1, Combat.Center + Vector2.right, true, true);
+            Tick();
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Recovery), "A launch or slam stops the attack in progress.");
+        }
+
         [UnityTest] public IEnumerator ShieldBlockAndHitReactWithoutResettingFsmAndClearOnReuse()
         {
             yield return Spawn("ShieldSoldier", Vector2.left);

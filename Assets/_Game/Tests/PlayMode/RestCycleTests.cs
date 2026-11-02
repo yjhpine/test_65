@@ -250,8 +250,10 @@ namespace ActionPlatformer.Tests
         }
         [UnityTest] public IEnumerator AirborneSlamClearRestoresNormalMovementAndJump()
         {
-            player.Motor.Teleport(new Vector2(10, 10)); player.Combat.ObserveArrival(true);
+            var below = flow.ActiveEnemies.First().GetComponent<Collider2D>().bounds;
+            player.Motor.Teleport(new Vector2(below.center.x, below.max.y + 1f)); Physics2D.SyncTransforms();
             Assert.That(player.Combat.TryAttack(null, 1, false, Time.timeAsDouble, false), Is.True);
+            Assert.That(player.Combat.Attack, Is.EqualTo(PlayerAttack.Slam), "Above an enemy an air attack slams.");
             KillRoom(); yield return RequestTransfer(); yield return Until(EncounterPhase.Rest); AssertRestored();
             driver.Command = new PlayerCommand { JumpPressed = true, JumpHeld = true }; yield return null;
             yield return new WaitForFixedUpdate(); driver.Command = new PlayerCommand { JumpHeld = true };

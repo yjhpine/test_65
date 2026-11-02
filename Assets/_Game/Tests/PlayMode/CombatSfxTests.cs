@@ -22,6 +22,7 @@ namespace ActionPlatformer.Tests
             public PlayerAttackPhase AttackPhase => Phase;
             public PlayerReactionPresentation ReactionPresentation => default;
             public GlitchPreview GlitchPreview => default;
+            public float GlitchMaxDistance => 0f;
             public bool IsUnderground => false;
             public bool CanEmerge => false;
             public Vector2 UndergroundPosition => default;

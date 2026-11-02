@@ -11,7 +11,9 @@ namespace ActionPlatformer.Flow
     {
         [SerializeField] private UIDocument document;
         private VisualElement completion;
-        private Label goalHint, glitchHint;
+        private Label goalHint, glitchHint, comboReady;
+        private VisualElement comboBar;
+        private VisualElement[] comboPips = Array.Empty<VisualElement>();
         private Button restart;
         private bool transferHintVisible;
         public event Action RestartRequested;
@@ -20,6 +22,9 @@ namespace ActionPlatformer.Flow
         public bool IsTransferHintVisible => transferHintVisible;
         public bool IsGlitchHintVisible => glitchHint != null && glitchHint.style.display == DisplayStyle.Flex;
         public string GlitchHintText => glitchHint?.text;
+        public bool IsComboVisible => comboBar != null && comboBar.style.display == DisplayStyle.Flex;
+        public int ComboPipsLit { get; private set; }
+        public bool IsStrongNextVisible => comboReady != null && comboReady.style.display == DisplayStyle.Flex;
 
         private void OnEnable()
         {
@@ -51,6 +56,27 @@ namespace ActionPlatformer.Flow
             glitchHint.style.backgroundColor = new Color(0.12f, 0.06f, 0.08f, 0.85f);
             glitchHint.style.display = DisplayStyle.None;
             root.Add(glitchHint);
+
+            comboBar = new VisualElement { name = "combo" };
+            comboBar.pickingMode = PickingMode.Ignore;
+            comboBar.style.position = Position.Absolute;
+            comboBar.style.left = 32;
+            comboBar.style.bottom = 32;
+            comboBar.style.flexDirection = FlexDirection.Row;
+            comboBar.style.alignItems = Align.Center;
+            var comboTitle = new Label("COMBO");
+            comboTitle.style.fontSize = 16;
+            comboTitle.style.color = Color.white;
+            comboTitle.style.marginRight = 6;
+            comboBar.Add(comboTitle);
+            comboReady = new Label("STRONG NEXT");
+            comboReady.style.fontSize = 16;
+            comboReady.style.color = ComboReadyColor;
+            comboReady.style.marginLeft = 8;
+            comboBar.Add(comboReady);
+            comboBar.style.display = DisplayStyle.None;
+            root.Add(comboBar);
+            comboPips = Array.Empty<VisualElement>();
 
             completion = new VisualElement { name = "stage-complete" };
             completion.style.position = Position.Absolute;
@@ -115,6 +141,44 @@ namespace ActionPlatformer.Flow
             glitchHint.style.left = Mathf.Clamp(point.x - size.x * 0.5f, 16f, width - 16f - size.x);
             glitchHint.style.top = Mathf.Clamp(point.y - size.y, 16f, height - 16f - size.y);
             glitchHint.style.display = DisplayStyle.Flex;
+        }
+
+        private static readonly Color ComboLitColor = new Color(0.47f, 0.85f, 0.87f);
+        private static readonly Color ComboReadyColor = new Color(1f, 0.72f, 0.25f);
+        private static readonly Color ComboEmptyColor = new Color(1f, 1f, 1f, 0.18f);
+
+        // One pip per strike of the shared combo; the last pip and label light up when the next strike is the strong one.
+        public void ShowCombo(int count, int length)
+        {
+            if (comboBar == null) return;
+            if (length <= 1)
+            {
+                comboBar.style.display = DisplayStyle.None;
+                ComboPipsLit = 0;
+                return;
+            }
+            if (comboPips.Length != length)
+            {
+                foreach (var pip in comboPips) pip.RemoveFromHierarchy();
+                comboPips = new VisualElement[length];
+                for (int i = 0; i < length; i++)
+                {
+                    var pip = new VisualElement { pickingMode = PickingMode.Ignore };
+                    pip.style.width = pip.style.height = 14;
+                    pip.style.marginLeft = pip.style.marginRight = 3;
+                    pip.style.borderTopLeftRadius = pip.style.borderTopRightRadius =
+                        pip.style.borderBottomLeftRadius = pip.style.borderBottomRightRadius = 2;
+                    comboBar.Insert(1 + i, pip);
+                    comboPips[i] = pip;
+                }
+            }
+            count = Mathf.Clamp(count, 0, length - 1);
+            bool strongNext = count == length - 1;
+            for (int i = 0; i < length; i++)
+                comboPips[i].style.backgroundColor = i < count ? ComboLitColor : strongNext ? ComboReadyColor : ComboEmptyColor;
+            comboReady.style.display = strongNext ? DisplayStyle.Flex : DisplayStyle.None;
+            ComboPipsLit = count;
+            comboBar.style.display = DisplayStyle.Flex;
         }
 
         private static string HintText(GlitchBlockReason reason)

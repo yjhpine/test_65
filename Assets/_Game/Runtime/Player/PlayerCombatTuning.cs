@@ -27,6 +27,11 @@ namespace ActionPlatformer.Player
         [Tooltip("Horizontal speed lost per second during knockback. Higher values stop sooner.")]
         [SerializeField, Min(0.01f)] private float knockbackDeceleration = 18f;
         [SerializeField, Min(0f)] private float launchSpeed = 10f;
+        [Header("Combo finisher (strong third hit)")]
+        [Tooltip("Damage multiplier of the combo's finishing strike, whatever attack kind it is.")]
+        [SerializeField, Min(1f)] private float finisherDamageMultiplier = 2f;
+        [Tooltip("Launch speed multiplier of a finishing lift, applied to both the player and its target.")]
+        [SerializeField, Min(1f)] private float finisherLaunchMultiplier = 1.5f;
         [Header("Air slam")]
         [SerializeField, Min(0f)] private float slamHoverDuration = 0.5f;
         [SerializeField, Min(0.01f)] private float slamSpeed = 28f;
@@ -81,6 +86,8 @@ namespace ActionPlatformer.Player
         public float KnockbackSpeed => knockbackSpeed;
         public float KnockbackDeceleration => knockbackDeceleration;
         public float LaunchSpeed => launchSpeed;
+        public float FinisherDamageMultiplier => finisherDamageMultiplier;
+        public float FinisherLaunchMultiplier => finisherLaunchMultiplier;
         public float SlamSpeed => slamSpeed;
         public float SlamKnockdownSpeed => slamKnockdownSpeed;
         public float SlamHoverDuration => slamHoverDuration;
@@ -115,7 +122,8 @@ namespace ActionPlatformer.Player
         public bool TryValidate() => (!enableCombo || comboLength >= 1) && NonNegative(windup) && Positive(activeDuration) && NonNegative(recovery) &&
             Positive(comboWindow) && Positive(reach) && Positive(width) && NonNegative(lightKnockbackSpeed) && Positive(lightKnockbackDeceleration) &&
             NonNegative(knockbackSpeed) && Positive(knockbackDeceleration) &&
-            NonNegative(launchSpeed) && NonNegative(slamHoverDuration) && Positive(slamSpeed) && Positive(slamKnockdownSpeed) && Positive(shockwaveRadius) &&
+            NonNegative(launchSpeed) && Positive(finisherDamageMultiplier) && finisherDamageMultiplier >= 1f &&
+            Positive(finisherLaunchMultiplier) && finisherLaunchMultiplier >= 1f && NonNegative(slamHoverDuration) && Positive(slamSpeed) && Positive(slamKnockdownSpeed) && Positive(shockwaveRadius) &&
             Positive(shockwaveDuration) && Positive(slamTimeout) && NonNegative(emergenceSpeed) &&
             Positive(forcedDuration) && NonNegative(hitStun) && NonNegative(attackBufferTime) &&
             NonNegative(hitStopDuration) && NonNegative(heavyHitStopDuration) && NonNegative(slamHitStopDuration) &&

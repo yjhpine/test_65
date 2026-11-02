@@ -89,11 +89,12 @@ namespace ActionPlatformer.Units.Fsm
             public bool Vertical { get; set; }
             public float Progress => Duration <= 0 ? 1f : Mathf.Clamp01(Elapsed / Duration);
             public bool First = true;
-            public uint ObservedReposition;
+            public uint ObservedReposition, ObservedInterrupt;
             public Vector2 PreviousCenter;
             public Context(Unit owner, EnemyCombat2D combat, UnitHealth health, GroundMovement2D ground, FlyingMovement2D flying, EnemyFsmDefinition settings)
             {
                 Owner = owner; Combat = combat; Health = health; Ground = ground; Flying = flying; S = settings; Facing = combat.InitialFacing;
+                ObservedInterrupt = health.InterruptVersion;
                 Idle = new State(this, EnemyPhase.Idle); Turn = new State(this, EnemyPhase.Turning); Prepare = new State(this, EnemyPhase.Preparing);
                 Locked = new State(this, EnemyPhase.Locked); Dash = new State(this, EnemyPhase.Dash); Recover = new State(this, EnemyPhase.Recovery); Death = new State(this, EnemyPhase.Death);
                 combat.Bind(settings, this); flying?.Configure(S.cruiseRadius, S.cruiseAmplitude, S.horizontalSpeed, S.verticalSpeed);
@@ -142,6 +143,13 @@ namespace ActionPlatformer.Units.Fsm
             public IFsmState Tick(float deltaTime)
             {
                 if (!c.Health.IsAlive && phase != EnemyPhase.Death) return c.Death;
+                // Ordinary hits never reset preparation; launches and slams stop an attack in progress.
+                if (c.Health.InterruptVersion != c.ObservedInterrupt)
+                {
+                    c.ObservedInterrupt = c.Health.InterruptVersion;
+                    if (phase == EnemyPhase.Preparing || phase == EnemyPhase.Locked || phase == EnemyPhase.Dash)
+                    { c.Combat.ClearAttack(); return c.Recover; }
+                }
                 c.Elapsed += deltaTime;
                 switch (phase)
                 {
