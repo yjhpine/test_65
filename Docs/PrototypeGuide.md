@@ -360,7 +360,7 @@ Cinemachine 3.1.7 + Timeline 1.8.13을 사용한다. CoreLoopStage의 IntroCutsc
 3. `연결 검사` 후 `Timeline 열기`를 누른다. 카메라 트랙의 Shot Camera를 선택하고 Shot Rig의 Animation Track에서 위치와 `Lens.OrthographicSize` 키를 편집한다. 직교 크기가 작을수록 확대된다. 카메라 Shot 겹침은 블렌딩 구간이다.
 4. DialogueClip에서 Speaker, Portrait(선택), Text, Characters Per Second(기본 30), Progress를 편집한다. Confirm은 읽을 때까지 대기하고 Timed는 클립 길이만큼 표시한다. 확인 대기 클립의 시간은 실제 읽는 시간을 의미하지 않는다.
 5. FadeClip에서 색과 From/To 불투명도를 정한다. 페이드는 클립 밖에서는 투명해진다. 지속 암전은 해당 구간을 클립으로 덮는다.
-6. Entry Area의 BoxCollider2D 위치·크기를 편집한다. World Mode=Pause는 세계 정지, Continue는 조작만 잠그며 적과 중력이 계속 작동한다. Continue에서도 피해를 받으면 즉시 중단한다.
+6. Entry Area의 BoxCollider2D 위치·크기를 편집한다. World Mode=Pause는 세계 정지, Continue는 조작만 잠그며 적과 중력이 계속 작동한다. Continue에서도 피해를 받으면 즉시 중단한다. Pause 연출을 공중에서 시작하면 조작을 잠근 채 착지를 기다린 뒤 세계를 정지한다(상태 Landing). 착지 대기 중 피격은 기존과 같이 중단한다. Max Landing Wait(기본 1.5초, 0은 대기 없음)가 지나도 착지하지 못하면 그 자리에서 시작한다.
 7. Play Mode에서 구역에 들어가거나 Inspector의 재생 버튼으로 확인한다. 기본 확인은 Enter/Space/좌클릭/게임패드 South, 스킵은 Esc/Start다. 입력 변경은 CutsceneControls.inputactions에서 한다.
 
 ### 동작과 제약

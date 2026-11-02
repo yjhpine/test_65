@@ -160,6 +160,48 @@ namespace ActionPlatformer.Tests
             yield return new WaitForSecondsRealtime(.6f);
             AssertRestored();
         }
+        [UnityTest] public IEnumerator AirbornePauseStartLandsBeforeFreezingWorld()
+        {
+            trigger.enabled = false;
+            player.Motor.Teleport(new Vector2(8, 4)); Physics2D.SyncTransforms();
+            Assert.That(runner.TryPlay(), Is.True);
+            Assert.That(runner.State, Is.EqualTo(CutsceneState.Landing));
+            Assert.That(player.IsControlLocked, Is.True);
+            Assert.That(player.GetComponent<PlayerInput>().inputIsActive, Is.False);
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.False);
+            yield return Until(() => Time.timeScale == 0);
+            Assert.That(player.Motor.IsGrounded, Is.True);
+            Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.True);
+            yield return Until(() => runner.State == CutsceneState.Waiting);
+            runner.Skip(); yield return Until(() => !runner.IsRunning);
+            Assert.That(reason, Is.EqualTo(CutsceneEndReason.Skipped)); AssertRestored();
+        }
+        [UnityTest] public IEnumerator DamageWhileLandingCancelsWithoutTakingCamera()
+        {
+            trigger.enabled = false;
+            player.Motor.Teleport(new Vector2(8, 6)); Physics2D.SyncTransforms();
+            Assert.That(runner.TryPlay(), Is.True);
+            yield return null;
+            Assert.That(player.GetComponent<UnitHealth>().ApplyDamage(1), Is.EqualTo(1));
+            yield return Until(() => !runner.IsRunning);
+            Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
+            Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.False);
+            yield return new WaitForSecondsRealtime(.6f);
+            AssertRestored();
+        }
+        [UnityTest] public IEnumerator LandingWaitLimitStartsWithoutFloor()
+        {
+            trigger.enabled = false;
+            runner.MaxLandingWait = .1f;
+            player.Motor.Teleport(new Vector2(8, 30)); Physics2D.SyncTransforms();
+            Assert.That(runner.TryPlay(), Is.True);
+            Assert.That(runner.State, Is.EqualTo(CutsceneState.Landing));
+            yield return Until(() => Time.timeScale == 0);
+            Assert.That(player.Motor.IsGrounded, Is.False);
+            runner.Skip(); yield return Until(() => !runner.IsRunning);
+            Assert.That(reason, Is.EqualTo(CutsceneEndReason.Skipped)); AssertRestored();
+        }
         [UnityTest] public IEnumerator CancelRequiresExitBeforeTriggerRetryAndCompletedTriggerDoesNotReplay()
         {
             player.Motor.Teleport(new Vector2(6, .82f)); Physics2D.SyncTransforms();
