@@ -370,6 +370,38 @@ namespace ActionPlatformer.Tests
             AssertCameraX(player.transform.position.x);
         }
 
+        [UnityTest] public IEnumerator AimingAtAnUnusableGlitchTargetShowsItsReasonNearTheMarker()
+        {
+            foreach (var enemy in enemies)
+            {
+                enemy.Owner.Fsm.Stop();
+                enemy.GetComponent<GroundMovement2D>()?.Stop();
+            }
+            var target = enemies.Single(e => e.Owner.Definition.UnitId == "enemy.patrol");
+            target.GetComponent<Rigidbody2D>().position = new Vector2(22f, .52f);
+            Physics2D.SyncTransforms();
+            player.Motor.Teleport(new Vector2(12f, .82f));
+            var driver = new Driver();
+            player.SetInputSource(driver);
+            yield return new WaitForFixedUpdate();
+            for (int i = 0; i < 10 && !view.IsGlitchHintVisible; i++)
+            {
+                driver.Command = new PlayerCommand { HasAim = true,
+                    AimScreenPosition = player.AimCamera.WorldToScreenPoint(target.GetComponent<Collider2D>().bounds.center) };
+                yield return null;
+            }
+            Assert.That(player.GlitchPreview.Reason, Is.EqualTo(GlitchBlockReason.OutOfRange));
+            Assert.That(view.IsGlitchHintVisible, Is.True);
+            Assert.That(view.GlitchHintText, Is.EqualTo("OUT OF RANGE"));
+            var marker = player.GlitchPreview.Bounds;
+            view.ShowGlitchHint(new GlitchPreview { Visible = true, Reason = GlitchBlockReason.Busy, Bounds = marker }, player.AimCamera);
+            Assert.That(view.IsGlitchHintVisible, Is.False, "Brief busy states keep only the red marker.");
+            driver.Command = default;
+            // The stage view refreshes in LateUpdate, after the coroutine resumes in the next frame.
+            yield return null; yield return null;
+            Assert.That(view.IsGlitchHintVisible, Is.False);
+        }
+
         [UnityTest] public IEnumerator UnloadingCompletedStageRestoresGlobalTime()
         {
             KillEnemies();

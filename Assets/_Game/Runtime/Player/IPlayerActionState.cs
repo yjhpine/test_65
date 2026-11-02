@@ -44,10 +44,14 @@ namespace ActionPlatformer.Player
         public Vector2 To;
     }
 
+    // Why an aimed glitch cannot run now. None means the preview is usable.
+    public enum GlitchBlockReason { None, OutOfRange, OffScreen, GateClosed, NoSpace, Cooldown, Busy }
+
     public struct GlitchPreview
     {
         public bool Visible;
         public bool CanExecute;
+        public GlitchBlockReason Reason;
         public bool IsUnderground;
         public Vector2 Destination;
         public Bounds Bounds;

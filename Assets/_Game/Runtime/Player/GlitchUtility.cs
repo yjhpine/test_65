@@ -12,34 +12,72 @@ namespace ActionPlatformer.Player
         public GlitchDirection Direction;
     }
 
+    // Terrain does not stop a glitch path. Only colliders whose owner opts in here (closed stage gates) do.
+    public interface IGlitchBarrier
+    {
+        bool BlocksGlitch(Collider2D collider);
+    }
+
     public static class GlitchUtility
     {
-        public static bool ValidTarget(Unit owner, UnitHealth target, Vector2 origin, GlitchTuning tuning,
-            List<RaycastHit2D> hits)
+        public static bool IsCandidate(Unit owner, UnitHealth target, GlitchTuning tuning)
         {
             var body = Body(target);
             return IsAvailable(target) && target.Owner != owner && target.Owner.Definition.AllowGlitchTarget &&
-                body != null && ((1 << body.gameObject.layer) & tuning.TargetMask.value) != 0 &&
-                Vector2.Distance(origin, body.bounds.center) <= tuning.MaxDistance &&
-                HasSight(origin, body.bounds.center, tuning.ObstacleMask, hits);
+                body != null && ((1 << body.gameObject.layer) & tuning.TargetMask.value) != 0;
         }
 
-        public static GlitchRequest Select(Unit owner, Vector2 origin, Vector2 cursor, GlitchTuning tuning,
+        // Checks a candidate's position only; the arrival space is checked separately by the caller.
+        public static GlitchBlockReason TargetBlock(UnitHealth target, Vector2 origin, GlitchTuning tuning, Camera view,
+            List<RaycastHit2D> hits)
+        {
+            Vector2 center = Body(target).bounds.center;
+            if (Vector2.Distance(origin, center) > tuning.MaxDistance) return GlitchBlockReason.OutOfRange;
+            if (view != null && !OnScreen(view, center)) return GlitchBlockReason.OffScreen;
+            return BarrierBetween(origin, center, tuning.ObstacleMask, hits) ? GlitchBlockReason.GateClosed : GlitchBlockReason.None;
+        }
+
+        public static bool ValidTarget(Unit owner, UnitHealth target, Vector2 origin, GlitchTuning tuning, Camera view,
+            List<RaycastHit2D> hits) =>
+            IsCandidate(owner, target, tuning) && TargetBlock(target, origin, tuning, view, hits) == GlitchBlockReason.None;
+
+        private static bool OnScreen(Camera view, Vector2 point)
+        {
+            Vector3 viewport = view.WorldToViewportPoint(point);
+            return viewport.z >= 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
+        }
+
+        private static bool BarrierBetween(Vector2 from, Vector2 to, int mask, List<RaycastHit2D> hits)
+        {
+            int count = Physics2D.Linecast(from, to, Filter(mask), hits);
+            for (int i = 0; i < count; i++)
+            {
+                var barrier = hits[i].collider.GetComponentInParent<IGlitchBarrier>();
+                if (barrier != null && barrier.BlocksGlitch(hits[i].collider)) return true;
+            }
+            return false;
+        }
+
+        public static GlitchRequest Select(Unit owner, Vector2 origin, Vector2 cursor, GlitchTuning tuning, Camera view,
             List<Collider2D> candidates, List<RaycastHit2D> hits)
         {
-            Physics2D.OverlapCircle(origin, tuning.MaxDistance, Filter(tuning.TargetMask), candidates);
+            // Unusable targets under the cursor stay selectable so the preview can explain them; usable ones win.
+            Physics2D.OverlapCircle(cursor, tuning.AimAssistRadius + 0.01f, Filter(tuning.TargetMask), candidates);
             UnitHealth best = null;
+            bool bestUsable = false;
             float bestDistance = float.PositiveInfinity;
             for (int i = 0; i < candidates.Count; i++)
             {
                 var candidate = candidates[i].GetComponentInParent<UnitHealth>();
-                if (!ValidTarget(owner, candidate, origin, tuning, hits)) continue;
+                if (!IsCandidate(owner, candidate, tuning)) continue;
                 var body = Body(candidate);
                 float distance = (body.ClosestPoint(cursor) - cursor).sqrMagnitude;
                 if (distance > tuning.AimAssistRadius * tuning.AimAssistRadius) continue;
-                if (distance > bestDistance || (distance == bestDistance && best != null &&
-                    candidate.GetInstanceID() >= best.GetInstanceID())) continue;
+                bool usable = TargetBlock(candidate, origin, tuning, view, hits) == GlitchBlockReason.None;
+                if (best != null && ((bestUsable && !usable) || (bestUsable == usable && (distance > bestDistance ||
+                    (distance == bestDistance && candidate.GetInstanceID() >= best.GetInstanceID()))))) continue;
                 best = candidate;
+                bestUsable = usable;
                 bestDistance = distance;
             }
             return new GlitchRequest { Target = best, Direction = best == null ? GlitchDirection.Right :

@@ -115,10 +115,12 @@ namespace ActionPlatformer.Player
         public PlayerGlitchPresentation GlitchPresentation => Glitch == null ? default : Glitch.Presentation;
         public Bounds AttackBounds => Combat == null ? default : Combat.AttackBounds;
         public PlayerShockwave Shockwave => Combat == null ? default : Combat.GetShockwave(Time.timeAsDouble);
+        public Camera AimCamera => aimCamera;
         public void SetAimCamera(Camera camera)
         {
             aimCamera = camera;
             Feedback?.SetCamera(camera);
+            Glitch?.SetView(camera);
         }
         public PlayerReactionPresentation ReactionPresentation
         {
@@ -151,7 +153,7 @@ namespace ActionPlatformer.Player
                     (combatTuning != null && !combatTuning.TryValidate()))
                 { Debug.LogError("Configured player actions need valid tuning and UnitHealth.", this); return false; }
                 var body = GetComponent<CapsuleCollider2D>();
-                if (glitchTuning != null) Glitch = new PlayerGlitch(this, health, Motor, body, glitchTuning);
+                if (glitchTuning != null) { Glitch = new PlayerGlitch(this, health, Motor, body, glitchTuning); Glitch.SetView(aimCamera); }
                 if (combatTuning != null)
                     Combat = new PlayerCombat(this, body, combatTuning,
                         combatTuning.EnableCombo ? new SequentialComboRule(combatTuning.ComboLength, combatTuning.RetainComboOnTargetChange) : null,
@@ -227,7 +229,8 @@ namespace ActionPlatformer.Player
                     {
                         var selection = pendingGlitch ? glitchRequest : Glitch.Select(ray.GetPoint(distance));
                         var preview = Glitch.Preview(selection, Time.timeAsDouble);
-                        preview.CanExecute &= CanReposition(Time.timeAsDouble) && health.DamageVersion == observedDamage;
+                        if (preview.CanExecute && (!CanReposition(Time.timeAsDouble) || health.DamageVersion != observedDamage))
+                        { preview.CanExecute = false; preview.Reason = GlitchBlockReason.Busy; }
                         GlitchPreview = preview;
                         if (command.GlitchPressed && !pendingGlitch && CanReposition(Time.timeAsDouble))
                         {

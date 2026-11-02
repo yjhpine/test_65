@@ -1,14 +1,17 @@
+using ActionPlatformer.Player;
 using UnityEngine;
 
 namespace ActionPlatformer.Flow
 {
     [DisallowMultipleComponent]
-    public sealed class StageGate : MonoBehaviour
+    public sealed class StageGate : MonoBehaviour, IGlitchBarrier
     {
         [SerializeField] private BoxCollider2D barrier;
         [SerializeField] private SpriteRenderer marker;
         public bool IsConfigured => barrier != null && !barrier.isTrigger && marker != null;
         public bool IsLocked => barrier != null && barrier.enabled;
+        // Glitches pass through terrain, but a closed gate still holds the encounter boundary.
+        public bool BlocksGlitch(Collider2D collider) => collider == barrier && barrier.enabled;
         public void SetLocked(bool locked)
         {
             barrier.enabled = locked;

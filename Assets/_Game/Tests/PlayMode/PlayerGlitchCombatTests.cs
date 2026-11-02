@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System.Collections;
 using System.Collections.Generic;
+using ActionPlatformer.Flow;
 using ActionPlatformer.Player;
 using ActionPlatformer.Units;
 using ActionPlatformer.Units.Features;
@@ -111,6 +112,15 @@ namespace ActionPlatformer.Tests
             var go = new GameObject("Glitch test obstacle"); created.Add(go);
             go.transform.position = point; go.AddComponent<BoxCollider2D>().size = size;
             Physics2D.SyncTransforms(); return go;
+        }
+        private StageGate Gate(Vector2 point, Vector2 size)
+        {
+            var go = new GameObject("Glitch test gate"); created.Add(go);
+            go.transform.position = point;
+            var barrier = go.AddComponent<BoxCollider2D>(); barrier.size = size;
+            var gate = go.AddComponent<StageGate>();
+            Set(gate, "barrier", barrier); Set(gate, "marker", go.AddComponent<SpriteRenderer>());
+            Physics2D.SyncTransforms(); return gate;
         }
         private GlitchRequest Request(GlitchDirection direction) => new GlitchRequest { Target = enemy, Direction = direction };
         private void PlacePlayer(Vector2 point) { player.Motor.Teleport(point); Physics2D.SyncTransforms(); }
@@ -1042,14 +1052,54 @@ namespace ActionPlatformer.Tests
             Assert.That(Glitch.IsUnderground, Is.False);
         }
 
-        [Test] public void WallCancelsButNoncollidingUnitDoesNotBlockDestination()
+        [Test] public void TerrainBetweenDoesNotBlockButClosedGateDoes()
+        {
+            Block(new Vector2(-1.5f, 62f), new Vector2(0.2f, 4f));
+            Assert.That(Glitch.Select(enemy.transform.position).Target, Is.SameAs(enemy));
+            Assert.That(Glitch.Preview(Request(GlitchDirection.Right), 0).CanExecute, Is.True);
+            var gate = Gate(new Vector2(-2.2f, 62f), new Vector2(0.2f, 4f));
+            var preview = Glitch.Preview(Request(GlitchDirection.Right), 0);
+            Assert.That(preview.Visible, Is.True);
+            Assert.That(preview.Reason, Is.EqualTo(GlitchBlockReason.GateClosed));
+            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.False);
+            gate.SetLocked(false); Physics2D.SyncTransforms();
+            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.True);
+            Assert.That(player.Motor.Position.x, Is.GreaterThan(enemy.transform.position.x));
+        }
+
+        [Test] public void TargetOutsideTheViewIsExplainedAndRejected()
+        {
+            camera.transform.position = new Vector3(40f, 61f, -10f);
+            var preview = Glitch.Preview(Request(GlitchDirection.Right), 0);
+            Assert.That(preview.Visible, Is.True);
+            Assert.That(preview.Reason, Is.EqualTo(GlitchBlockReason.OffScreen));
+            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.False);
+            camera.transform.position = new Vector3(0f, 61f, -10f);
+            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.True);
+        }
+
+        [Test] public void UnusableTargetsUnderTheCursorExplainWhileUsableOnesWin()
+        {
+            PlacePlayer(new Vector2(-7.5f, 61.32f));
+            var far = CreateEnemy(1f); Physics2D.SyncTransforms();
+            Vector2 cursor = (Vector2)far.transform.position + new Vector2(0.1f, 0f);
+            Assert.That(Glitch.Select(cursor).Target, Is.SameAs(enemy), "A usable target in the assist radius wins.");
+            var request = new GlitchRequest { Target = far, Direction = GlitchDirection.Right };
+            var preview = Glitch.Preview(request, 0);
+            Assert.That(preview.Visible, Is.True);
+            Assert.That(preview.CanExecute, Is.False);
+            Assert.That(preview.Reason, Is.EqualTo(GlitchBlockReason.OutOfRange));
+            Assert.That(Glitch.TryExecute(request, 0), Is.False);
+            enemy.gameObject.SetActive(false);
+            Assert.That(Glitch.Select(cursor).Target, Is.SameAs(far), "With no usable target, the unusable one is explained.");
+        }
+
+        [Test] public void OccupiedArrivalCancelsButNoncollidingUnitDoesNotBlockDestination()
         {
             Set(glitchSettings, "cooldown", 1f);
             Vector2 original = player.Motor.Position;
-            var wall = Block(new Vector2(-1.5f, 62f), new Vector2(0.2f, 4f));
-            Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.False);
-            Object.DestroyImmediate(wall);
-            wall = Block(new Vector2(0.975f, 61.3f), new Vector2(0.5f, 1.5f));
+            var wall = Block(new Vector2(0.975f, 61.3f), new Vector2(0.5f, 1.5f));
+            Assert.That(Glitch.Preview(Request(GlitchDirection.Right), 0).Reason, Is.EqualTo(GlitchBlockReason.NoSpace));
             player.GetComponent<Rigidbody2D>().linearVelocity = new Vector2(2f, 3f);
             Assert.That(Glitch.TryExecute(Request(GlitchDirection.Right), 0), Is.False);
             Assert.That(player.Motor.Position, Is.EqualTo(original));

@@ -158,6 +158,10 @@ namespace ActionPlatformer.Flow
         // Resolve after combat Update/FixedUpdate. Death takes precedence over reaching the exit.
         private void LateUpdate()
         {
+            // Explain an unusable aimed glitch only while the player has gameplay control.
+            bool glitchHint = initialized && State == StageState.Playing && player != null && player.isActiveAndEnabled &&
+                !player.IsControlLocked && (cinematics == null || !cinematics.IsBusy);
+            view?.ShowGlitchHint(glitchHint ? player.GlitchPreview : default, player != null ? player.AimCamera : null);
             bool canTransfer = CanRequestTransfer;
             if (!canTransfer) transferRequested = false;
             view?.ShowTransferHint(canTransfer);

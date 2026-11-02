@@ -242,6 +242,7 @@ namespace ActionPlatformer.Tests
             foreach (var enemy in flow.ActiveEnemies) { enemy.Owner.Fsm.Stop(); enemy.GetComponent<GroundMovement2D>()?.Stop(); }
             var target = flow.ActiveEnemies.Single(h => h.transform.position.y < 1);
             player.Motor.Teleport(new Vector2(target.transform.position.x - 3, .82f)); yield return new WaitForFixedUpdate();
+            yield return null; // Glitch targets must be on screen, so let the camera follow the teleport first.
             Assert.That(player.Glitch.TryExecute(new GlitchRequest { Target = target, Direction = GlitchDirection.Down }, Time.timeAsDouble), Is.True);
             player.Glitch.MoveUnderground(1, 100);
             Assert.That(player.GroundMarkerPosition.x, Is.LessThan(60));
