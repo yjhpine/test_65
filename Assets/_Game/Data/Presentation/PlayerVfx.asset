@@ -154,6 +154,44 @@ MonoBehaviour:
   - {fileID: -1813046068, guid: 9d03f02dc89cd3748b75d7f837b1c8b6, type: 3}
   - {fileID: -1880886505, guid: 9d03f02dc89cd3748b75d7f837b1c8b6, type: 3}
   - {fileID: -1213412202, guid: 9d03f02dc89cd3748b75d7f837b1c8b6, type: 3}
+  finisherAuraFrames:
+  - {fileID: 21300000, guid: 59b3eac6906f5a44b8f71fd1c5fd2399, type: 3}
+  - {fileID: 21300000, guid: 253de58307eeb74409afccbf173bc5e5, type: 3}
+  - {fileID: 21300000, guid: c683ca7278adc6944a0c4ddb6db8b663, type: 3}
+  - {fileID: 21300000, guid: 88ae4dde1f93ca848b67da13da81a3b6, type: 3}
+  - {fileID: 21300000, guid: ee1a1700617a92a4dbfd18abe81aed0a, type: 3}
+  - {fileID: 21300000, guid: 795f5f131c4e61c4487d68f640885b72, type: 3}
+  - {fileID: 21300000, guid: 48ee6dcca46f39f4fb9852fe29424855, type: 3}
+  - {fileID: 21300000, guid: eb0580dc4f1e98d4fa33f77a64f633e7, type: 3}
+  - {fileID: 21300000, guid: 4b97cf386c4588a48b180f68559bf97f, type: 3}
+  - {fileID: 21300000, guid: cf38d959d4bf3fd43a19971718f5cbfd, type: 3}
+  - {fileID: 21300000, guid: 111d0ccaa714c71488ae0e77943cb8e0, type: 3}
+  - {fileID: 21300000, guid: 36271444181886646988c832a336256f, type: 3}
+  - {fileID: 21300000, guid: 4bc8b6728411c83499e9006845d1b4d8, type: 3}
+  - {fileID: 21300000, guid: 0ce79dd49621e36459e1bcfe9122926e, type: 3}
+  - {fileID: 21300000, guid: 9e8f530ecbf1bdc4380de57ec828f39b, type: 3}
+  - {fileID: 21300000, guid: adc38f1bb176232489336732a1b9c8cd, type: 3}
+  - {fileID: 21300000, guid: 44f80e1e70da71b47bd9b0bf5edbbc49, type: 3}
+  - {fileID: 21300000, guid: 4d033f50e5fa4004890b6a7af6385015, type: 3}
+  - {fileID: 21300000, guid: 7a473dd37b0177b4cba51c20035cdf99, type: 3}
+  - {fileID: 21300000, guid: 3c6615f6129bd02438c60df0d5be481a, type: 3}
+  - {fileID: 21300000, guid: 48e38ddb06aecd647906795020f82c2f, type: 3}
+  - {fileID: 21300000, guid: 50282d35b970fa24daf313d625a841b6, type: 3}
+  - {fileID: 21300000, guid: 3e8990f683e034f41a0fc8ea3c1a37dd, type: 3}
+  - {fileID: 21300000, guid: fcb9b091ef53ed14583b2367b21fbd24, type: 3}
+  - {fileID: 21300000, guid: 6e62988047b7fd44d99f932dcab9f3ba, type: 3}
+  - {fileID: 21300000, guid: 747693b52980a7c41bbb26d390196d9f, type: 3}
+  - {fileID: 21300000, guid: 54d20ef201b22a445a4bcf2f945b69ff, type: 3}
+  - {fileID: 21300000, guid: 680f3c04dabf957469961fb524a62d5a, type: 3}
+  - {fileID: 21300000, guid: 73ccb508fb87bc84499c86f9b0dfff8d, type: 3}
+  - {fileID: 21300000, guid: dada5c34438c7a54bbebad50df76dea9, type: 3}
+  - {fileID: 21300000, guid: 361a8e7631ecbb34ab4cf3f0e0b0b919, type: 3}
+  - {fileID: 21300000, guid: cd9202e2900bd7447b8ca3e063166c42, type: 3}
+  - {fileID: 21300000, guid: 6f269d6d004535e499a3593ea4326bf8, type: 3}
+  - {fileID: 21300000, guid: df1713262389b9b4d95d95b7d103bf0e, type: 3}
+  - {fileID: 21300000, guid: 3d528a8f4a70cbb4885a576fdbaad0fa, type: 3}
+  - {fileID: 21300000, guid: 1d413c04a63b34442b59a2542a6048d1, type: 3}
+  finisherAuraFps: 30
   dustFootOffset: {x: 0, y: -0.83}
   actionEffectMaterial: {fileID: 2100000, guid: b3eaeace8aea28b4fa1750ee5e110d59, type: 2}
   basicAttackEffectSize: 5

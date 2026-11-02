@@ -23,6 +23,7 @@ namespace ActionPlatformer.Tests
             public PlayerReactionPresentation ReactionPresentation => default;
             public GlitchPreview GlitchPreview => default;
             public float GlitchMaxDistance => 0f;
+            public bool FinisherReady => false;
             public bool IsUnderground => false;
             public bool CanEmerge => false;
             public Vector2 UndergroundPosition => default;

@@ -117,9 +117,10 @@ namespace ActionPlatformer.Player
         public PlayerShockwave Shockwave => Combat == null ? default : Combat.GetShockwave(Time.timeAsDouble);
         public Camera AimCamera => aimCamera;
         public float GlitchMaxDistance => glitchTuning != null ? glitchTuning.MaxDistance : 0f;
-        // Shared combo progress for the HUD: landed strikes in the live chain and the strike count of a full combo.
+        // Shared combo progress for the HUD: executed strikes in the live chain and the strike count of a full combo.
         public int ComboCount => Combat == null ? 0 : Combat.ComboCount(Time.timeAsDouble);
         public int ComboLength => Combat == null ? 0 : Combat.ComboLength;
+        public bool FinisherReady => Combat != null && Combat.FinisherReady(Time.timeAsDouble);
         public void SetAimCamera(Camera camera)
         {
             aimCamera = camera;

@@ -56,6 +56,8 @@ namespace ActionPlatformer.Player
         public int ComboLength => comboRule == null ? 1 : tuning.ComboLength;
         // Strikes executed in the live combo chain; zero once it expires or after the finisher.
         public int ComboCount(double now) => nextStrike > 1 && (IsAttacking || now <= comboExpiresAt) ? nextStrike - 1 : 0;
+        // The next strike to execute is the finisher; stays true through its windup and clears when it executes.
+        public bool FinisherReady(double now) => ComboLength > 1 && ComboCount(now) == ComboLength - 1;
         public float SlamSpeed => tuning.SlamSpeed;
         public bool IsDescending => Phase == PlayerAttackPhase.Descending;
         public bool IsPreparingSlam => Attack == PlayerAttack.Slam && Phase == PlayerAttackPhase.Windup;

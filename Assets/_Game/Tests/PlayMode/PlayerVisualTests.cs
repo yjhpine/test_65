@@ -18,6 +18,7 @@ namespace ActionPlatformer.Tests
             public bool IsGrounded { get; set; } = true;
             public GlitchPreview GlitchPreview => default;
             public float GlitchMaxDistance => 0f;
+            public bool FinisherReady { get; set; }
             public bool IsUnderground { get; set; }
             public bool CanEmerge { get; set; } = true;
             public Vector2 UndergroundPosition => Vector2.down;
@@ -102,6 +103,49 @@ namespace ActionPlatformer.Tests
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
             state.ReactionPresentation = default; state.IsUnderground = true;
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
+        }
+
+        [UnityTest] public IEnumerator FinisherAuraLoopsBehindThePlayerWhileTheStrongStrikeIsReady()
+        {
+            var state = new State(); var visual = Visual(state, new Vector3(3f, 2f, 0f));
+            yield return RenderFrame();
+            var aura = visual.EffectsRoot.Find("Finisher aura").GetComponent<SpriteRenderer>();
+            var body = visual.GetComponent<SpriteRenderer>();
+            Assert.That(aura.enabled, Is.False);
+
+            state.FinisherReady = true;
+            yield return RenderFrame();
+            Assert.That(aura.enabled, Is.True);
+            Assert.That(aura.sprite.name, Does.StartWith("finisher-aura-"));
+            Assert.That(aura.sortingLayerID, Is.EqualTo(body.sortingLayerID));
+            Assert.That(aura.sortingOrder, Is.EqualTo(body.sortingOrder), "Same order as the body keeps it above terrain.");
+            Assert.That(aura.transform.position.z, Is.GreaterThan(visual.transform.position.z), "Farther from the camera: behind the body.");
+            Assert.That((Vector2)aura.transform.position, Is.EqualTo((Vector2)visual.transform.position));
+            Assert.That(aura.bounds.size.y, Is.EqualTo(64f / 18f).Within(.01f), "Drawn at the player art's own pixel size.");
+            Assert.That(aura.flipX, Is.False);
+
+            var first = aura.sprite;
+            float until = Time.realtimeSinceStartup + .2f;
+            while (aura.sprite == first && Time.realtimeSinceStartup < until) yield return null;
+            Assert.That(aura.sprite, Is.Not.EqualTo(first), "The aura animates while it stays ready.");
+            until = Time.realtimeSinceStartup + .15f;
+            while (Time.realtimeSinceStartup < until) yield return null;
+            Assert.That(aura.color.a, Is.EqualTo(1f).Within(.01f), "Fully faded in after its first moments.");
+
+            state.Facing = -1f;
+            yield return RenderFrame(); Assert.That(aura.flipX, Is.True);
+            Attack(state, PlayerAttack.Side, 3, false, PlayerAttackPhase.Windup);
+            yield return RenderFrame(); Assert.That(aura.enabled, Is.True, "Ready through the finisher's windup.");
+            state.IsUnderground = true;
+            yield return RenderFrame(); Assert.That(aura.enabled, Is.False, "Nothing shows while the player is underground.");
+            state.IsUnderground = false;
+            state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Die, Version = 1 };
+            yield return RenderFrame(); Assert.That(aura.enabled, Is.False);
+            state.ReactionPresentation = default;
+            yield return RenderFrame(); Assert.That(aura.enabled, Is.True);
+            Assert.That(aura.color.a, Is.LessThan(1f), "Each new ready state fades in from the loop's start.");
+            state.FinisherReady = false;
+            yield return RenderFrame(); Assert.That(aura.enabled, Is.False);
         }
 
         [UnityTest] public IEnumerator GlitchSparksBurstAtEndpointsThenAlongOneWorldSpaceRowAndReset()

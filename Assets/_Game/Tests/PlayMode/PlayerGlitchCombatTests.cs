@@ -1492,16 +1492,20 @@ namespace ActionPlatformer.Tests
             for (int i = 0; i < 2; i++)
             {
                 double now = i * 0.5;
+                Assert.That(Combat.FinisherReady(now), Is.False);
                 Assert.That(Combat.TryAttack(enemy, 1f, false, now), Is.True);
                 Combat.Tick(now + 0.13); Combat.Tick(now + 0.2); Combat.Tick(now + 0.4);
             }
             Assert.That(enemy.CurrentHealth, Is.EqualTo(180));
             Assert.That(Combat.ComboCount(1.0), Is.EqualTo(2));
+            Assert.That(Combat.FinisherReady(1.0), Is.True, "Two executed strikes load the strong one.");
             FloatingTarget(new Vector2(-0.975f, 63.6f), enemy);
             Assert.That(Combat.TryAttack(null, 1f, false, 1.0), Is.True);
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Lift));
             Assert.That(Combat.GetPresentation(1.0).Finisher, Is.True);
+            Assert.That(Combat.FinisherReady(1.05), Is.True, "Still loaded through the finisher's windup.");
             Assert.That(Combat.Tick(1.13), Is.True);
+            Assert.That(Combat.FinisherReady(1.13), Is.False, "Spent once the finisher executes.");
             float strong = combatSettings.LaunchSpeed * combatSettings.FinisherLaunchMultiplier;
             Assert.That(Combat.LaunchSpeed, Is.EqualTo(strong).Within(0.01f));
             Assert.That(Movement.Velocity.y, Is.EqualTo(strong).Within(0.01f));
@@ -1519,6 +1523,7 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.ComboCount(1.9), Is.EqualTo(1), "A glitch keeps a live chain going.");
             Combat.ExtendCombo(3.0);
             Assert.That(Combat.ComboCount(3.0), Is.Zero, "An expired chain is not revived.");
+            Assert.That(Combat.FinisherReady(3.0), Is.False);
         }
 
         [Test] public void MissConsumesStrikeAndInterruptedWindupDoesNotDamage()

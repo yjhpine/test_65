@@ -64,6 +64,8 @@ namespace ActionPlatformer.Player
         GlitchPreview GlitchPreview { get; }
         // Maximum glitch distance for the optional range display; zero without glitch tuning.
         float GlitchMaxDistance { get; }
+        // The next strike is the strong one; drives the charged aura only.
+        bool FinisherReady { get; }
         bool IsUnderground { get; }
         bool CanEmerge { get; }
         Vector2 UndergroundPosition { get; }

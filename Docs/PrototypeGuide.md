@@ -581,3 +581,10 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 타수 표시: 스테이지 HUD 왼쪽 아래 COMBO 칸(타수만큼 청록), 다음이 강공격이면 마지막 칸과 STRONG NEXT가 주황으로 켜진다. 조작 잠금·컷신 중에는 숨긴다.
 - 테스트 도구: Player/Visual의 Show Glitch Range를 켜면 플레이어 중심의 글리치 최대 거리 원을 표시한다. 거리는 Play Mode 중 GlitchTuning.asset Inspector에서 바로 바꿀 수 있다(에셋에 그대로 저장되므로 끝나면 되돌린다). 웹 프로토타입의 슬라이더·브라우저 저장·자동 일시정지는 Inspector와 에디터 일시정지로 대신한다.
 - 바꾸지 않은 것: 피해·체력 체계(10/50~90), 공격 타이밍 수치, 거리 8, 잠복·출현, 각 속도 수치(px 환산 미정).
+
+## 2026-11-02 — 강공격 장전 오라
+
+- 다음 공격이 3타 강공격일 때(`PlayerCombat.FinisherReady`: 콤보 길이 2 이상이고 실행한 타수 = 길이 − 1) 플레이어 뒤에 청록·빨강 글리치 오라를 반복 재생한다. 강공격 선딜레이 동안 유지되고, 강공격이 실행되거나 타수가 만료·초기화되면 사라진다. 잠복 중·사망·피격 초기화 때는 숨긴다. HUD의 STRONG NEXT와 같은 조건이다.
+- 원화: `Tools/PixelFx/effects/finisher-aura.mjs`(PixelFX 자체 효과, 1.2초 루프, 30fps, 36프레임, 60×64). 플레이어 원화와 같은 18 PPU 격자로 그렸고 피벗(0.5, 0.28125)이 Visual 중심이다. 몸을 감싸는 불꽃 외곽(측면 파형이 위로 흐름), 머리 위 불꽃 끝 3개, 위로 흩어지는 빛줄기, 빨간 채널 어긋남·글리치 조각, 발밑 고리로 구성된다.
+- 표시: `PlayerActionEffects`의 `Finisher aura` 렌더러가 `PlayerVfxProfile.finisherAuraFrames / finisherAuraFps`를 비스케일 시간으로 재생한다. 몸과 같은 정렬 순서에 z만 0.01 뒤로 두어 지형(0) 위·플레이어 뒤에 그린다. 장전될 때마다 루프 첫 프레임부터 0.12초 동안 페이드 인하고 바라보는 방향으로 좌우 반전한다. 원화 색은 흰색 팔레트 덮어쓰기로 그대로 쓴다.
+- 다시 만들기: `node Tools/PixelFx/pipeline.mjs render custom/finisher-aura` 후 `Game > Effects > Import Generated Finisher Aura`. 가져오기는 `Art/Effects/PixelFxFinisherAura`의 프레임과 PlayerVfx의 오라 배열만 갱신한다. 전투 수치·콤보 규칙은 바꾸지 않았다.

@@ -24,6 +24,11 @@ namespace ActionPlatformer.Presentation
         public Sprite[] HitImpactFrames => hitImpactFrames;
         [SerializeField] private Sprite[] finisherImpactFrames;
         public Sprite[] FinisherImpactFrames => finisherImpactFrames;
+        // Seamless loop drawn behind the player while the next strike is the finisher, at the sprites' own size.
+        [SerializeField] private Sprite[] finisherAuraFrames;
+        public Sprite[] FinisherAuraFrames => finisherAuraFrames;
+        [SerializeField, Min(1f)] private float finisherAuraFps = 30f;
+        public float FinisherAuraFps => finisherAuraFps;
         [SerializeField] private Vector2 dustFootOffset = new Vector2(0, -.83f);
         public Vector2 DustFootOffset => dustFootOffset;
         [SerializeField] private Material actionEffectMaterial;
