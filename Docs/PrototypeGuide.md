@@ -595,3 +595,7 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 원화: `Tools/PixelFx/effects/glitch-marker.mjs` 하나에서 `glitch-marker-ready`(청록, 맥동하는 마름모 코어, 위→아래 스캔선)와 `glitch-marker-blocked`(빨강, 깜박이는 X 코어, 더 잦은 좌우 흔들림·찢김)를 만든다. 공통으로 숨 쉬듯 1px 줄었다 커지는 모서리 괄호, 다른 색 채널이 1px 어긋나는 RGB 분리, 괄호 하나가 옆으로 찢기는 프레임, 옆의 글리치 조각, 주변 픽셀 노이즈, 옅은 내부 판이 있다. 0.8초 루프 24프레임, 32×32, 플레이어 원화와 같은 18 PPU, 중앙 피벗(괄호 상자 약 0.9유닛). 색뿐 아니라 코어 모양(마름모/X)으로도 구분된다.
 - 표시: `PlayerVisual`의 `Glitch preview` 렌더러가 `PlayerVfxProfile.glitchMarkerReadyFrames / glitchMarkerBlockedFrames / glitchMarkerFps(30)`를 비스케일 시간으로 재생하고 원래 크기로 그린다. 이때 `Glitch preview ring`은 끈다. 프로필 배열이 비어 있으면 기존 원 표시로 돌아간다.
 - 다시 만들기: `node Tools/PixelFx/pipeline.mjs render custom/glitch-marker-ready`, `... custom/glitch-marker-blocked` 후 `Game > Effects > Import Generated Glitch Marker`. `Art/Effects/PixelFxGlitchMarker/Ready·Blocked`의 프레임과 PlayerVfx의 두 배열만 갱신한다. 글리치 규칙·거리·쿨타임은 바꾸지 않았다.
+
+## 2026-11-03 — 도착 공간이 막힌 글리치의 NO SPACE 문구 제거
+
+- 사용자 요청. 도착 지점이 막혀 글리치를 쓸 수 없을 때(`GlitchBlockReason.NoSpace`) 표시 위에 띄우던 `NO SPACE` 문구를 없앴다. Busy처럼 빨간 마커만 보인다. OUT OF RANGE, OFF SCREEN, GATE CLOSED, COOLDOWN 문구와 NoSpace 판정 자체(실행 불가, GlitchPreview.Reason)는 그대로다.

@@ -396,6 +396,8 @@ namespace ActionPlatformer.Tests
             var marker = player.GlitchPreview.Bounds;
             view.ShowGlitchHint(new GlitchPreview { Visible = true, Reason = GlitchBlockReason.Busy, Bounds = marker }, player.AimCamera);
             Assert.That(view.IsGlitchHintVisible, Is.False, "Brief busy states keep only the red marker.");
+            view.ShowGlitchHint(new GlitchPreview { Visible = true, Reason = GlitchBlockReason.NoSpace, Bounds = marker }, player.AimCamera);
+            Assert.That(view.IsGlitchHintVisible, Is.False, "A blocked destination keeps only the red marker, with no text.");
             driver.Command = default;
             // The stage view refreshes in LateUpdate, after the coroutine resumes in the next frame.
             yield return null; yield return null;

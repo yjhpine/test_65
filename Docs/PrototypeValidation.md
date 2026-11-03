@@ -856,3 +856,8 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - Tests: PreviewFollowsFourDirectionsShowsBlockedAndUndergroundDestinations now checks the sprite variant (glitch-marker-ready-/blocked-), native size and the disabled ring instead of the tint colors.
 - Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; full PlayMode 304/304; EditMode 46/46.
 - Visual check: the test's own captures Library/PrototypeValidation/GlitchPreviewRight/Blocked/Underground.png (after) against GlitchMarkerBefore*.png (old circles, 11-02). The marker sits on the same destination at roughly the old size on the pixel grid. Real mouse aiming in CoreLoopStage was not performed.
+
+## 2026-11-03: NO SPACE glitch hint removed
+
+- User request. StageFlowView.HintText no longer maps GlitchBlockReason.NoSpace to text, so a blocked destination shows only the red (blocked) marker, like Busy. Other reason texts and the NoSpace rule are unchanged. StageFlowTests.AimingAtAnUnusableGlitchTargetShowsItsReasonNearTheMarker now also checks that NoSpace shows no hint.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK, console errors 0; StageFlowTests 14/14. The full suites were not rerun for this one-line view change.

@@ -121,7 +121,7 @@ namespace ActionPlatformer.Flow
             goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
-        // Explains a red glitch marker just above it. Brief Busy states keep only the red marker.
+        // Explains a red glitch marker just above it. Busy and blocked-space destinations keep only the red marker.
         public void ShowGlitchHint(GlitchPreview preview, Camera camera)
         {
             if (glitchHint == null) return;
@@ -188,7 +188,6 @@ namespace ActionPlatformer.Flow
                 case GlitchBlockReason.OutOfRange: return "OUT OF RANGE";
                 case GlitchBlockReason.OffScreen: return "OFF SCREEN";
                 case GlitchBlockReason.GateClosed: return "GATE CLOSED";
-                case GlitchBlockReason.NoSpace: return "NO SPACE";
                 case GlitchBlockReason.Cooldown: return "COOLDOWN";
                 default: return null;
             }
