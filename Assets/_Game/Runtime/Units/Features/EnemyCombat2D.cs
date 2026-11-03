@@ -5,7 +5,10 @@ using ActionPlatformer.Units.Fsm;
 namespace ActionPlatformer.Units.Features
 {
     public enum EnemyPattern { Shield, Surveillance, Drone }
-    public enum EnemyPhase { Idle, Turning, Preparing, Locked, Dash, Recovery, Death }
+    // Shield units: Rush dashes along a path fixed by its telegraph; Strike hits once in front, in place.
+    public enum ShieldAttack { Rush, Strike }
+    // Strike and Reacting are shield-only: the in-place hit, and the launched/slammed state with the shield down.
+    public enum EnemyPhase { Idle, Turning, Preparing, Locked, Dash, Recovery, Death, Strike, Reacting }
     public interface IEnemyActionState
     {
         EnemyPhase Phase { get; }
@@ -51,14 +54,41 @@ namespace ActionPlatformer.Units.Features
         private void Awake() { health = GetComponent<UnitHealth>(); body = GetComponent<Collider2D>(); }
         public void Bind(EnemyFsmDefinition settings, IEnemyActionState state) { Settings = settings; State = state; }
         public void ClearAttack() { Target = null; struck.Clear(); LastShot = default; }
+        // The shield is up except while launched/slammed and recovering from it, and in death.
+        public bool Guarding => State == null || (State.Phase != EnemyPhase.Reacting && State.Phase != EnemyPhase.Death);
+        // Attacks from in front of the shield are blocked at any height, front diagonals included; from behind
+        // or directly above/below (the attacker's center over the body column) they pass, whatever the attack kind.
         public bool BlocksDamage(Vector2 sourcePosition)
         {
             var settings = Settings != null ? Settings : health.Owner.Definition.Fsm as EnemyFsmDefinition;
-            if (settings == null || settings.Pattern != EnemyPattern.Shield || !Alive) return false;
-            Vector2 delta = sourcePosition - Center;
-            if (delta.x * Facing <= settings.GuardFrontThreshold || Mathf.Abs(delta.y) >= settings.GuardHeight) return false;
+            if (settings == null || settings.Pattern != EnemyPattern.Shield || !Alive || !Guarding) return false;
+            if ((sourcePosition.x - Center.x) * Facing <= settings.GuardDirectBand) return false;
             unchecked { BlockVersion++; }
             return true;
+        }
+        // Recognition also needs the unit on the player's screen, when the player reports a view.
+        public bool TargetSeesUs()
+        {
+            if (Target == null || !Target.TryGetComponent<IUnitViewSource>(out var source) || source.View == null) return true;
+            Vector3 viewport = source.View.WorldToViewportPoint(Center);
+            return viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
+        }
+        // The shield attack's reach: the strike box in front of the body, or the rush path ahead of it.
+        public void ShieldAttackArea(float facing, out Vector2 center, out Vector2 size)
+        {
+            float half = body == null ? .5f : body.bounds.extents.x, height = body == null ? 1f : body.bounds.size.y;
+            float length = Settings.ShieldAttack == ShieldAttack.Strike ? Settings.StrikeReach : Settings.DashMaxDistance;
+            center = Center + Vector2.right * facing * (half + length * .5f);
+            size = new Vector2(length, height);
+        }
+        // One check at the moment of the strike: the box in front, the target's own body and terrain sight.
+        public void Strike(float facing)
+        {
+            if (!Alive) return;
+            struck.Clear();
+            ShieldAttackArea(facing, out var center, out var size);
+            Physics2D.OverlapBox(center, size, 0f, UnitPhysics2D.Filter(targetMask), overlaps);
+            foreach (var collider in overlaps) Damage(collider.GetComponentInParent<UnitHealth>(), Settings.Damage, Center);
         }
         public bool ValidTarget(UnitHealth candidate, float range, float height = float.PositiveInfinity)
         {

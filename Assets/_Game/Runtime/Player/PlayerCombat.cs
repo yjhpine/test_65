@@ -248,7 +248,7 @@ namespace ActionPlatformer.Player
         private void HitTargets(bool shockwave)
         {
             var area = AttackBounds;
-            bool dealtDamage = false, killed = false;
+            bool dealtDamage = false, killed = false, blocked = false;
             if (shockwave)
                 Physics2D.OverlapCircle(shockwaveCenter, tuning.ShockwaveRadius, UnitPhysics2D.Filter(tuning.TargetMask), candidates);
             else Physics2D.OverlapBox(area.center, area.size, 0f, UnitPhysics2D.Filter(tuning.TargetMask), candidates);
@@ -259,7 +259,6 @@ namespace ActionPlatformer.Player
                     !UnitPhysics2D.HasSight(shockwave ? shockwaveCenter : (Vector2)body.bounds.center,
                         candidates[i].bounds.center, tuning.ObstacleMask, obstacles)) continue;
                 hit.Add(target);
-                bool bypassGuard = shockwave || Attack == PlayerAttack.Emergence || Attack == PlayerAttack.Lift || Attack == PlayerAttack.Slam;
                 Vector2 origin = shockwave ? shockwaveCenter : (Vector2)body.bounds.center;
                 Vector2 point = candidates[i].ClosestPoint(origin);
                 int healthBefore = target.CurrentHealth;
@@ -267,7 +266,10 @@ namespace ActionPlatformer.Player
                 if (combo.IsFinisher) power = Mathf.RoundToInt(power * tuning.FinisherDamageMultiplier);
                 // Basic swings leave the target's attack running; launches, slams and emergence stop it.
                 bool interrupts = shockwave || (Attack != PlayerAttack.Side && Attack != PlayerAttack.Air);
-                int damage = target.ApplyDamage(power, body.bounds.center, bypassGuard, interrupts);
+                // Every kind meets the same positional shield check; a blocked attempt deals nothing and ends the chain.
+                uint blocks = target.GuardBlockVersion;
+                int damage = target.ApplyDamage(power, origin, false, interrupts);
+                blocked |= target.GuardBlockVersion != blocks;
                 if (damage <= 0) continue;
                 if (Attack == PlayerAttack.Lift && !shockwave && !launched) launched = launchPending = true;
                 var kind = shockwave ? PlayerAttack.Shockwave : Attack;
@@ -281,6 +283,8 @@ namespace ActionPlatformer.Player
                     hitReaction?.Apply(target, shockwave ? new PlayerAttackSelection(PlayerAttack.Shockwave,
                         Facing, Vector2.zero, Vector2.one * tuning.ShockwaveRadius * 2f) : selection, combo);
             }
+            // A shield block ends the combo even if another target was hit: the next attack starts a new chain.
+            if (blocked) { nextStrike = 1; previousComboTarget = pendingComboTarget = null; }
             // One request per swing; the slam's descending hit and landing are separate impact stages.
             int stage = shockwave ? 2 : 1;
             if (!dealtDamage || (emittedImpactStages & stage) != 0) return;

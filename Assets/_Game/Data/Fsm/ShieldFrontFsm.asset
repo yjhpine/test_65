@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff52aceb3cc1ddb409cb2c91d72b1438, type: 3}
+  m_Name: ShieldFrontFsm
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Fsm.EnemyFsmDefinition
+  pattern: 0
+  detectionRange: 13
+  damage: 14
+  firstPreparation: 0.4
+  preparation: 0.4
+  recovery: 0.5
+  deathDuration: 0.6
+  shieldAttack: 1
+  recognitionDelay: 0.2
+  attackInterval: 5
+  detectionHeight: 2.8
+  approachHeight: 1.4
+  dashSpeed: 18.9
+  dashMaxDistance: 5.5
+  strikeTriggerDistance: 2.9
+  strikeReach: 2.3
+  strikeDuration: 0.12
+  guardDirectBand: 0.5
+  idleTurnInterval: 3
+  idleTurnDuration: 0.5
+  scanDuration: 1
+  lockDuration: 0.4
+  beamLength: 22
+  beamWidth: 0.16
+  beamDisplayDuration: 0.16
+  cruiseRadius: 1.4
+  cruiseAmplitude: 0.32
+  horizontalSpeed: 1.6
+  verticalSpeed: 2
+  verticalAttackDistance: 2
+  verticalDamage: 10
+  verticalBeamWidth: 0.28

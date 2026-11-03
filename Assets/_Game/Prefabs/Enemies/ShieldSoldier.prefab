@@ -155,6 +155,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   stopAtLedges: 1
+  ignoreKnockback: 1
   arrivalTolerance: 0.02
   groundProbeDistance: 0.3
 --- !u!114 &2157661488461133436

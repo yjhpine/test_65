@@ -19,6 +19,8 @@ namespace ActionPlatformer.Units.Features
         public uint DamageVersion { get; private set; }
         // Advances with DamageVersion only for hits that stop an attack in progress.
         public uint InterruptVersion { get; private set; }
+        // Advances each time a directional guard (shield) blocks an attempt; blocked attempts deal no damage.
+        public uint GuardBlockVersion { get; private set; }
         public UnitDamageResult LastDamage { get; private set; }
         public event System.Action<UnitDamageResult> DamageApplied;
         public bool IsAlive => initialized && CurrentHealth > 0;
@@ -58,7 +60,11 @@ namespace ActionPlatformer.Units.Features
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
             if (amount == 0 || !CanReceiveDamage) return 0;
-            if (!bypassDirectionalGuard && damageGuard != null && damageGuard.BlocksDamage(sourcePosition)) return 0;
+            if (!bypassDirectionalGuard && damageGuard != null && damageGuard.BlocksDamage(sourcePosition))
+            {
+                unchecked { GuardBlockVersion++; }
+                return 0;
+            }
             return ApplyDamageCore(amount, (Vector2)transform.position - sourcePosition, interruptsAttack);
         }
 

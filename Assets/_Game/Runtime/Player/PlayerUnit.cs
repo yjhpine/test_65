@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 namespace ActionPlatformer.Player
 {
     [RequireComponent(typeof(PlayerInput), typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
-    public sealed class PlayerUnit : Unit, IPlayerActionState, IUnitRepositionState
+    public sealed class PlayerUnit : Unit, IPlayerActionState, IUnitRepositionState, IUnitViewSource
     {
         [SerializeField] private PlayerTuning tuning;
         [SerializeField] private LayerMask groundMask = 1;
@@ -121,6 +121,7 @@ namespace ActionPlatformer.Player
         public Bounds AttackBounds => Combat == null ? default : Combat.AttackBounds;
         public PlayerShockwave Shockwave => Combat == null ? default : Combat.GetShockwave(Time.timeAsDouble);
         public Camera AimCamera => aimCamera;
+        Camera IUnitViewSource.View => aimCamera;
         public float GlitchMaxDistance => glitchTuning != null ? glitchTuning.MaxDistance : 0f;
         // Shared combo progress for the HUD: executed strikes in the live chain and the strike count of a full combo.
         public int ComboCount => Combat == null ? 0 : Combat.ComboCount(Time.timeAsDouble);

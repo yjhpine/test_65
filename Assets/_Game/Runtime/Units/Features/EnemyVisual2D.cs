@@ -107,9 +107,18 @@ namespace ActionPlatformer.Units.Features
             Vector2 center = stateSource.Center;
             if (settings.Pattern == EnemyPattern.Shield)
             {
-                bool warning = state.Phase == EnemyPhase.Preparing || state.Phase == EnemyPhase.Dash;
-                Draw(EnemyEffectShape.Shield, center + Vector2.right * state.Facing * .58f, new Vector2(.09f, 1.5f), 0,
-                    Time.time < blockUntil ? Color.white : warning ? Color.Lerp(Color.cyan, new Color(1f,.35f,.05f), state.Progress) : new Color(.12f,.6f,1f,.8f));
+                bool warning = state.Phase == EnemyPhase.Preparing || state.Phase == EnemyPhase.Dash || state.Phase == EnemyPhase.Strike;
+                // No shield bar while it is down (launched/slammed).
+                if (stateSource.Guarding)
+                    Draw(EnemyEffectShape.Shield, center + Vector2.right * state.Facing * .58f, new Vector2(.09f, 1.5f), 0,
+                        Time.time < blockUntil ? Color.white : warning ? Color.Lerp(Color.cyan, new Color(1f,.35f,.05f), state.Progress) : new Color(.12f,.6f,1f,.8f));
+                // The telegraph marks what is coming as a thin line on the floor: the strike reach or the fixed rush path.
+                if (state.Phase == EnemyPhase.Preparing)
+                {
+                    stateSource.ShieldAttackArea(state.Facing, out var area, out var size);
+                    Draw(EnemyEffectShape.Beam, new Vector2(area.x, area.y - size.y * .5f + .04f), new Vector2(size.x, .08f), 0,
+                        new Color(1f, .35f + .45f * (1f - state.Progress), .1f, .45f + .45f * state.Progress));
+                }
             }
             if (settings.Pattern == EnemyPattern.Surveillance && state.Phase == EnemyPhase.Preparing)
                 Draw(EnemyEffectShape.Scan, center + new Vector2(-.5f + state.Progress * .5f, .82f), new Vector2(Mathf.Max(.015f,state.Progress), .07f), 0, Color.yellow);

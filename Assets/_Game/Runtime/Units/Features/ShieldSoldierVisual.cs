@@ -31,11 +31,12 @@ namespace ActionPlatformer.Units.Features
             string desired;
             float progress = 0f;
             if (dead) { desired = "Death"; progress = deathProgress; }
-            else if (Time.time - hurtAt < ReactionDuration)
+            // Launched or slammed: the hit pose holds, shield down, until the unit lands.
+            else if (state.Phase == EnemyPhase.Reacting || Time.time - hurtAt < ReactionDuration)
             { desired = "Hit"; progress = (Time.time - hurtAt) / ReactionDuration; }
             else if (Time.time - blockedAt < BlockDuration)
             { desired = "Block"; progress = (Time.time - blockedAt) / BlockDuration; }
-            else if (state.Phase == EnemyPhase.Dash)
+            else if (state.Phase == EnemyPhase.Dash || state.Phase == EnemyPhase.Strike)
             { desired = "Attack"; progress = state.Progress; }
             else if (state.Phase == EnemyPhase.Preparing)
             {

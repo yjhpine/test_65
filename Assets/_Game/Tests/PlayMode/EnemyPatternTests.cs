@@ -43,7 +43,7 @@ namespace ActionPlatformer.Tests
             settings=Object.Instantiate(AssetDatabase.LoadAssetAtPath<EnemyFsmDefinition>("Assets/_Game/Data/Fsm/"+name+"Fsm.asset"));created.Add(settings);
             var def=Object.Instantiate(AssetDatabase.LoadAssetAtPath<UnitDefinition>("Assets/_Game/Data/Units/"+name+"Definition.asset"));created.Add(def);Set(def,"fsm",settings);
             var parent=new GameObject("Enemy test setup");parent.SetActive(false);created.Add(parent);
-            float y=name=="FlyingDrone"?54:name=="ShieldSoldier"?51.31f:51.11f;
+            float y=name=="FlyingDrone"?54:name=="ShieldSoldier"||name=="ShieldFront"?51.31f:51.11f;
             var instance=Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/"+name+".prefab"),new Vector3(0,y),Quaternion.identity,parent.transform);
             enemy=instance.GetComponent<Unit>();Set(enemy,"definition",def);
             var playerDefinition=Object.Instantiate(AssetDatabase.LoadAssetAtPath<UnitDefinition>("Assets/_Game/Data/Units/PlayerDefinition.asset"));created.Add(playerDefinition);Set(playerDefinition,"maxHealth",1000);
@@ -69,40 +69,42 @@ namespace ActionPlatformer.Tests
             return sprite;
         }
 
-        [UnityTest] public IEnumerator ShieldNewGuardAndAttackFollowExistingPreparationAndDash()
+        [UnityTest] public IEnumerator ShieldWaitsOutRecognitionThenTelegraphsAndDashes()
         {
             yield return Spawn("ShieldSoldier", Vector2.left);
             SampleShield("Idle", "Idle");
-            Tick(); SampleShield("GuardEnter", "GuardEnter");
-            Tick(.5f); SampleShield("GuardHold", "GuardHold");
-            Tick(.52f); SampleShield("GuardExit", "GuardExit");
-            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing));
-            Assert.That(Combat.State.Elapsed, Is.EqualTo(1.02f).Within(.001f));
-            Tick(.2f); SampleShield("Attack", "AttackSlash");
-            Assert.That(Phase, Is.EqualTo(EnemyPhase.Dash));
+            Tick(); Assert.That(Phase, Is.EqualTo(EnemyPhase.Idle), "Recognized, still within the recognition delay.");
+            Tick(.2f); Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing)); SampleShield("GuardEnter", "GuardEnter");
+            Tick(.2f); SampleShield("GuardHold", "GuardHold");
+            Tick(.13f); SampleShield("GuardExit", "GuardExit");
+            Assert.That(Combat.State.Elapsed, Is.EqualTo(.33f).Within(.001f));
+            Tick(.08f); SampleShield("Attack", "AttackSlash");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Dash), "The telegraph lasts 0.4 s.");
             Tick(.07f); var middle = SampleShield("Attack", "AttackSlash");
             Assert.That(middle.name, Is.Not.EqualTo("01"));
             Tick(.5f); SampleShield("Idle", "Idle");
             Assert.That(Phase, Is.EqualTo(EnemyPhase.Recovery));
         }
 
-        [UnityTest] public IEnumerator InterruptingHitStopsPreparationButOrdinaryHitsDoNot()
+        [UnityTest] public IEnumerator InterruptingHitKnocksTheShieldOutButOrdinaryHitsDoNot()
         {
             yield return Spawn("ShieldSoldier", Vector2.left);
-            Tick(); Tick(.3f);
+            Tick(); Tick(.2f);
             Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing));
             Health.ApplyDamage(1, Combat.Center + Vector2.right);
             Tick();
-            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing), "A basic hit keeps the preparation.");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Preparing), "A basic hit keeps the telegraph.");
             Health.ApplyDamage(1, Combat.Center + Vector2.right, true, true);
             Tick();
-            Assert.That(Phase, Is.EqualTo(EnemyPhase.Recovery), "A launch or slam stops the attack in progress.");
+            Assert.That(Phase, Is.EqualTo(EnemyPhase.Reacting), "A launch or slam stops the attack and drops the shield.");
+            Tick(); Assert.That(Phase, Is.EqualTo(EnemyPhase.Idle), "Not moved, so it is back on guard at once.");
+            Tick(.3f); Assert.That(Phase, Is.EqualTo(EnemyPhase.Idle), "The cancelled attack is not resumed.");
         }
 
         [UnityTest] public IEnumerator ShieldBlockAndHitReactWithoutResettingFsmAndClearOnReuse()
         {
             yield return Spawn("ShieldSoldier", Vector2.left);
-            Tick(); Tick(.3f);
+            Tick(); Tick(.2f); Tick(.3f);
             Assert.That(Health.ApplyDamage(10, Combat.Center + Vector2.left), Is.Zero);
             SampleShield("Block", "Block");
             Assert.That(Health.CurrentHealth, Is.EqualTo(75));
@@ -123,8 +125,8 @@ namespace ActionPlatformer.Tests
         [UnityTest] public IEnumerator ShieldDissolveOverridesReactionAndUsesExistingDeathDelay()
         {
             yield return Spawn("ShieldSoldier", Vector2.right);
-            Tick(); Tick(.56f);
-            Assert.That(Combat.Facing, Is.EqualTo(1));
+            Tick(); Tick(.2f);
+            Assert.That(Combat.Facing, Is.EqualTo(1), "Faces the player once its telegraph starts.");
             Health.ApplyDamage(1000, Combat.Center + Vector2.left, true);
             Tick(); SampleShield("Death", "DeathDissolve");
             Assert.That(enemy.GetComponentInChildren<SpriteRenderer>().flipX, Is.True);
@@ -134,30 +136,106 @@ namespace ActionPlatformer.Tests
             Tick(.02f); Assert.That(enemy.gameObject.activeSelf, Is.False);
         }
 
-        [UnityTest] public IEnumerator ShieldBlocksFrontOnlyAndBypassDoesNotBlock()
+        [UnityTest] public IEnumerator ShieldBlocksTheWholeFrontButNotBehindOrDirectlyAboveOrBelow()
         {
             yield return Spawn("ShieldSoldier",Vector2.left);
             Vector2 p=Combat.Center;uint version=Health.DamageVersion;
             Assert.That(Health.ApplyDamage(10,p+Vector2.left),Is.Zero);Assert.That(Combat.BlockVersion,Is.EqualTo(1));Assert.That(Health.DamageVersion,Is.EqualTo(version));
+            Assert.That(Health.GuardBlockVersion,Is.EqualTo(1),"The block is reported to the attacker.");
             Assert.That(Ground.IsForcedMoving,Is.False);
-            Assert.That(Health.ApplyDamage(10,p+Vector2.right),Is.EqualTo(10));
-            Assert.That(Health.ApplyDamage(10,p+Vector2.left+Vector2.up),Is.EqualTo(10));
-            Assert.That(Health.ApplyDamage(10,p+Vector2.left+Vector2.down),Is.EqualTo(10));
-            Assert.That(Health.ApplyDamage(10,p+Vector2.left,true),Is.EqualTo(10));
-            Assert.That(Health.CurrentHealth,Is.EqualTo(35));
+            Assert.That(Health.ApplyDamage(10,p+new Vector2(-1.2f,1.5f)),Is.Zero,"Front-upper diagonal (a slam from there) is blocked.");
+            Assert.That(Health.ApplyDamage(10,p+new Vector2(-1.2f,-1.2f)),Is.Zero,"Front-lower diagonal (a lift from there) is blocked.");
+            Assert.That(Health.ApplyDamage(10,p+new Vector2(-.3f,1.8f)),Is.EqualTo(10),"Directly above passes.");
+            Assert.That(Health.ApplyDamage(10,p+new Vector2(.2f,-1.6f)),Is.EqualTo(10),"Directly below passes.");
+            Assert.That(Health.ApplyDamage(10,p+Vector2.right),Is.EqualTo(10),"Behind passes.");
+            Assert.That(Health.ApplyDamage(10,p+new Vector2(1.2f,1.5f)),Is.EqualTo(10),"Behind-upper diagonal passes.");
+            Assert.That(Health.ApplyDamage(10,p+Vector2.left,true),Is.EqualTo(10),"An explicit bypass (environment) still passes.");
+            Assert.That(Health.CurrentHealth,Is.EqualTo(25));
+            Ground.ApplyKnockback(3f,30f,.35f);
+            Assert.That(Ground.IsForcedMoving,Is.False,"Ordinary hits keep its action: no knockback.");
         }
-        [UnityTest] public IEnumerator ShieldTurnsSlowlyAndLocksDirectionDuringPreparation()
+        [UnityTest] public IEnumerator ShieldTurnsOnlyWhenATelegraphStartsAndNeverWalks()
         {
             yield return Spawn("ShieldSoldier",Vector2.right);
-            Tick();Assert.That(Phase,Is.EqualTo(EnemyPhase.Turning));Tick(.54f);Assert.That(Combat.Facing,Is.EqualTo(-1));
-            Tick(.02f);Assert.That(Combat.Facing,Is.EqualTo(1));Tick();Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
-            MoveTarget(Combat.Center+Vector2.left);Tick(.5f);Health.ApplyDamage(1);Tick(.1f);
-            Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));Assert.That(Combat.State.Elapsed,Is.EqualTo(.6f).Within(.001));Assert.That(Combat.Facing,Is.EqualTo(1));
+            Tick();Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle));Assert.That(Combat.Facing,Is.EqualTo(-1),"Seeing the player behind does not turn it.");
+            Tick(.2f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));Assert.That(Combat.Facing,Is.EqualTo(1),"It turns as the telegraph starts.");
+            MoveTarget(Combat.Center+Vector2.left);Tick(.2f);Health.ApplyDamage(1);Tick(.1f);
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));Assert.That(Combat.State.Elapsed,Is.EqualTo(.3f).Within(.001));
+            Assert.That(Combat.Facing,Is.EqualTo(1),"Direction holds through the telegraph.");
+        }
+        [UnityTest] public IEnumerator ShieldFrontNeverWalksTowardAPlayerOutOfStrikeRange()
+        {
+            yield return Spawn("ShieldFront",Vector2.left*5f);
+            float x=enemy.transform.position.x;
+            yield return new WaitForSeconds(.6f);
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle),"Recognized but too far for the strike.");
+            Assert.That(enemy.transform.position.x,Is.EqualTo(x).Within(.01f),"It never walks after the player.");
+        }
+        [UnityTest] public IEnumerator ShieldKeepsFiveSecondsBetweenTelegraphStartsAndCancelsOnLostPlayer()
+        {
+            yield return Spawn("ShieldSoldier",Vector2.left*3f);
+            Tick();Tick(.2f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
+            MoveTarget(Combat.Center+Vector2.left*30f);Tick();
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle),"Losing the player cancels the telegraph.");
+            MoveTarget(Combat.Center+Vector2.left*3f);
+            Tick(.3f);Tick(.3f);Tick(4.2f);Tick(.1f);
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle),"The interval counts from the cancelled telegraph's start.");
+            Tick(.1f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
+        }
+        [UnityTest] public IEnumerator ShieldRushRunsItsWholeFixedPathAndHitsThePlayerOnce()
+        {
+            yield return Spawn("ShieldSoldier",Vector2.left*1.5f);
+            float start=enemy.transform.position.x;int hp=target.CurrentHealth;
+            Tick();Tick(.2f);Tick(.41f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Dash));
+            float deadline=Time.realtimeSinceStartup+2f;
+            while(Phase==EnemyPhase.Dash&&Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Recovery));
+            Assert.That(start-enemy.transform.position.x,Is.InRange(settings.DashMaxDistance-.6f,settings.DashMaxDistance+.3f),"It does not stop at the player.");
+            Assert.That(target.CurrentHealth,Is.EqualTo(hp-settings.Damage),"Contact damage once per dash.");
+        }
+        [UnityTest] public IEnumerator ShieldFrontStrikesOnceInPlaceAndMissesOutOfReach()
+        {
+            yield return Spawn("ShieldFront",Vector2.left*2f);
+            Assert.That(settings.ShieldAttack,Is.EqualTo(ShieldAttack.Strike));
+            float x=enemy.transform.position.x;int hp=target.CurrentHealth;
+            Tick();Tick(.2f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
+            Tick(.41f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Strike));
+            Assert.That(target.CurrentHealth,Is.EqualTo(hp-settings.Damage));
+            Tick(.05f);Assert.That(target.CurrentHealth,Is.EqualTo(hp-settings.Damage),"One check per strike.");
+            Tick(.1f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Recovery));
+            Tick(.51f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle));
+            Assert.That(enemy.transform.position.x,Is.EqualTo(x).Within(.01f),"The strike is made in place.");
+            Tick(4.6f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
+            MoveTarget(Combat.Center+Vector2.left*3.6f);Tick(.41f);
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Strike));
+            Assert.That(target.CurrentHealth,Is.EqualTo(hp-settings.Damage),"Out of reach: a miss.");
+        }
+        [UnityTest] public IEnumerator ShieldBlockEndsTheComboEvenWhenAnotherTargetIsHit()
+        {
+            yield return Spawn("ShieldSoldier",Vector2.right);
+            var tuning=Object.Instantiate(AssetDatabase.LoadAssetAtPath<ActionPlatformer.Player.PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset"));created.Add(tuning);
+            var combat=new ActionPlatformer.Player.PlayerCombat(target.Owner,target.GetComponent<Collider2D>(),tuning,new ActionPlatformer.Player.SequentialComboRule(3,true));
+            // Behind the shield (it faces left): the swing lands and starts a chain.
+            Physics2D.SyncTransforms();
+            Assert.That(combat.TryAttack(Health,-1f,false,0),Is.True);combat.Tick(.05);combat.Tick(.2);combat.Tick(.4);
+            Assert.That(Health.CurrentHealth,Is.LessThan(75));Assert.That(combat.ComboCount(.4),Is.EqualTo(1));
+            // In front, with a training dummy behind the shield in the same swing: the dummy is hit, the shield blocks.
+            var dummy=Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/TrainingDummy.prefab"),
+                (Vector3)(Combat.Center+Vector2.right*1f),Quaternion.identity);created.Add(dummy);
+            MoveTarget(Combat.Center+Vector2.left);
+            uint dummyHits=dummy.GetComponent<UnitHealth>().DamageVersion;int hp=Health.CurrentHealth;
+            Assert.That(combat.TryAttack(Health,1f,false,.5),Is.True);combat.Tick(.55);
+            Assert.That(dummy.GetComponent<UnitHealth>().DamageVersion,Is.EqualTo(dummyHits+1),"The other target is hit.");
+            Assert.That(Health.CurrentHealth,Is.EqualTo(hp),"The shield blocks.");
+            Assert.That(combat.ComboCount(.56),Is.Zero,"Any block in the swing ends the chain.");
+            combat.Tick(.7);combat.Tick(.9);
+            Assert.That(combat.TryAttack(Health,1f,false,1.0),Is.True);
+            Assert.That(combat.GetPresentation(1.0).Strike,Is.EqualTo(1),"The next attack starts a new chain.");
         }
         [UnityTest] public IEnumerator ShieldDashSweepsCrossedPlayerOnceAndStopsAtWall()
         {
             yield return Spawn("ShieldSoldier",Vector2.left*1.5f);
-            Tick();Tick(1.21f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Dash));
+            Tick();Tick(.2f);Tick(.41f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Dash));
             Vector2 old=Combat.Center;int hp=target.CurrentHealth;
             enemy.GetComponent<Rigidbody2D>().position+=Vector2.left*2;Physics2D.SyncTransforms();
             Combat.HitDashPath(old);Combat.HitDashPath(old);Assert.That(target.CurrentHealth,Is.EqualTo(hp-14));
@@ -171,7 +249,7 @@ namespace ActionPlatformer.Tests
             var floor = created[0] as GameObject;
             floor.transform.position = new Vector2(1f, 50f);
             floor.GetComponent<BoxCollider2D>().size = new Vector2(4f, 1f);
-            Physics2D.SyncTransforms(); Tick(); Tick(1.21f);
+            Physics2D.SyncTransforms(); Tick(); Tick(.2f); Tick(.41f);
             Assert.That(Phase, Is.EqualTo(EnemyPhase.Dash));
             yield return new WaitForSeconds(.25f);
             Assert.That(Phase, Is.EqualTo(EnemyPhase.Recovery));
@@ -187,12 +265,19 @@ namespace ActionPlatformer.Tests
             Tick(); Assert.That(Phase, Is.EqualTo(EnemyPhase.Idle));
             Assert.That(Combat.ShotVersion, Is.EqualTo(1));
         }
-        [UnityTest] public IEnumerator ShieldLaunchDoesNotResetPreparationAndCannotDashInAir()
+        [UnityTest] public IEnumerator ShieldLaunchDropsTheShieldUntilItLandsAndCancelsTheAttack()
         {
             yield return Spawn("ShieldSoldier",Vector2.left);
-            Tick();Tick(.6f);Ground.ApplyForcedMovement(Vector2.up*10,.35f);Health.ApplyDamage(1);
-            Tick(.3f);Assert.That(Combat.State.Elapsed,Is.EqualTo(.9f).Within(.001));
-            Tick(.31f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Recovery));Assert.That(Ground.IsForcedMoving,Is.True);
+            Tick();Tick(.2f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Preparing));
+            Ground.ApplyForcedMovement(Vector2.up*10,.35f);Health.ApplyDamage(1,Combat.Center+Vector2.right,false,true);
+            Tick();Assert.That(Phase,Is.EqualTo(EnemyPhase.Reacting));Assert.That(Combat.Guarding,Is.False);
+            Assert.That(Health.ApplyDamage(10,Combat.Center+Vector2.left),Is.EqualTo(10),"Front hits land while the shield is down.");
+            float deadline=Time.realtimeSinceStartup+3f;
+            while(Phase==EnemyPhase.Reacting&&Time.realtimeSinceStartup<deadline)yield return null;
+            Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle),"Landed and done moving: back on guard.");
+            Assert.That(Ground.IsGrounded,Is.True);Assert.That(Combat.Guarding,Is.True);
+            Assert.That(Health.ApplyDamage(10,Combat.Center+Vector2.left),Is.Zero);
+            Tick(.3f);Assert.That(Phase,Is.EqualTo(EnemyPhase.Idle),"The cancelled attack is not resumed.");
         }
         [UnityTest] public IEnumerator SurveillanceResetsOnlyForSuccessfulRepositionAndCancelsLostTarget()
         {

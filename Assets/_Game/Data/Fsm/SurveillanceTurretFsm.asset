@@ -19,20 +19,20 @@ MonoBehaviour:
   preparation: 0.85
   recovery: 1.5
   deathDuration: 0.6
+  shieldAttack: 0
+  recognitionDelay: 0.2
+  attackInterval: 5
   detectionHeight: 2.8
   approachHeight: 1.4
-  approachDistance: 2.2
-  approachSpeed: 1.3
-  turnDuration: 0.55
   dashSpeed: 13.6
-  dashMinDistance: 2
   dashMaxDistance: 4.4
-  dashOvershoot: 0.7
-  guardFrontThreshold: 0.16
-  guardHeight: 0.68
-  scanDuration: 1
+  strikeTriggerDistance: 2.9
+  strikeReach: 2.3
+  strikeDuration: 0.12
+  guardDirectBand: 0.5
   idleTurnInterval: 3
   idleTurnDuration: 0.5
+  scanDuration: 1
   lockDuration: 0.4
   beamLength: 22
   beamWidth: 0.16

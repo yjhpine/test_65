@@ -11,6 +11,7 @@ namespace ActionPlatformer.Tests
     public sealed class EnemyPatternDefinitionTests
     {
         [TestCase("ShieldSoldier",75,1.6f,true)]
+        [TestCase("ShieldFront",75,1.6f,true)]
         [TestCase("SurveillanceTurret",90,1.2f,false)]
         [TestCase("FlyingDrone",60,.8f,true)]
         public void PrefabsHaveValidDefinitionsAndAnimationBindings(string name,int hp,float height,bool movable)
@@ -22,8 +23,19 @@ namespace ActionPlatformer.Tests
             Assert.That(((EnemyFsmDefinition)definition.Fsm).TryValidate(out error),Is.True,error);
             Assert.That(go.GetComponent<BoxCollider2D>().size,Is.EqualTo(new Vector2(1,height)));
             Assert.That(go.GetComponent<EnemyCombat2D>(),Is.Not.Null);Assert.That(go.GetComponentInChildren<EnemyVisual2D>(),Is.Not.Null);
-            var animator=go.GetComponentInChildren<Animator>();Assert.That(animator.applyRootMotion,Is.False);Assert.That(animator.runtimeAnimatorController.animationClips.Length,Is.EqualTo(name=="SurveillanceTurret"?8:name=="ShieldSoldier"?9:4));
+            var animator=go.GetComponentInChildren<Animator>();Assert.That(animator.applyRootMotion,Is.False);Assert.That(animator.runtimeAnimatorController.animationClips.Length,Is.EqualTo(name=="SurveillanceTurret"?8:name.StartsWith("Shield")?9:4));
             foreach(var clip in animator.runtimeAnimatorController.animationClips)Assert.That(AnimationUtility.GetObjectReferenceCurveBindings(clip)[0].propertyName,Is.EqualTo("m_Sprite"));
+        }
+        [Test] public void BothShieldTypesShareTheShieldBodyButDifferInAttack()
+        {
+            var rush=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/ShieldSoldier.prefab");
+            var front=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/ShieldFront.prefab");
+            Assert.That(PrefabUtility.GetCorrespondingObjectFromSource(front),Is.EqualTo(rush),"The front type is a variant of the rush prefab.");
+            var rushFsm=(EnemyFsmDefinition)rush.GetComponent<Unit>().Definition.Fsm;var frontFsm=(EnemyFsmDefinition)front.GetComponent<Unit>().Definition.Fsm;
+            Assert.That(rushFsm.ShieldAttack,Is.EqualTo(ShieldAttack.Rush));Assert.That(frontFsm.ShieldAttack,Is.EqualTo(ShieldAttack.Strike));
+            Assert.That(front.GetComponent<Unit>().Definition.UnitId,Is.EqualTo("enemy.shieldfront"));
+            foreach(var go in new[]{rush,front})
+                Assert.That(new SerializedObject(go.GetComponent<GroundMovement2D>()).FindProperty("ignoreKnockback").boolValue,Is.True,go.name);
         }
         [Test] public void InvalidTimingAndNonFiniteSettingsAreRejected()
         {

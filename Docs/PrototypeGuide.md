@@ -630,3 +630,17 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 이 배치를 고정값으로 검사하던 테스트는 `StageFlowTests.StartsPlayableWithBalancedMixedEnemiesAndLockedExit`의 Ledge X 한 줄뿐이며, 새 값(26.3/37.31/48.03, 허용 오차 0.001)으로 바꿨다.
 - 고정형 적(감시 포탑)도 새 발판에 맞췄다. 포탑은 지지면 위 중심 높이 0.62(바닥 간격 0.02)로 서고, 원래 서 있던 발판이 옮겨진 만큼 같이 옮겼다(사용자가 옮긴 Ledge 2 포탑과 같은 방식). Encounter 2: (88.5, 3.62) → (89.30, 5.77, Wave 2 Ledge 3), Encounter 3: (138.5, 3.62) → (138.80, 4.17, Wave 3 Ledge 3), Encounter 4: (189, 3.62) → (188.61, 4.36, Wave 4 Ledge 3)과 (195.25, 6.62) → (196.96, 8.24, Wave 4 Ledge 4). 바닥 포탑 (29, 0.62)·(144.5, 0.62)은 그대로다.
 - 드론은 비행 유닛이라 옮기지 않았다. Encounter 2 드론(83.75, 7.63)은 올라간 Wave 2 Ledge 2 윗면과 0.18 간격, Encounter 4 드론(185.75, 8.63)은 Wave 4 Ledge 2와 1.28 간격이 됐다(이전 1.63).
+
+## 2026-11-03 — 방패병 기획서 v1.8 반영 (전면형·돌진형)
+
+사용자 요청으로 `GLITCH · 방패병 기획서 v1.8`을 추천 결정대로 반영했다. 체력·피해 체계(방패병 75, 플레이어 공격 10, 방패병 공격 14), 플레이어 넉백·피격 무적(기획서 D항목), 활성 영역 즉사 규칙(A07)은 이번 범위에서 뺐다. 거리는 1유닛 ≈ 47.5px(v0.3 순간이동 380px = 8유닛)로 환산했고 시간 값은 그대로다.
+
+- **방패 판정(`EnemyCombat2D.BlocksDamage`)**: 방패가 켜져 있으면 공격하는 쪽 중심이 방패 앞쪽이면 높이와 상관없이 막는다(앞쪽 위·아래 대각선 포함). 뒤쪽과 바로 위·아래(공격자 중심 X가 몸 기둥 `Guard Direct Band` 0.5 안)는 통과한다. 띄우기·내려찍기·출현·충격파도 일반 베기와 같은 위치 판정을 받는다(이전에는 무조건 통과). 공중 피격 중(`Reacting`)과 사망 중에는 방패가 꺼진다.
+- **막힘**: 피해 0, 띄우기·내려찍기 효과·넉백·반발력 없음. `UnitHealth.GuardBlockVersion`이 막힘을 알리고, `PlayerCombat`은 한 공격에서 하나라도 막히면 그 공격 끝에 타수를 1로 되돌린다(다른 적 명중으로 복구하지 않음).
+- **공통 행동(두 종류 모두)**: 걷기 추격 없음. 뒤로 가도 바로 돌지 않고 예고를 시작할 때 플레이어 쪽으로 방향을 정한다. 인식(거리 13·높이 2.8·시야·플레이어 화면 안) 후 0.2초 기다린 뒤 예고 0.4초, 예고 시작 간격 최소 5초. 예고 중 인식을 잃으면 취소하고 간격은 그 예고부터 센다. 회복 중에도 방패 유지. 일반 타격에는 넉백되지 않는다(`GroundMovement2D.Ignore Knockback`, 띄우기·내려찍기 이동은 유지).
+- **피격 반응**: 살아 있는 방패병이 유효한 띄우기·내려찍기(끊는 타격)를 맞으면 하던 공격을 취소하고 `Reacting`(방패·공격 꺼짐, Hit 자세 유지)으로 간다. 강제 이동이 끝나고 착지하면 방어를 다시 켜고 Idle로 돌아가며, 취소된 공격은 이어 가지 않는다.
+- **돌진형(`ShieldSoldier`, `Shield Attack = Rush`)**: 예고 때 고정한 방향으로 최대 5.5까지 18.9/초 직선 돌진(약 0.29초), 벽·발판 끝에서 짧아지고 플레이어 위치에서 멈추지 않는다. 접촉 피해는 돌진당 1회이고 맞혀도 계속 간다. 회복 0.65초, 도착 자리에 머문다.
+- **전면형(`ShieldFront`, `Shield Attack = Strike`)**: `ShieldSoldier` 프리팹의 변형(같은 몸·원화·방패), `ShieldFrontDefinition`(enemy.shieldfront)·`ShieldFrontFsm`. 플레이어가 수평 2.9 이내면 예고 0.4초 → 몸 앞면부터 2.3 범위를 한 번 판정(플레이어 몸·지형 시야 확인, 피해 14) → `Strike` 0.12초(공격 클립) → 회복 0.5초. 자리를 옮기지 않는다.
+- **외형**: 예고 중 공격 범위(전면 타격 거리 또는 돌진 경로)를 바닥의 주황색 선으로 표시한다(캐릭터를 가리지 않도록 몸 높이 상자 대신 선). 방패 막대는 방패가 켜져 있을 때만 그린다.
+- **배치**: CoreLoopStage 4웨이브 방패병은 돌진형 그대로다. MovementLab `Enemy Pattern Samples`에 전면형 1마리를 (-5, 0.82)에 추가했다.
+- 바뀐 필드: `EnemyFsmDefinition`에서 걷기·회전·돌진 최소 거리·지나침·옛 방패 높이 값(`approachDistance/Speed`, `turnDuration`, `dashMinDistance`, `dashOvershoot`, `guardFrontThreshold`, `guardHeight`)을 없애고 `shieldAttack`, `recognitionDelay`, `attackInterval`, `strikeTriggerDistance`, `strikeReach`, `strikeDuration`, `guardDirectBand`를 추가했다.
