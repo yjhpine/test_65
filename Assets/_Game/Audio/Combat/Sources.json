@@ -26,25 +26,41 @@
   {
     "clip": "HitA.wav",
     "sources": [
-      "impact/Audio/impactPunch_medium_000.ogg"
+      "impact/Audio/impactPunch_medium_000.ogg",
+      "impact/Audio/impactMetal_light_000.ogg",
+      "scifi/Audio/explosionCrunch_000.ogg"
     ],
-    "duration": 0.22,
+    "duration": 0.2,
     "peak": 0.8
   },
   {
     "clip": "HitB.wav",
     "sources": [
-      "impact/Audio/impactPunch_medium_001.ogg"
+      "impact/Audio/impactPunch_medium_001.ogg",
+      "impact/Audio/impactMetal_light_001.ogg",
+      "scifi/Audio/explosionCrunch_000.ogg"
     ],
-    "duration": 0.22,
+    "duration": 0.2,
+    "peak": 0.8
+  },
+  {
+    "clip": "HitC.wav",
+    "sources": [
+      "impact/Audio/impactPunch_medium_003.ogg",
+      "impact/Audio/impactMetal_light_002.ogg",
+      "scifi/Audio/explosionCrunch_000.ogg"
+    ],
+    "duration": 0.2,
     "peak": 0.8
   },
   {
     "clip": "HitHeavy.wav",
     "sources": [
-      "impact/Audio/impactPunch_heavy_000.ogg"
+      "impact/Audio/impactPunch_heavy_000.ogg",
+      "impact/Audio/impactPlate_heavy_000.ogg",
+      "scifi/Audio/explosionCrunch_000.ogg"
     ],
-    "duration": 0.3,
+    "duration": 0.32,
     "peak": 0.8
   },
   {

@@ -189,6 +189,7 @@ Archive SHA-256:
 - Sci-fi Sounds 1.0 by Kenney: https://kenney.nl/assets/sci-fi-sounds ? CC0.
 - Downloaded archives and unchanged extracted sources are retained in Library/SfxDownloads. The 12 selected/derived mono 44.1 kHz PCM clips are under Assets/_Game/Audio/Combat, with original Kenney license notices and a Swishes source notice. Sources.json maps every game clip to its source recording.
 - Project processing: leading silence removal, short tails, fade-out, peak normalization to 0.8. Glitch combines a 0.32-second force-field excerpt with filtered/tremolo computer noise. No other packs, music, voices or UI sounds were imported.
+- Player hit sounds (2026-11-03): HitA/HitB/HitC layer an Impact Sounds punch (impactPunch_medium_000/001/003, low-passed), a short high-passed metal tick (impactMetal_light_000/001/002) and a 0.07-second bit-crushed Sci-fi explosionCrunch_000 excerpt; HitHeavy layers impactPunch_heavy_000, impactPlate_heavy_000 and a 0.24-second crushed explosionCrunch_000 excerpt. Same packs and licenses, now 13 clips; recipes in Library/SfxDownloads/PrepareSfx.py, sources listed in Sources.json.
 - `swishes.zip` SHA-256: `7980215241b739a787dcf26f660ce510bb237900968789395a86911619795693`.
 - `impact.zip` SHA-256: `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8`.
 - `scifi.zip` SHA-256: `119340f351a5098ad814f78719438c0da355a9ce8a4c8a3af6a8d48aa3d49e04`.

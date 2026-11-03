@@ -644,3 +644,11 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - **외형**: 예고 중 공격 범위(전면 타격 거리 또는 돌진 경로)를 바닥의 주황색 선으로 표시한다(캐릭터를 가리지 않도록 몸 높이 상자 대신 선). 방패 막대는 방패가 켜져 있을 때만 그린다.
 - **배치**: CoreLoopStage 4웨이브 방패병은 돌진형 그대로다. MovementLab `Enemy Pattern Samples`에 전면형 1마리를 (-5, 0.82)에 추가했다.
 - 바뀐 필드: `EnemyFsmDefinition`에서 걷기·회전·돌진 최소 거리·지나침·옛 방패 높이 값(`approachDistance/Speed`, `turnDuration`, `dashMinDistance`, `dashOvershoot`, `guardFrontThreshold`, `guardHeight`)을 없애고 `shieldAttack`, `recognitionDelay`, `attackInterval`, `strikeTriggerDistance`, `strikeReach`, `strikeDuration`, `guardDirectBand`를 추가했다.
+
+## 2026-11-03 — 플레이어 명중 효과음 교체
+
+- 사용자 요청. 기존 명중음은 Kenney 펀치 소리 한 겹(맨주먹 느낌)이었다. 검으로 기계 적을 베는 느낌이 나도록, 이미 받아 둔 같은 CC0 팩(Impact Sounds·Sci-fi Sounds)에서 세 겹을 섞었다. 새 다운로드는 없다.
+- 일반 명중 `HitA/HitB/HitC`(0.2초): 펀치(무게, 3.2kHz 저역 통과) + 짧은 금속 틱(날, 1.4kHz 고역 통과 0.1초) + 비트크러시한 크런치 0.07초(글리치 질감). 3종을 차례로 돌려 쓴다(기존 2종 → 3종, `PlayerSfx.asset`의 Hits에 HitC 추가).
+- 무거운 명중 `HitHeavy`(0.32초, 처치·내려찍기·충격파): 무거운 펀치 + 금속판 충격 + 크런치 0.24초. 일반 명중보다 낮고 무겁게 맞췄다(스펙트럼 중심 약 0.7kHz, 일반 약 1kHz, 기존 펀치 약 0.5~0.7kHz).
+- 음량: 체감 음량(LUFS)을 기존 클립과 ±0.6 이내로 맞춰 `Hit Volume`(0.42)·피치 변화·0.04초 합치기 규칙은 그대로다. HitA/HitB/HitHeavy는 같은 파일을 덮어써 GUID를 유지했다.
+- 재생성: `python -I Library/SfxDownloads/PrepareSfx.py`(프로젝트 루트에서). 히트음 레시피가 이 스크립트에 들어 있고, 다른 클립은 같은 결과(바이트 동일)로 다시 만들어진다. 원본 대응은 `Audio/Combat/Sources.json`.
