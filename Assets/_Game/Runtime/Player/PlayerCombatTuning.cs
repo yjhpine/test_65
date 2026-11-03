@@ -42,6 +42,13 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(0f)] private float emergenceSpeed = 10f;
         [SerializeField, Min(0.01f)] private float forcedDuration = 0.35f;
         [SerializeField, Min(0f)] private float hitStun = 0.25f;
+        [Header("Attack recoil (a landed basic swing pushes the player back; 0 disables)")]
+        [Tooltip("Starting speed away from the struck side; it falls linearly to zero over the duration.")]
+        [SerializeField, Min(0f)] private float recoilSpeed = 4f;
+        [SerializeField, Min(0f)] private float recoilDuration = .1f;
+        [SerializeField, Min(0f)] private float finisherRecoilSpeed = 7f;
+        [SerializeField, Min(0f)] private float finisherRecoilDuration = .12f;
+        [SerializeField, Range(0f, 1f)] private float airRecoilMultiplier = .6f;
         [Header("Attack input buffer")]
         [SerializeField, Min(0f)] private float attackBufferTime = 0.1f;
         [Header("Impact feedback (0 disables each effect)")]
@@ -54,7 +61,16 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(0f)] private float heavyShakeAmplitude = 2f;
         [SerializeField, Min(0f)] private float slamShakeAmplitude = 3f;
         [SerializeField, Min(0f)] private float shakeDuration = 0.06f;
+        [Tooltip("Oscillation of the slam, shockwave and kill shakes; other hits stay a single directional kick.")]
         [SerializeField, Min(0.01f)] private float shakeFrequency = 22f;
+        [Tooltip("Extra hit stop when the swing kills a target. Added only to an enabled hit stop.")]
+        [SerializeField, Min(0f)] private float killHitStopBonus = .04f;
+        [Tooltip("Slow motion after the hit stop of the blow that clears a room's last enemy.")]
+        [SerializeField, Range(.01f, 1f)] private float finalBlowSlowTimeScale = .3f;
+        [SerializeField, Min(0f)] private float finalBlowSlowDuration = .2f;
+        [SerializeField, Min(0f)] private float finalBlowSlowRecovery = .15f;
+        [Tooltip("Glitch screen tear when the combo's strong strike lands. Off in reduced motion.")]
+        [SerializeField, Min(0f)] private float finisherGlitchDuration = .1f;
         [Header("Player damage feedback (0 disables each effect)")]
         [SerializeField, Range(.01f, 1f)] private float damageSlowTimeScale = .2f;
         [SerializeField, Min(0f)] private float damageSlowDuration = .15f;
@@ -98,6 +114,11 @@ namespace ActionPlatformer.Player
         public float ForcedDuration => forcedDuration;
         public float HitStun => hitStun;
         public float AttackBufferTime => attackBufferTime;
+        public float RecoilSpeed => recoilSpeed;
+        public float RecoilDuration => recoilDuration;
+        public float FinisherRecoilSpeed => finisherRecoilSpeed;
+        public float FinisherRecoilDuration => finisherRecoilDuration;
+        public float AirRecoilMultiplier => airRecoilMultiplier;
         public float HitStopDuration => hitStopDuration;
         public float HeavyHitStopDuration => heavyHitStopDuration;
         public float SlamHitStopDuration => slamHitStopDuration;
@@ -106,6 +127,11 @@ namespace ActionPlatformer.Player
         public float SlamShakeAmplitude => slamShakeAmplitude;
         public float ShakeDuration => shakeDuration;
         public float ShakeFrequency => shakeFrequency;
+        public float KillHitStopBonus => killHitStopBonus;
+        public float FinalBlowSlowTimeScale => finalBlowSlowTimeScale;
+        public float FinalBlowSlowDuration => finalBlowSlowDuration;
+        public float FinalBlowSlowRecovery => finalBlowSlowRecovery;
+        public float FinisherGlitchDuration => finisherGlitchDuration;
         public float DamageSlowTimeScale => damageSlowTimeScale;
         public float DamageSlowDuration => damageSlowDuration;
         public float DamageSlowRecovery => damageSlowRecovery;
@@ -126,9 +152,13 @@ namespace ActionPlatformer.Player
             Positive(finisherLaunchMultiplier) && finisherLaunchMultiplier >= 1f && NonNegative(slamHoverDuration) && Positive(slamSpeed) && Positive(slamKnockdownSpeed) && Positive(shockwaveRadius) &&
             Positive(shockwaveDuration) && Positive(slamTimeout) && NonNegative(emergenceSpeed) &&
             Positive(forcedDuration) && NonNegative(hitStun) && NonNegative(attackBufferTime) &&
+            NonNegative(recoilSpeed) && NonNegative(recoilDuration) && NonNegative(finisherRecoilSpeed) &&
+            NonNegative(finisherRecoilDuration) && NonNegative(airRecoilMultiplier) && airRecoilMultiplier <= 1f &&
             NonNegative(hitStopDuration) && NonNegative(heavyHitStopDuration) && NonNegative(slamHitStopDuration) &&
             NonNegative(shakeAmplitude) && NonNegative(heavyShakeAmplitude) && NonNegative(slamShakeAmplitude) &&
-            NonNegative(shakeDuration) && Positive(shakeFrequency) &&
+            NonNegative(shakeDuration) && Positive(shakeFrequency) && NonNegative(killHitStopBonus) &&
+            Positive(finalBlowSlowTimeScale) && finalBlowSlowTimeScale <= 1f && NonNegative(finalBlowSlowDuration) &&
+            NonNegative(finalBlowSlowRecovery) && NonNegative(finisherGlitchDuration) &&
             Positive(damageSlowTimeScale) && damageSlowTimeScale <= 1f &&
             NonNegative(damageSlowDuration) && NonNegative(damageSlowRecovery) && NonNegative(damageShakeAmplitude) && NonNegative(damageShakeDuration) &&
             NonNegative(damageZoom) && damageZoom <= .2f && NonNegative(damageZoomDuration) &&

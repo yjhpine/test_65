@@ -32,6 +32,11 @@ namespace ActionPlatformer.Player
         private bool jumpHeld;
         private double lastGroundedAt = double.NegativeInfinity;
         private bool jumpGraceAvailable;
+        // Attack recoil: queued on the hit's physics step, applied from the next one (after the hit stop),
+        // its speed falling linearly to zero over the duration.
+        private bool recoilQueued;
+        private float queuedRecoilVelocity, queuedRecoilDuration;
+        private float recoilVelocity, recoilDuration, recoilRemaining;
         private bool pendingJumpRelease;
         private bool pendingGlitch, pendingAttack, pendingCancel;
         private GlitchRequest glitchRequest;
@@ -120,7 +125,8 @@ namespace ActionPlatformer.Player
         // Shared combo progress for the HUD: executed strikes in the live chain and the strike count of a full combo.
         public int ComboCount => Combat == null ? 0 : Combat.ComboCount(Time.timeAsDouble);
         public int ComboLength => Combat == null ? 0 : Combat.ComboLength;
-        public bool FinisherReady => Combat != null && Combat.FinisherReady(Time.timeAsDouble);
+        // Called by the stage when a kill clears the current enemy group.
+        public void PresentFinalBlow() { if (isActiveAndEnabled) Feedback?.PlayFinalBlow(Time.unscaledTimeAsDouble); }
         public void SetAimCamera(Camera camera)
         {
             aimCamera = camera;
@@ -282,6 +288,7 @@ namespace ActionPlatformer.Player
             double now = Time.timeAsDouble;
             if (!UpdateReactions(now))
             {
+                ClearRecoil();
                 if (isActiveAndEnabled)
                 {
                     Motor.RefreshContacts();
@@ -291,6 +298,12 @@ namespace ActionPlatformer.Player
                 return;
             }
             if (IsScriptedTransferring) return;
+            if (recoilQueued)
+            {
+                recoilQueued = false;
+                recoilVelocity = queuedRecoilVelocity;
+                recoilDuration = recoilRemaining = queuedRecoilDuration;
+            }
             if (!IsUnderground) Motor.RefreshContacts();
             bool wasUnderground = IsUnderground;
             Glitch?.Tick(now);
@@ -305,6 +318,7 @@ namespace ActionPlatformer.Player
                     {
                         unchecked { RepositionVersion++; }
                         relocated = true;
+                        ClearRecoil();
                         FaceArrival();
                         Motor.RefreshContacts();
                         Combat?.ExtendCombo(now);
@@ -322,6 +336,7 @@ namespace ActionPlatformer.Player
                     unchecked { RepositionVersion++; }
                     Combat?.ExtendCombo(now);
                     relocated = true;
+                    ClearRecoil();
                     ClearJumpState();
                     FaceArrival();
                 }
@@ -348,6 +363,12 @@ namespace ActionPlatformer.Player
                 Combat.TryAttack(Glitch?.ArrivalTarget, facing, false, now, Motor.IsGrounded);
             }
             ApplyImpactFeedback();
+            if (Combat != null && Combat.ConsumeRecoil(out float recoil, out float recoilTime))
+            {
+                recoilQueued = true;
+                queuedRecoilVelocity = recoil;
+                queuedRecoilDuration = recoilTime;
+            }
             bool movementLocked = Combat != null && Combat.BlocksMovement(Motor.IsGrounded);
             if (movementLocked)
             {
@@ -364,12 +385,14 @@ namespace ActionPlatformer.Player
             if (Combat != null && Combat.IsPreparingSlam)
             {
                 ClearJumpState();
+                ClearRecoil();
                 Motor.Hover();
                 return;
             }
             if (Combat != null && Combat.IsDescending)
             {
                 ClearJumpState();
+                ClearRecoil();
                 if (Motor.SimulateSlam(Combat.SlamSpeed, Time.fixedDeltaTime, out var impact))
                     Combat.LandSlam(impact, now);
                 ApplyImpactFeedback();
@@ -378,6 +401,7 @@ namespace ActionPlatformer.Player
             if (wasDescending) Motor.StopSlam();
             if (relocated) { Motor.RefreshContacts(); return; }
             Motor.RefreshContacts();
+            if (recoilRemaining > 0f && ApplyRecoil()) return;
             if (movementLocked)
             {
                 // Keep gravity and attack-owned vertical motion, but suppress locomotion throughout Recovery.
@@ -468,6 +492,7 @@ namespace ActionPlatformer.Player
             pendingGlitch = pendingAttack = pendingCancel = false;
             glitchRequest = default;
             ClearJumpState();
+            ClearRecoil();
             horizontalInput = 0f;
             jumpHeld = false;
             hasAim = false;
@@ -487,6 +512,23 @@ namespace ActionPlatformer.Player
                 float delta = Glitch.ArrivalTarget.transform.position.x - Motor.Position.x;
                 if (Mathf.Abs(delta) > 0.01f) facing = Mathf.Sign(delta);
             }
+        }
+
+        // One recoil step replaces locomotion. On the ground it ends at a platform edge rather than carrying the player off.
+        private bool ApplyRecoil()
+        {
+            float step = Time.fixedDeltaTime;
+            float velocity = recoilVelocity * Mathf.Clamp01(recoilRemaining / recoilDuration);
+            recoilRemaining -= step;
+            if (Motor.IsGrounded && !Motor.HasGroundAhead(velocity, Mathf.Abs(velocity) * step)) { ClearRecoil(); return false; }
+            Motor.SimulateRecoil(velocity, jumpHeld, step);
+            return true;
+        }
+
+        private void ClearRecoil()
+        {
+            recoilQueued = false;
+            recoilRemaining = 0f;
         }
 
         private void ClearJumpState()

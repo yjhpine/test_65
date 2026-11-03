@@ -599,3 +599,27 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 ## 2026-11-03 — 도착 공간이 막힌 글리치의 NO SPACE 문구 제거
 
 - 사용자 요청. 도착 지점이 막혀 글리치를 쓸 수 없을 때(`GlitchBlockReason.NoSpace`) 표시 위에 띄우던 `NO SPACE` 문구를 없앴다. Busy처럼 빨간 마커만 보인다. OUT OF RANGE, OFF SCREEN, GATE CLOSED, COOLDOWN 문구와 NoSpace 판정 자체(실행 불가, GlitchPreview.Reason)는 그대로다.
+
+## 2026-11-03 — 타격감 보강 6가지
+
+사용자 요청(조사 후 추천안 1~6). 기존 사용자 조정 수치(타이밍·넉백·피해·카메라 8)는 바꾸지 않았고, 새 값은 `PlayerCombatTuning`의 코드 기본값으로 들어간다(에셋에 필드가 생기기 전까지 기본값 사용). 각 값은 0으로 끌 수 있다.
+
+1. **처치 강조**: 처치한 휘두름의 히트스톱에 `Kill Hit Stop Bonus`(0.04초)를 더한다(기본 히트스톱이 켜져 있을 때만). 현재 적 그룹(구역/목표)의 마지막 적이 쓰러지면 `StageFlowController.UpdateObjective`가 `PlayerUnit.PresentFinalBlow`를 호출하고, `PlayerImpactFeedback.PlayFinalBlow`가 그 타격의 히트스톱이 끝난 뒤 `Final Blow Slow`(0.3배 0.2초 + 0.15초 복귀)를 건다. 플레이어 피격 슬로가 우선한다. 시간 효과가 끝날 때까지 최종 출구 연출은 기존처럼 기다린다.
+2. **적 떨림**: `UnitDamageFlash`가 피해를 받은 유닛의 Visual(유닛 루트의 직계 자식)만 1 원화 픽셀씩 좌우로 떤다. 최소 0.05초, 히트스톱으로 세계가 멈춘 동안은 최대 0.2초까지 이어지고 끝나면 원래 위치로 돌아온다. 몸체·물리는 움직이지 않으며, 포탑 머리·받침대처럼 Visual 아래 부품은 Visual을 따라간다. 허수아비는 이 컴포넌트가 없어 떨지 않는다.
+3. **효과음 피치**: `SoundCue`/`ShortSoundPool`에 피치를 추가했다. 일반 휘두름은 타수마다 +5%(1타 1.0, 2타 1.05)에 ±4% 무작위, 강공격·특수 휘두름은 0.97 ±3%(강공격) 또는 타수 상승 ±3%, 명중음 ±6%, 처치·내려찍기 무거운 명중음 0.97 ±3%. 적 효과음은 그대로 1.0이다.
+4. **파편·파괴 이펙트(PixelFX)**: `custom/glitch-hit-debris`(0.45초 15프레임, 56×44, 피벗=접촉점, 오른쪽 방향)는 일반 명중마다 맞은 자리에서 앞쪽으로 튀어 떨어지는 청록·빨강 파편·데이터 블록이고, 접촉 이펙트(0.10초)보다 오래 남는다. 공격 방향이 왼쪽이면 좌우 반전한다. `custom/glitch-shatter`(0.6초 19프레임, 80×72, 피벗=몸 중심)는 처치 때 대상 몸 중심에서 흰 선택 상자 → 데이터 블록 폭발 → 찢김 선 → 픽셀 비가 이어진다. 둘 다 18 PPU 원래 크기, 비스케일 시간이며 `PlayerContactEffects`의 `Contact burst` 렌더러가 재생한다(대상 정렬 순서 +1). PlayerVfx `hitDebrisFrames/killShatterFrames/contactBurstFps(30)`, 가져오기는 `Game > Effects > Import Generated Contact Bursts`.
+5. **3타 글리치 화면**: 콤보의 강공격이 피해를 주면(`PlayerImpact.Finisher`) `Finisher Glitch Duration`(0.1초, 앞 절반 최대 후 감소) 동안 피격 화면 표면(`PlayerDamageScreen`, 같은 셰이더에 `_Glitch/_GlitchSeed` 추가)이 화면 위에 청록·빨강 찢김 띠, 깜박이는 블록, 양옆 색 분리, 스캔선을 그린다. 1/30초마다 무늬가 바뀐다. 장면을 다시 샘플링하지 않는 오버레이이며 렌더 파이프라인·카메라 후처리 설정은 바꾸지 않았다. 감소된 움직임(reduced motion)과 컷신 카메라 억제 중에는 나오지 않는다.
+6. **흔들림 떨림**: 내려찍기·충격파·처치 흔들림은 기존처럼 한 번 밀린 뒤 `Shake Frequency`(22Hz, 이전에는 미사용)로 앞뒤로 떨며 줄어든다. 일반·띄우기 명중과 플레이어 피격은 한 번 밀림 그대로다.
+
+## 2026-11-03 — 강공격 장전 오라 제거
+
+- 사용자 요청. 11-02에 추가한 3타 장전 오라를 없앴다. `PlayerActionEffects`의 `Finisher aura` 렌더러, `PlayerVfxProfile.finisherAuraFrames/finisherAuraFps`, 오라 전용 상태(`IPlayerActionState.FinisherReady`, `PlayerUnit.FinisherReady`, `PlayerCombat.FinisherReady`), `Game > Effects > Import Generated Finisher Aura` 메뉴, `Art/Effects/PixelFxFinisherAura` 프레임과 `Tools/PixelFx/effects/finisher-aura.mjs`를 지웠다. 위 11-02 오라 절은 과거 기록이다.
+- 다음 공격이 강공격이라는 표시는 HUD의 COMBO 칸·STRONG NEXT만 남는다. 강공격 성능, 3타 검격·무거운 효과음, 11-03 타격감 보강(3타 글리치 화면 포함)은 그대로다.
+
+## 2026-11-03 — 공격 반발력(플레이어 밀림)
+
+- 사용자 요청. 일반 공격(지상 Side·공중 Air)이 실제 피해를 주면 그 휘두름에 한 번, 플레이어가 공격 방향(시작 때 고정한 Facing)의 반대로 살짝 밀린다. 빗나감·방패 차단(피해 0)·띄우기·내려찍기·충격파·출현에는 없다.
+- 값(`PlayerCombatTuning` "Attack recoil", 코드 기본값, 0이면 끔): 일반 `Recoil Speed` 4유닛/초 → `Recoil Duration` 0.1초 동안 선형 감소(약 0.2~0.24유닛), 3타 강공격 `Finisher Recoil Speed` 7 / `Finisher Recoil Duration` 0.12초(약 0.4유닛), 공중 `Air Recoil Multiplier` 0.6배. 기존 사용자 조정 값은 바꾸지 않았다.
+- 흐름: `PlayerCombat`이 피해를 준 순간 반발을 계산해 두고(`ConsumeRecoil`), `PlayerUnit`이 같은 물리 단계에 받아 다음 단계부터 적용한다. 히트스톱 동안은 물리가 멈추므로 "멈춤 → 밀림" 순서가 된다. 반발이 남은 동안은 지상 공격의 이동 잠금이나 입력 이동 대신 `CharacterMotor2D.SimulateRecoil`(수평 속도만 지정, 중력·접지는 기존과 같음)을 쓴다. 벽은 물리로 막히고, 지상에서는 `HasGroundAhead`로 발밑이 끝나면 그 자리에서 멈춰 발판에서 떨어지지 않는다.
+- 취소: 글리치·잠복·출현·내려찍기 준비/하강·조작 잠금(구역 이동·컷신)·피격·사망·비활성화.
+- 연속 3타면 합쳐서 약 0.8유닛 물러난다. 사거리 2.4라 콤보는 이어지지만 적 넉백과 합쳐 간격이 이전보다 벌어진다.

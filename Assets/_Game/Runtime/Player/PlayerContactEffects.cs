@@ -7,28 +7,34 @@ namespace ActionPlatformer.Player
     {
         private sealed class Slot
         {
-            public SpriteRenderer Flash, Fragments;
+            public SpriteRenderer Flash, Fragments, Burst;
             public PlayerHitPresentation Hit;
-            public Vector2 Position;
+            public Vector2 Position, BurstPosition;
+            public Sprite[] BurstFrames;
             public double Started;
             public bool Active, Dust, Following;
         }
         private readonly Slot[] slots = new Slot[32];
         private readonly Transform owner;
         private readonly Sprite[] frames;
-        private readonly Sprite[] impactFrames, finisherFrames;
+        private readonly Sprite[] impactFrames, finisherFrames, debrisFrames, shatterFrames;
+        private readonly float burstFps;
         private readonly int sortingLayer, sortingOrder;
         private readonly MaterialPropertyBlock palette = new MaterialPropertyBlock();
         private int next;
         public PlayerContactEffects(Transform owner, SpriteRenderer source, Sprite[] frames, Material material,
-            Sprite[] impactFrames = null, Sprite[] finisherFrames = null)
+            Sprite[] impactFrames = null, Sprite[] finisherFrames = null,
+            Sprite[] debrisFrames = null, Sprite[] shatterFrames = null, float burstFps = 30f)
         {
             this.owner = owner; this.frames = frames;
             this.impactFrames = impactFrames; this.finisherFrames = finisherFrames;
+            this.debrisFrames = debrisFrames; this.shatterFrames = shatterFrames; this.burstFps = Mathf.Max(1f, burstFps);
             sortingLayer = source.sortingLayerID; sortingOrder = source.sortingOrder + 3;
             for (int i = 0; i < slots.Length; i++) slots[i] = new Slot {
-                Flash = Create("Contact flash " + i, source, material), Fragments = Create("Contact fragments " + i, source, material) };
+                Flash = Create("Contact flash " + i, source, material), Fragments = Create("Contact fragments " + i, source, material),
+                Burst = Create("Contact burst " + i, source, material) };
         }
+        private static bool HasFrames(Sprite[] sequence) => sequence != null && sequence.Length > 0;
         private SpriteRenderer Create(string name, SpriteRenderer source, Material material)
         {
             var go = new GameObject(name); go.transform.SetParent(owner, false);
@@ -51,13 +57,22 @@ namespace ActionPlatformer.Player
             SetSorting(slot, targetSprite != null ? targetSprite.sortingLayerID : sortingLayer,
                 targetSprite != null ? targetSprite.sortingOrder + 1 : sortingOrder);
             SetPalette(slot.Flash, Color.white); SetPalette(slot.Fragments, ColorFor(hit.Kind));
+            // A kill bursts from where the body stood; other hits leave debris spraying on from the contact point.
+            bool shatter = hit.Killed && HasFrames(shatterFrames);
+            slot.BurstFrames = shatter ? shatterFrames : HasFrames(debrisFrames) ? debrisFrames : null;
+            var body = shatter && hit.Target != null ? hit.Target.GetComponent<Collider2D>() : null;
+            slot.BurstPosition = body != null ? (Vector2)body.bounds.center : hit.Point;
+            slot.Burst.flipX = hit.Direction.x < 0f;
+            slot.Burst.GetPropertyBlock(palette);
+            palette.SetColor("_PrimaryColor", Color.white); palette.SetColor("_AccentColor", Color.white);
+            palette.SetFloat("_Highlight", 0f); palette.SetFloat("_Desaturate", 0f); slot.Burst.SetPropertyBlock(palette);
         }
         public void Land(Vector2 point)
         {
             if (frames == null || frames.Length == 0) return;
             var slot = slots[next]; next = (next + 1) % slots.Length;
             slot.Hit = default; slot.Position = point; slot.Started = Time.unscaledTimeAsDouble;
-            slot.Active = slot.Dust = true; slot.Following = false;
+            slot.Active = slot.Dust = true; slot.Following = false; slot.BurstFrames = null;
             SetSorting(slot, sortingLayer, sortingOrder);
             SetPalette(slot.Fragments, new Color(.8f, .65f, .4f)); slot.Flash.enabled = false;
         }
@@ -70,8 +85,8 @@ namespace ActionPlatformer.Player
         }
         private static void SetSorting(Slot slot, int layer, int order)
         {
-            slot.Flash.sortingLayerID = slot.Fragments.sortingLayerID = layer;
-            slot.Flash.sortingOrder = slot.Fragments.sortingOrder = order;
+            slot.Flash.sortingLayerID = slot.Fragments.sortingLayerID = slot.Burst.sortingLayerID = layer;
+            slot.Flash.sortingOrder = slot.Fragments.sortingOrder = slot.Burst.sortingOrder = order;
         }
         public void Tick(double now)
         {
@@ -80,7 +95,23 @@ namespace ActionPlatformer.Player
                 if (!slot.Active) continue;
                 float age = (float)(now - slot.Started);
                 float duration = slot.Dust || slot.Hit.Killed ? .15f : .10f;
-                if (age >= duration) { Hide(slot); continue; }
+                // The burst outlives the contact flash; the slot stays busy until both are done.
+                int burstFrame = (int)(Mathf.Max(0f, age) * burstFps);
+                slot.Burst.enabled = HasFrames(slot.BurstFrames) && burstFrame < slot.BurstFrames.Length;
+                if (slot.Burst.enabled)
+                {
+                    slot.Burst.sprite = slot.BurstFrames[burstFrame];
+                    slot.Burst.color = Color.white;
+                    slot.Burst.transform.SetPositionAndRotation(new Vector3(slot.BurstPosition.x, slot.BurstPosition.y, owner.position.z), Quaternion.identity);
+                    Vector3 ownerScale = owner.lossyScale;
+                    slot.Burst.transform.localScale = new Vector3(1f / Mathf.Max(.001f, Mathf.Abs(ownerScale.x)), 1f / Mathf.Max(.001f, Mathf.Abs(ownerScale.y)), 1);
+                }
+                if (age >= duration)
+                {
+                    slot.Flash.enabled = slot.Fragments.enabled = false;
+                    if (!slot.Burst.enabled) Hide(slot);
+                    continue;
+                }
                 if (slot.Following)
                 {
                     if (slot.Hit.Target != null && slot.Hit.Target.gameObject.activeInHierarchy)
@@ -112,7 +143,11 @@ namespace ActionPlatformer.Player
             renderer.transform.localScale = new Vector3(size.x / Mathf.Max(.001f, Mathf.Abs(scale.x) * bounds.x),
                 size.y / Mathf.Max(.001f, Mathf.Abs(scale.y) * bounds.y), 1);
         }
-        private static void Hide(Slot slot) { slot.Active = false; slot.Flash.enabled = slot.Fragments.enabled = false; slot.Hit = default; }
+        private static void Hide(Slot slot)
+        {
+            slot.Active = false; slot.Flash.enabled = slot.Fragments.enabled = slot.Burst.enabled = false;
+            slot.Hit = default; slot.BurstFrames = null;
+        }
         public void Reset() { foreach (var slot in slots) Hide(slot); next = 0; }
     }
 }

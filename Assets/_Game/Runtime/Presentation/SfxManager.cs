@@ -7,8 +7,8 @@ namespace ActionPlatformer.Presentation
 {
     public readonly struct SoundCue
     {
-        public readonly AudioClip Clip; public readonly float Volume;
-        public SoundCue(AudioClip clip,float volume) { Clip=clip; Volume=volume; }
+        public readonly AudioClip Clip; public readonly float Volume, Pitch;
+        public SoundCue(AudioClip clip,float volume,float pitch=1f) { Clip=clip; Volume=volume; Pitch=pitch; }
     }
     [DefaultExecutionOrder(10000)]
     public sealed class SfxManager : MonoBehaviour
@@ -39,7 +39,7 @@ namespace ActionPlatformer.Presentation
         public void Play(EffectOwnerHandle handle, SoundCue cue)
         {
             var s=sessions.Get(handle); if(s==null || s.Owner==null || !s.Owner.gameObject.activeInHierarchy)return;
-            s.Value.Root.transform.position=s.Owner.position; s.Value.Pool.Play(cue.Clip,cue.Volume);
+            s.Value.Root.transform.position=s.Owner.position; s.Value.Pool.Play(cue.Clip,cue.Volume,cue.Pitch);
         }
         public void PlayShot(EffectOwnerHandle handle)
         {

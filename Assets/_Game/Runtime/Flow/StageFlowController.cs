@@ -208,6 +208,8 @@ namespace ActionPlatformer.Flow
                 if (enemy == null) { FailConfiguration(); return false; }
                 if (enemy.CurrentHealth > 0) remaining++;
             }
+            // The kill that clears the current group gets a short slow motion after its hit stop.
+            if (RemainingEnemies > 0 && remaining == 0 && player != null) player.PresentFinalBlow();
             RemainingEnemies = remaining;
             goal.SetUnlocked(remaining == 0 && (!UsesEncounters || CurrentEncounterIndex == encounters.Length - 1));
             return true;

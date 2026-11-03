@@ -15,6 +15,7 @@ namespace ActionPlatformer.Player
         private readonly Collider2D bodyCollider;
         private readonly ContactFilter2D groundFilter;
         private readonly RaycastHit2D[] groundHits = new RaycastHit2D[8];
+        private readonly RaycastHit2D[] probeHits = new RaycastHit2D[4];
         private RigidbodyType2D savedBodyType;
         private bool savedSimulated;
         public bool IsTransferring { get; private set; }
@@ -61,12 +62,34 @@ namespace ActionPlatformer.Player
         public void Simulate(float horizontal, bool jumpHeld, float deltaTime)
         {
             if (IsHeld) return;
-            Vector2 velocity = Velocity;
-            velocity.x = MovementMath.HorizontalSpeed(velocity.x, horizontal, IsGrounded, tuning, deltaTime);
+            Step(MovementMath.HorizontalSpeed(Velocity.x, horizontal, IsGrounded, tuning, deltaTime), jumpHeld, deltaTime);
+        }
+
+        // Attack recoil: the given horizontal speed replaces locomotion for this step; gravity and grounding are unchanged.
+        public void SimulateRecoil(float horizontalVelocity, bool jumpHeld, float deltaTime)
+        {
+            if (IsHeld) return;
+            Step(horizontalVelocity, jumpHeld, deltaTime);
+        }
+
+        private void Step(float horizontalVelocity, bool jumpHeld, float deltaTime)
+        {
+            Vector2 velocity = new Vector2(horizontalVelocity, Velocity.y);
             float gravity = velocity.y > 0f ? tuning.RiseGravity : tuning.FallGravity;
             if (velocity.y > 0f && !jumpHeld) gravity *= 1.6f;
             velocity.y = IsGrounded ? -2f : Mathf.Max(velocity.y - gravity * deltaTime, -tuning.MaxFallSpeed);
             body.linearVelocity = velocity;
+        }
+
+        // Whether floor stays under the body a little past its center after moving `distance` along `direction`.
+        public bool HasGroundAhead(float direction, float distance)
+        {
+            var bounds = bodyCollider.bounds;
+            var origin = new Vector2(bounds.center.x + Mathf.Sign(direction) * (Mathf.Abs(distance) + .1f), bounds.min.y + .1f);
+            int count = Physics2D.Raycast(origin, Vector2.down, groundFilter, probeHits, .25f);
+            for (int i = 0; i < count; i++)
+                if (probeHits[i].normal.y > .65f) return true;
+            return false;
         }
 
         public void Teleport(Vector2 position)

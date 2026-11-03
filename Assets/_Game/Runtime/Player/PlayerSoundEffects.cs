@@ -24,7 +24,10 @@ namespace ActionPlatformer.Player
             if(manager!=null && manager.IsValid(handle))return;
             manager=EffectsRuntime.Sfx; if(manager!=null)handle=manager.RegisterOwner(owner,settings);
         }
-        private void Play(AudioClip clip,float volume) { EnsureSession(); manager?.Play(handle,new SoundCue(clip,volume)); }
+        // Strikes of a live chain rise a little; every swing and hit varies slightly so repeats never sound identical.
+        public const float StrikeRise = .05f, SwingSpread = .04f, HitSpread = .06f, HeavySpread = .03f, HeavyDrop = .97f;
+        private static float Vary(float spread) => 1f + Random.Range(-spread, spread);
+        private void Play(AudioClip clip,float volume,float pitch=1f) { EnsureSession(); manager?.Play(handle,new SoundCue(clip,volume,pitch)); }
         public void Release() { manager?.ReleaseOwner(handle); handle=default; }
         private static AudioClip Next(AudioClip[] clips, ref int index)
             => clips != null && clips.Length > 0 ? clips[index++ % clips.Length] : null;
@@ -36,9 +39,13 @@ namespace ActionPlatformer.Player
             {
                 attackVersion = attack.Version;
                 if (state.AttackPhase != PlayerAttackPhase.Ready && state.ReactionPresentation.Kind != PlayerReaction.Die)
-                    // The combo's strong strike always uses the heavy swing, whatever its attack kind.
-                    Play((attack.Kind == PlayerAttack.Side || attack.Kind == PlayerAttack.Air) && !attack.Finisher
-                        ? Next(settings.Swings, ref swingIndex) : settings.HeavySwing, settings.SwingVolume);
+                {
+                    // The combo's strong strike always uses the heavy swing, whatever its attack kind, a touch lower.
+                    bool basic = (attack.Kind == PlayerAttack.Side || attack.Kind == PlayerAttack.Air) && !attack.Finisher;
+                    float pitch = attack.Finisher ? HeavyDrop * Vary(HeavySpread)
+                        : (1f + StrikeRise * Mathf.Max(0, attack.Strike - 1)) * Vary(basic ? SwingSpread : HeavySpread);
+                    Play(basic ? Next(settings.Swings, ref swingIndex) : settings.HeavySwing, settings.SwingVolume, pitch);
+                }
             }
             if (state.GlitchPresentation.Version != glitchVersion)
             {
@@ -51,7 +58,8 @@ namespace ActionPlatformer.Player
             if (settings == null || hit.Damage <= 0 || Time.unscaledTimeAsDouble - lastHit < .04) return;
             lastHit = Time.unscaledTimeAsDouble;
             bool heavy = hit.Killed || hit.Kind == PlayerAttack.Slam || hit.Kind == PlayerAttack.Shockwave;
-            Play(heavy ? settings.HeavyHit : Next(settings.Hits, ref hitIndex), settings.HitVolume);
+            Play(heavy ? settings.HeavyHit : Next(settings.Hits, ref hitIndex), settings.HitVolume,
+                heavy ? HeavyDrop * Vary(HeavySpread) : Vary(HitSpread));
         }
         public void Land(Vector2 point, bool slam)
         {

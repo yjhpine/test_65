@@ -17,10 +17,15 @@ namespace ActionPlatformer.Player
         private float appliedFixedDeltaTime;
         private bool slowing;
         private double slowStartedAt;
+        private float slowScale, slowHold, slowRecovery;
+        // The final blow's slow motion waits for that blow's hit stop to end.
+        private bool finalSlowPending;
         private double shakeStartedAt = double.NegativeInfinity;
         private float shakeAmplitude;
         private float activeShakeDuration;
+        private bool shakeOscillates, pendingOscillates;
         private double damageStartedAt = double.NegativeInfinity;
+        private double glitchStartedAt = double.NegativeInfinity;
         private int activePriority, pendingPriority;
         private float pendingPixels, pendingDuration;
         private Vector2 pendingDirection;
@@ -57,7 +62,9 @@ namespace ActionPlatformer.Player
         {
             float duration = impact.Strength == PlayerImpactStrength.Slam ? tuning.SlamHitStopDuration :
                 impact.Strength == PlayerImpactStrength.Heavy ? tuning.HeavyHitStopDuration : tuning.HitStopDuration;
+            if (impact.Killed && duration > 0f) duration += tuning.KillHitStopBonus;
             RequestHitStop(duration, unscaledNow);
+            if (impact.Finisher && tuning.FinisherGlitchDuration > 0f) glitchStartedAt = unscaledNow;
             if (screenFeedback) RequestHitScreen(impact.Strength == PlayerImpactStrength.Slam ? PlayerAttack.Slam :
                 impact.Strength == PlayerImpactStrength.Heavy ? PlayerAttack.Lift : PlayerAttack.Side,
                 false, impact.Direction, unscaledNow);
@@ -72,25 +79,38 @@ namespace ActionPlatformer.Player
             bool up = kind == PlayerAttack.Lift || kind == PlayerAttack.Emergence;
             float pixels = killed ? 3f : down ? tuning.SlamShakeAmplitude : up ? tuning.HeavyShakeAmplitude : tuning.ShakeAmplitude;
             float duration = killed || down ? .10f : up ? .08f : tuning.ShakeDuration;
-            QueueScreen(killed ? 2 : 1, direction, pixels, duration, now);
+            // Kills and ground-pounding blows ring; ordinary hits stay one readable push.
+            QueueScreen(killed ? 2 : 1, direction, pixels, duration, now, killed || down);
         }
 
-        private void QueueScreen(int priority, Vector2 direction, float pixels, float duration, double now)
+        private void QueueScreen(int priority, Vector2 direction, float pixels, float duration, double now, bool oscillate = false)
         {
             if (priority < pendingPriority || (priority == pendingPriority && pixels <= pendingPixels)) return;
             pendingPriority = priority; pendingDirection = direction; pendingPixels = Mathf.Clamp(pixels, 0, 4);
-            pendingDuration = duration; pendingAt = now;
+            pendingDuration = duration; pendingAt = now; pendingOscillates = oscillate;
+        }
+
+        // The blow that clears a room: slow motion right after its hit stop, or at once if there is none.
+        public void PlayFinalBlow(double unscaledNow)
+        {
+            if (tuning.FinalBlowSlowDuration <= 0f || tuning.FinalBlowSlowTimeScale >= 1f) return;
+            if (ownsTimeScale && slowing) return; // Damage slow motion keeps priority.
+            if (IsHitStopped) { finalSlowPending = true; return; }
+            if (AcquireTimeScale()) StartSlow(tuning.FinalBlowSlowTimeScale, tuning.FinalBlowSlowDuration, tuning.FinalBlowSlowRecovery, unscaledNow);
+        }
+
+        private void StartSlow(float scale, float hold, float recovery, double now)
+        {
+            slowing = true; finalSlowPending = false;
+            slowStartedAt = now; slowScale = scale; slowHold = hold; slowRecovery = recovery;
+            ApplySlowScale(scale);
         }
 
         public void PlayDamage(Vector2 direction, double unscaledNow)
         {
             // Damage slow motion takes priority over outgoing hit stop and refreshes on repeat hits.
             if (tuning.DamageSlowDuration > 0f && tuning.DamageSlowTimeScale < 1f && AcquireTimeScale())
-            {
-                slowing = true;
-                slowStartedAt = unscaledNow;
-                ApplySlowScale(tuning.DamageSlowTimeScale);
-            }
+                StartSlow(tuning.DamageSlowTimeScale, tuning.DamageSlowDuration, tuning.DamageSlowRecovery, unscaledNow);
             damageStartedAt = unscaledNow;
             QueueScreen(3, direction, tuning.DamageShakeAmplitude, tuning.DamageShakeDuration, unscaledNow);
         }
@@ -144,13 +164,15 @@ namespace ActionPlatformer.Player
             if (Time.timeScale != appliedTimeScale) { ReleaseTimeScale(); return; }
             if (!slowing)
             {
-                if (unscaledNow >= stopEndsAt) ReleaseTimeScale();
+                if (unscaledNow < stopEndsAt) return;
+                if (finalSlowPending) StartSlow(tuning.FinalBlowSlowTimeScale, tuning.FinalBlowSlowDuration, tuning.FinalBlowSlowRecovery, unscaledNow);
+                else ReleaseTimeScale();
                 return;
             }
-            float recoveryAge = (float)(unscaledNow - slowStartedAt) - tuning.DamageSlowDuration;
-            if (recoveryAge >= tuning.DamageSlowRecovery) { ReleaseTimeScale(); return; }
-            float progress = tuning.DamageSlowRecovery > 0f ? Mathf.Clamp01(recoveryAge / tuning.DamageSlowRecovery) : 0f;
-            ApplySlowScale(Mathf.Lerp(tuning.DamageSlowTimeScale, 1f, Mathf.SmoothStep(0f, 1f, progress)));
+            float recoveryAge = (float)(unscaledNow - slowStartedAt) - slowHold;
+            if (recoveryAge >= slowRecovery) { ReleaseTimeScale(); return; }
+            float progress = slowRecovery > 0f ? Mathf.Clamp01(recoveryAge / slowRecovery) : 0f;
+            ApplySlowScale(Mathf.Lerp(slowScale, 1f, Mathf.SmoothStep(0f, 1f, progress)));
         }
 
         public bool CameraEffectsSuppressed { get; set; }
@@ -181,6 +203,7 @@ namespace ActionPlatformer.Player
                 {
                     activePriority = pendingPriority;
                     StartShake(pendingDirection, pendingPixels, pendingDuration, pendingAt);
+                    shakeOscillates = pendingOscillates;
                 }
                 pendingPriority = 0; pendingPixels = 0;
             }
@@ -192,12 +215,25 @@ namespace ActionPlatformer.Player
             if (!reducedMotion && age >= 0f && age < activeShakeDuration)
             {
                 float envelope = 1f - age / activeShakeDuration;
-                appliedOffset = shakeDirection * (ReferencePixelsToWorld(shakeAmplitude) * envelope * envelope);
+                // Starts on the same push as a kick, then rings back and forth at the shake frequency.
+                float wave = shakeOscillates ? Mathf.Cos(2f * Mathf.PI * tuning.ShakeFrequency * age) : 1f;
+                appliedOffset = shakeDirection * (ReferencePixelsToWorld(shakeAmplitude) * envelope * envelope * wave);
                 camera.transform.position += appliedOffset;
             }
             lastRenderedOffset = appliedOffset;
-            damageScreen.Draw(camera, 0, vignette, 0);
+            damageScreen.Draw(camera, 0, vignette, 0, GlitchStrength(unscaledNow), GlitchSeed(unscaledNow));
         }
+
+        // Full strength on the strong strike's first frames, then gone; reduced motion never shows it.
+        public float GlitchStrength(double unscaledNow)
+        {
+            float age = (float)(unscaledNow - glitchStartedAt), duration = tuning.FinisherGlitchDuration;
+            if (reducedMotion || age < 0f || duration <= 0f || age >= duration) return 0f;
+            return age < duration * .5f ? 1f : 1f - (age - duration * .5f) / (duration * .5f);
+        }
+
+        // A new tear pattern every 1/30 s, independent of the frame rate.
+        private float GlitchSeed(double unscaledNow) => Mathf.Floor((float)((unscaledNow - glitchStartedAt) * 30d)) + 1f;
 
         private static float Fade(float age, float duration) => age < 0f || duration <= 0f ? 0f : Mathf.Pow(Mathf.Clamp01(1f - age / duration), 2f);
 
@@ -217,6 +253,7 @@ namespace ActionPlatformer.Player
             if (Time.timeScale == appliedTimeScale) Time.timeScale = savedTimeScale;
             if (Time.fixedDeltaTime == appliedFixedDeltaTime) Time.fixedDeltaTime = savedFixedDeltaTime;
             slowing = false;
+            finalSlowPending = false;
             ownsTimeScale = false;
         }
 
@@ -227,6 +264,8 @@ namespace ActionPlatformer.Player
             shakeStartedAt = double.NegativeInfinity;
             shakeAmplitude = 0f;
             activeShakeDuration = 0f;
+            shakeOscillates = pendingOscillates = false;
+            glitchStartedAt = double.NegativeInfinity;
             activePriority = pendingPriority = 0;
             pendingPixels = 0;
             lastRenderedOffset = Vector3.zero;

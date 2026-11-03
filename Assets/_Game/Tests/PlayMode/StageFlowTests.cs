@@ -176,6 +176,21 @@ namespace ActionPlatformer.Tests
             Assert.That(Time.timeScale, Is.Zero);
         }
 
+        [UnityTest] public IEnumerator ClearingTheLastEnemyBrieflySlowsTime()
+        {
+            var tuning = (PlayerCombatTuning)typeof(PlayerUnit).GetField("combatTuning",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).GetValue(player);
+            foreach (var enemy in enemies.Skip(1)) enemy.ApplyDamage(enemy.MaxHealth);
+            yield return null; yield return null;
+            Assert.That(Time.timeScale, Is.EqualTo(1f), "Only the kill that clears the group slows time.");
+            enemies[0].ApplyDamage(enemies[0].MaxHealth);
+            yield return null;
+            Assert.That(Time.timeScale, Is.EqualTo(tuning.FinalBlowSlowTimeScale).Within(.001f));
+            float until = Time.realtimeSinceStartup + tuning.FinalBlowSlowDuration + tuning.FinalBlowSlowRecovery + .15f;
+            while (Time.realtimeSinceStartup < until) yield return null;
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+        }
+
         [UnityTest] public IEnumerator AllKillsRequireArrivalAndCompletionCleansFeedbackAndInput()
         {
             KillEnemies();

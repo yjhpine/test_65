@@ -27,40 +27,37 @@ namespace ActionPlatformer.Editor
             Debug.Log("Glitch combo VFX imported: three separate strike frame arrays; combat settings unchanged.");
         }
 
-        // Authored on the player art's 18 px grid; the manifest pivot is the Visual center.
-        [MenuItem("Game/Effects/Import Generated Finisher Aura")]
-        public static void ImportFinisherAura()
-        {
-            const string id = "custom/finisher-aura";
-            string manifest = $"Library/PixelFxPipeline/output/{id}/manifest.json";
-            if (!File.Exists(manifest)) throw new InvalidOperationException("Generate finisher-aura with Tools/PixelFx first.");
-            var pivot = JsonUtility.FromJson<Manifest>(File.ReadAllText(manifest)).unityPivot;
-            var data = new SerializedObject(AssetDatabase.LoadAssetAtPath<PlayerVfxProfile>(ProfilePath));
-            Assign(data.FindProperty("finisherAuraFrames"), ImportFrames(id, "Assets/_Game/Art/Effects/PixelFxFinisherAura",
-                18, new Vector2(pivot[0], pivot[1]), "Generate finisher-aura with Tools/PixelFx first."));
-            data.ApplyModifiedPropertiesWithoutUndo();
-            AssetDatabase.SaveAssets();
-            Debug.Log("Finisher aura VFX imported into PlayerVfx; combat settings unchanged.");
-        }
-
         // Ready and blocked variants of the aiming marker, on the player's 18 px grid, centered on the destination.
         [MenuItem("Game/Effects/Import Generated Glitch Marker")]
         public static void ImportGlitchMarker()
         {
+            ImportOnPlayerGrid(("glitch-marker-ready", "Assets/_Game/Art/Effects/PixelFxGlitchMarker/Ready", "glitchMarkerReadyFrames"),
+                ("glitch-marker-blocked", "Assets/_Game/Art/Effects/PixelFxGlitchMarker/Blocked", "glitchMarkerBlockedFrames"));
+            Debug.Log("Glitch marker VFX imported into PlayerVfx; glitch rules unchanged.");
+        }
+
+        // Hit debris (pivot on the contact point) and the kill burst (pivot on the body center), on the player's grid.
+        [MenuItem("Game/Effects/Import Generated Contact Bursts")]
+        public static void ImportContactBursts()
+        {
+            ImportOnPlayerGrid(("glitch-hit-debris", "Assets/_Game/Art/Effects/PixelFxContactBursts/Debris", "hitDebrisFrames"),
+                ("glitch-shatter", "Assets/_Game/Art/Effects/PixelFxContactBursts/Shatter", "killShatterFrames"));
+            Debug.Log("Contact burst VFX imported into PlayerVfx; combat settings unchanged.");
+        }
+
+        private static void ImportOnPlayerGrid(params (string name, string destination, string field)[] effects)
+        {
             var data = new SerializedObject(AssetDatabase.LoadAssetAtPath<PlayerVfxProfile>(ProfilePath));
-            foreach (var (variant, field) in new[] { ("ready", "glitchMarkerReadyFrames"), ("blocked", "glitchMarkerBlockedFrames") })
+            foreach (var (name, destination, field) in effects)
             {
-                string id = "custom/glitch-marker-" + variant;
+                string id = "custom/" + name, missing = $"Generate {name} with Tools/PixelFx first.";
                 string manifest = $"Library/PixelFxPipeline/output/{id}/manifest.json";
-                if (!File.Exists(manifest)) throw new InvalidOperationException("Generate glitch-marker-ready/blocked with Tools/PixelFx first.");
+                if (!File.Exists(manifest)) throw new InvalidOperationException(missing);
                 var pivot = JsonUtility.FromJson<Manifest>(File.ReadAllText(manifest)).unityPivot;
-                Assign(data.FindProperty(field), ImportFrames(id, "Assets/_Game/Art/Effects/PixelFxGlitchMarker/" +
-                    char.ToUpperInvariant(variant[0]) + variant.Substring(1), 18, new Vector2(pivot[0], pivot[1]),
-                    "Generate glitch-marker-ready/blocked with Tools/PixelFx first."));
+                Assign(data.FindProperty(field), ImportFrames(id, destination, 18, new Vector2(pivot[0], pivot[1]), missing));
             }
             data.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.SaveAssets();
-            Debug.Log("Glitch marker VFX imported into PlayerVfx; glitch rules unchanged.");
         }
 
         private static Sprite[] ImportFrames(string id, string destination, float pixelsPerUnit, Vector2 pivot, string missing)

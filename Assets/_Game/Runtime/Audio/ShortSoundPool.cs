@@ -21,14 +21,14 @@ namespace ActionPlatformer.Audio
                 sources[i] = source;
             }
         }
-        public void Play(AudioClip clip, float volume)
+        public void Play(AudioClip clip, float volume, float pitch = 1f)
         {
             if (clip == null || volume <= 0 || AudioListener.pause) return;
             int index = next;
             for (int i = 0; i < sources.Length; i++)
                 if (!sources[(next + i) % sources.Length].isPlaying) { index = (next + i) % sources.Length; break; }
             var source = sources[index]; next = (index + 1) % sources.Length;
-            source.Stop(); source.clip = clip; source.volume = Mathf.Clamp01(volume); source.pitch = 1;
+            source.Stop(); source.clip = clip; source.volume = Mathf.Clamp01(volume); source.pitch = Mathf.Clamp(pitch, .5f, 2f);
             source.Play();
         }
         public void Stop() { foreach (var source in sources) { source.Stop(); source.clip = null; } next = 0; }

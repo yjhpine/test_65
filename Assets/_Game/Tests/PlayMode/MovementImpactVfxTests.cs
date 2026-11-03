@@ -59,6 +59,38 @@ namespace ActionPlatformer.Tests
             try { Time.timeScale = 0; yield return new WaitForSecondsRealtime(.35f); Assert.That(Visible(), Is.Empty); }
             finally { Time.timeScale = scale; }
         }
+        [UnityTest] public IEnumerator HitDebrisOutlivesTheContactAndKillsBurstFromTheBody()
+        {
+            var target = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/TrainingDummy.prefab"),
+                new Vector3(40, 40), Quaternion.identity);
+            try
+            {
+                var health = target.GetComponent<ActionPlatformer.Units.Features.UnitHealth>();
+                var body = target.GetComponent<Collider2D>();
+                Physics2D.SyncTransforms();
+                SpriteRenderer Burst() => Visible().SingleOrDefault(r => r.name.StartsWith("Contact burst"));
+                var point = new Vector2(39.6f, 40f);
+                effects.PlayContact(handle, new PlayerHitPresentation(1, PlayerAttack.Side, health, point, Vector2.left, 10, 0, false));
+                effects.SendMessage("LateUpdate");
+                Assert.That(Burst(), Is.Not.Null);
+                Assert.That(Burst().sprite.name, Does.StartWith("glitch-hit-debris-"));
+                Assert.That(Burst().flipX, Is.True, "Debris sprays the way the hit travels.");
+                Assert.That(Vector2.Distance(Burst().transform.position, point), Is.LessThan(.001f));
+                Assert.That(Burst().bounds.size.x, Is.EqualTo(56f / 18f).Within(.01f), "Drawn at the player art's pixel size.");
+                yield return new WaitForSecondsRealtime(.2f); effects.SendMessage("LateUpdate");
+                Assert.That(Burst(), Is.Not.Null, "Debris lingers after the contact flash.");
+                Assert.That(Visible().Any(r => r.name.StartsWith("Contact fragments")), Is.False);
+                yield return new WaitForSecondsRealtime(.35f); effects.SendMessage("LateUpdate");
+                Assert.That(Burst(), Is.Null);
+                effects.PlayContact(handle, new PlayerHitPresentation(2, PlayerAttack.Side, health, point, Vector2.right, 10, 10, true));
+                effects.SendMessage("LateUpdate");
+                Assert.That(Burst().sprite.name, Does.StartWith("glitch-shatter-"));
+                Assert.That(Vector2.Distance(Burst().transform.position, body.bounds.center), Is.LessThan(.001f), "A kill bursts where the body stood.");
+                effects.ResetOwner(handle);
+                Assert.That(Burst(), Is.Null);
+            }
+            finally { Object.DestroyImmediate(target); }
+        }
         [Test] public void GlitchAndUndergroundTransitionsDoNotGenerateLandingDust()
         {
             Tick(Vector2.zero, Vector2.down * 10, false);

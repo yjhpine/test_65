@@ -39,7 +39,8 @@ namespace ActionPlatformer.Presentation
                 bank=new Bank { Root=root,Profile=profile,Material=source.sharedMaterial,Layer=source.sortingLayerID,Order=source.sortingOrder };
                 if(profile is PlayerVfxProfile p) {
                     bank.Action=new PlayerActionEffects(root.transform,source,p.BasicAttackEffectFrames,p.GlitchEffectFrames,p.BasicAttackEffectSize,p.GlitchEffectSize,p.GlitchEffectFps,p.GlitchTrailSpacing,p.GlitchTrailInterval,p.ActionEffectMaterial,p);
-                    bank.Contact=new PlayerContactEffects(root.transform,source,p.GlitchEffectFrames,p.ActionEffectMaterial,p.HitImpactFrames,p.FinisherImpactFrames);
+                    bank.Contact=new PlayerContactEffects(root.transform,source,p.GlitchEffectFrames,p.ActionEffectMaterial,p.HitImpactFrames,p.FinisherImpactFrames,
+                        p.HitDebrisFrames,p.KillShatterFrames,p.ContactBurstFps);
                     bank.Movement=new PlayerMovementEffects(root.transform,source,p.JumpDustFrames,p.GroundDustFrames,p.ActionEffectMaterial);
                 } else if(profile is EnemyVfxProfile e) {
                     bank.Laser=new EnemyBeamEffects(root.transform,e,source);

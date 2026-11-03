@@ -24,11 +24,13 @@ namespace ActionPlatformer.Presentation
         public Sprite[] HitImpactFrames => hitImpactFrames;
         [SerializeField] private Sprite[] finisherImpactFrames;
         public Sprite[] FinisherImpactFrames => finisherImpactFrames;
-        // Seamless loop drawn behind the player while the next strike is the finisher, at the sprites' own size.
-        [SerializeField] private Sprite[] finisherAuraFrames;
-        public Sprite[] FinisherAuraFrames => finisherAuraFrames;
-        [SerializeField, Min(1f)] private float finisherAuraFps = 30f;
-        public float FinisherAuraFps => finisherAuraFps;
+        // One-shots played at the sprites' own size: debris that lingers after a hit, and a burst where a kill's target stood.
+        [SerializeField] private Sprite[] hitDebrisFrames;
+        public Sprite[] HitDebrisFrames => hitDebrisFrames;
+        [SerializeField] private Sprite[] killShatterFrames;
+        public Sprite[] KillShatterFrames => killShatterFrames;
+        [SerializeField, Min(1f)] private float contactBurstFps = 30f;
+        public float ContactBurstFps => contactBurstFps;
         // Looping glitch destination marker while aiming, at the sprites' own size. Empty keeps the plain circle.
         [SerializeField] private Sprite[] glitchMarkerReadyFrames;
         public Sprite[] GlitchMarkerReadyFrames => glitchMarkerReadyFrames;

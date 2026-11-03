@@ -11,8 +11,10 @@ namespace ActionPlatformer.Player
     {
         public readonly Vector2 Direction;
         public readonly PlayerImpactStrength Strength;
-        public PlayerImpact(Vector2 direction, PlayerImpactStrength strength)
-        { Direction = direction; Strength = strength; }
+        // Presentation facts of the same swing: a target died, or the combo's strong strike landed.
+        public readonly bool Killed, Finisher;
+        public PlayerImpact(Vector2 direction, PlayerImpactStrength strength, bool killed = false, bool finisher = false)
+        { Direction = direction; Strength = strength; Killed = killed; Finisher = finisher; }
     }
 
     public sealed class PlayerCombat
@@ -46,6 +48,8 @@ namespace ActionPlatformer.Player
         private bool hasImpact;
         private int emittedImpactStages;
         private PlayerImpact pendingImpact;
+        private bool hasRecoil;
+        private float recoilVelocity, recoilDuration;
         public bool HasBufferedAttack => bufferedAttack;
         public int Strike => combo.Strike;
         public PlayerAttack Attack => selection.Kind;
@@ -56,8 +60,6 @@ namespace ActionPlatformer.Player
         public int ComboLength => comboRule == null ? 1 : tuning.ComboLength;
         // Strikes executed in the live combo chain; zero once it expires or after the finisher.
         public int ComboCount(double now) => nextStrike > 1 && (IsAttacking || now <= comboExpiresAt) ? nextStrike - 1 : 0;
-        // The next strike to execute is the finisher; stays true through its windup and clears when it executes.
-        public bool FinisherReady(double now) => ComboLength > 1 && ComboCount(now) == ComboLength - 1;
         public float SlamSpeed => tuning.SlamSpeed;
         public bool IsDescending => Phase == PlayerAttackPhase.Descending;
         public bool IsPreparingSlam => Attack == PlayerAttack.Slam && Phase == PlayerAttackPhase.Windup;
@@ -82,6 +84,15 @@ namespace ActionPlatformer.Player
         {
             if (!bufferedAttack || !CanAttack(now)) return false;
             bufferedAttack = false;
+            return true;
+        }
+
+        // The swing's reaction force for PlayerUnit to apply: horizontal start speed (away from the struck side) and duration.
+        public bool ConsumeRecoil(out float velocity, out float duration)
+        {
+            velocity = recoilVelocity; duration = recoilDuration;
+            if (!hasRecoil) return false;
+            hasRecoil = false;
             return true;
         }
 
@@ -237,7 +248,7 @@ namespace ActionPlatformer.Player
         private void HitTargets(bool shockwave)
         {
             var area = AttackBounds;
-            bool dealtDamage = false;
+            bool dealtDamage = false, killed = false;
             if (shockwave)
                 Physics2D.OverlapCircle(shockwaveCenter, tuning.ShockwaveRadius, UnitPhysics2D.Filter(tuning.TargetMask), candidates);
             else Physics2D.OverlapBox(area.center, area.size, 0f, UnitPhysics2D.Filter(tuning.TargetMask), candidates);
@@ -265,6 +276,7 @@ namespace ActionPlatformer.Player
                 presentationHits.Enqueue(new PlayerHitPresentation(attackVersion, kind, target, point, hitDirection,
                     damage, healthBefore - target.CurrentHealth, !target.IsAlive));
                 dealtDamage = true; // Lethal hits also produce feedback.
+                killed |= !target.IsAlive;
                 if (target.IsAlive)
                     hitReaction?.Apply(target, shockwave ? new PlayerAttackSelection(PlayerAttack.Shockwave,
                         Facing, Vector2.zero, Vector2.one * tuning.ShockwaveRadius * 2f) : selection, combo);
@@ -273,12 +285,23 @@ namespace ActionPlatformer.Player
             int stage = shockwave ? 2 : 1;
             if (!dealtDamage || (emittedImpactStages & stage) != 0) return;
             emittedImpactStages |= stage;
+            // Only basic swings recoil: lifts rise with their target, slams and emergence own their motion.
+            if (!shockwave && (Attack == PlayerAttack.Side || Attack == PlayerAttack.Air))
+            {
+                float speed = combo.IsFinisher ? tuning.FinisherRecoilSpeed : tuning.RecoilSpeed;
+                float duration = combo.IsFinisher ? tuning.FinisherRecoilDuration : tuning.RecoilDuration;
+                if (Attack == PlayerAttack.Air) speed *= tuning.AirRecoilMultiplier;
+                hasRecoil = speed > 0f && duration > 0f;
+                recoilVelocity = -Facing * speed; recoilDuration = duration;
+            }
             var strength = Attack == PlayerAttack.Slam ? PlayerImpactStrength.Slam :
                 combo.IsFinisher || Attack == PlayerAttack.Lift || Attack == PlayerAttack.Emergence
                     ? PlayerImpactStrength.Heavy : PlayerImpactStrength.Normal;
             Vector2 direction = Attack == PlayerAttack.Slam ? Vector2.down :
                 (Attack == PlayerAttack.Side || Attack == PlayerAttack.Air) ? Vector2.right * Facing : Vector2.up;
-            if (!hasImpact || strength > pendingImpact.Strength) pendingImpact = new PlayerImpact(direction, strength);
+            if (hasImpact && strength <= pendingImpact.Strength) direction = pendingImpact.Direction;
+            pendingImpact = new PlayerImpact(direction, hasImpact && pendingImpact.Strength > strength ? pendingImpact.Strength : strength,
+                killed || (hasImpact && pendingImpact.Killed), combo.IsFinisher || (hasImpact && pendingImpact.Finisher));
             hasImpact = true;
         }
 
@@ -296,7 +319,7 @@ namespace ActionPlatformer.Player
             pendingComboTarget = previousComboTarget = null;
             comboExpiresAt = stunnedUntil = 0;
             shockwaveStartedAt = double.NegativeInfinity;
-            bufferedAttack = launched = launchPending = hasImpact = false;
+            bufferedAttack = launched = launchPending = hasImpact = hasRecoil = false;
             emittedImpactStages = 0;
             pendingImpact = default;
             presentationHits.Clear();

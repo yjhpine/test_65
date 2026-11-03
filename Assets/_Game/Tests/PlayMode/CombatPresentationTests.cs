@@ -1,5 +1,7 @@
 #if UNITY_EDITOR
+using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.TestTools;
 using ActionPlatformer.Player;
 using ActionPlatformer.Units;
 using ActionPlatformer.Units.Features;
@@ -72,6 +74,34 @@ namespace ActionPlatformer.Tests
             combat.Tick(10 + tuning.Windup + .01); Assert.That(combat.ConsumeHit(out _), Is.False);
             combat.Reset(); Assert.That(combat.ConsumeHit(out _), Is.False);
         }
+        [UnityTest] public IEnumerator HitEnemyVisualShuddersThroughTheHitStopAndSettlesBack()
+        {
+            var enemy = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/PatrolEnemy.prefab"),
+                new Vector3(500, 500), Quaternion.identity);
+            created.Add(enemy);
+            var visual = enemy.transform.Find("Visual");
+            Vector3 rest = visual.localPosition;
+            float pixel = 1f / visual.GetComponent<SpriteRenderer>().sprite.pixelsPerUnit;
+            yield return null;
+            float scale = Time.timeScale;
+            try
+            {
+                Time.timeScale = 0f; // as during a hit stop
+                enemy.GetComponent<UnitHealth>().ApplyDirectedDamage(1, Vector2.right);
+                yield return null;
+                Assert.That(Mathf.Abs(visual.localPosition.x - rest.x), Is.EqualTo(pixel).Within(.0001f), "One art pixel sideways.");
+                Assert.That(visual.localPosition.y, Is.EqualTo(rest.y));
+                float until = Time.realtimeSinceStartup + .1f;
+                while (Time.realtimeSinceStartup < until) yield return null;
+                Assert.That(Mathf.Abs(visual.localPosition.x - rest.x), Is.EqualTo(pixel).Within(.0001f), "A frozen world keeps it shuddering.");
+                Time.timeScale = 1f;
+                yield return null;
+                Assert.That(visual.localPosition, Is.EqualTo(rest), "Released once the hit stop ends.");
+                Assert.That(enemy.transform.position.x, Is.EqualTo(500f).Within(.01f), "Only the visual moves, never the body.");
+            }
+            finally { Time.timeScale = scale; }
+        }
+
         [Test] public void CameraPrioritizesDamageThenKillCapsPixelsAndKeepsTimeFeedbackInReducedMotion()
         {
             var target = MakeUnit(Vector2.zero, UnitKind.Monster);

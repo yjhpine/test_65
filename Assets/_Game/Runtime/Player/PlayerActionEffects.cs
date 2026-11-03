@@ -21,12 +21,6 @@ namespace ActionPlatformer.Player
         private readonly double[] transferStarted = new double[8];
         private int nextTransferSpark;
         private readonly MaterialPropertyBlock palette = new MaterialPropertyBlock();
-        // Same sorting order as the body, a little farther from the camera: behind the player, above the terrain at 0.
-        private const float AuraDepth = .01f, AuraFadeIn = .12f;
-        private readonly Sprite[] auraFrames;
-        private readonly float auraFps;
-        private readonly SpriteRenderer aura;
-        private double auraStarted;
 
         public PlayerActionEffects(Transform owner, SpriteRenderer source, Sprite[] slashFrames, Sprite[] sparkFrames,
             float slashSize, float sparkSize, float sparkFps, float sparkSpacing, float sparkInterval, Material effectMaterial,
@@ -48,13 +42,6 @@ namespace ActionPlatformer.Player
                 transferSparks[i] = Create("Transfer spark " + i, source, effectMaterial);
                 transferStarted[i] = double.NegativeInfinity;
             }
-            auraFrames = profile != null ? profile.FinisherAuraFrames : null;
-            auraFps = profile != null ? Mathf.Max(1, profile.FinisherAuraFps) : 30;
-            aura = Create("Finisher aura", source, effectMaterial);
-            aura.sortingOrder = source.sortingOrder;
-            // Authored pixels carry their own palette, as the combo slashes do.
-            aura.GetPropertyBlock(palette); palette.SetColor("_PrimaryColor", Color.white); palette.SetColor("_AccentColor", Color.white);
-            aura.SetPropertyBlock(palette);
         }
 
         public void Burst(Vector2 point)
@@ -73,7 +60,6 @@ namespace ActionPlatformer.Player
                 return;
             }
             var attack = actions.AttackPresentation;
-            TickAura(actions);
             for (int i = 0; i < transferSparks.Length; i++)
             {
                 var burst = transferSparks[i];
@@ -137,23 +123,6 @@ namespace ActionPlatformer.Player
             }
         }
 
-        // Loops in unscaled time from its first frame whenever the strong strike becomes ready, fading in briefly.
-        private void TickAura(IPlayerActionState actions)
-        {
-            bool visible = actions.FinisherReady && !actions.IsUnderground && HasFrames(auraFrames);
-            if (visible && !aura.enabled) auraStarted = Time.unscaledTimeAsDouble;
-            aura.enabled = visible;
-            if (!visible) return;
-            double age = Time.unscaledTimeAsDouble - auraStarted;
-            aura.sprite = auraFrames[(int)(age * auraFps) % auraFrames.Length];
-            aura.flipX = actions.Facing < 0f;
-            aura.color = new Color(1, 1, 1, Mathf.Clamp01((float)age / AuraFadeIn));
-            var position = owner.position;
-            aura.transform.SetPositionAndRotation(new Vector3(position.x, position.y, position.z + AuraDepth), Quaternion.identity);
-            var scale = owner.lossyScale;
-            aura.transform.localScale = new Vector3(1f / Mathf.Abs(scale.x), 1f / Mathf.Abs(scale.y), 1f);
-        }
-
         public void PlayGlitch(PlayerGlitchPresentation glitch)
         {
             glitchFrom=glitch.From; glitchTo=glitch.To; glitchAge=0; glitchStartedFrame=Time.frameCount;
@@ -165,7 +134,6 @@ namespace ActionPlatformer.Player
         {
             glitchStartedFrame = -1;
             slash.enabled = false;
-            aura.enabled = false;
             foreach (var spark in sparks) spark.enabled = false;
             glitchAge = 0;
             sparkCount = 0;

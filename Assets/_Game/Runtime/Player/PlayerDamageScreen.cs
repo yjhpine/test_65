@@ -15,11 +15,14 @@ namespace ActionPlatformer.Player
         private static readonly int FlashId = Shader.PropertyToID("_Flash");
         private static readonly int VignetteId = Shader.PropertyToID("_Vignette");
         private static readonly int StreakId = Shader.PropertyToID("_Streak");
+        private static readonly int GlitchId = Shader.PropertyToID("_Glitch");
+        private static readonly int GlitchSeedId = Shader.PropertyToID("_GlitchSeed");
         public PlayerDamageScreen(Material template) { this.template = template; }
 
-        public void Draw(Camera camera, float flash, float vignette, float streak)
+        // glitch: strength of the strong strike's screen tear; glitchSeed picks its band pattern.
+        public void Draw(Camera camera, float flash, float vignette, float streak, float glitch = 0f, float glitchSeed = 0f)
         {
-            if (camera == null || template == null || Mathf.Max(flash, vignette, streak) <= .001f) { Hide(); return; }
+            if (camera == null || template == null || Mathf.Max(Mathf.Max(flash, vignette), Mathf.Max(streak, glitch)) <= .001f) { Hide(); return; }
             if (mesh == null)
             {
                 mesh = new Mesh { name = "Player damage screen quad", hideFlags = HideFlags.HideAndDontSave };
@@ -47,6 +50,7 @@ namespace ActionPlatformer.Player
             surface.transform.localRotation = Quaternion.identity;
             surface.transform.localScale = new Vector3(halfHeight * camera.aspect * 1.002f, halfHeight * 1.002f, 1);
             material.SetFloat(FlashId, flash); material.SetFloat(VignetteId, vignette); material.SetFloat(StreakId, streak);
+            material.SetFloat(GlitchId, glitch); material.SetFloat(GlitchSeedId, glitchSeed);
             renderer.enabled = true;
         }
         public void Hide() { if (renderer != null) renderer.enabled = false; }

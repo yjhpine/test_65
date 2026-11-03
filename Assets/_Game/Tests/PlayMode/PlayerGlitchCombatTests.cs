@@ -1489,26 +1489,103 @@ namespace ActionPlatformer.Tests
             Assert.That(enemy.InterruptVersion, Is.EqualTo(interrupts));
         }
 
+        [Test] public void OnlyLandedBasicSwingsRecoilAwayFromTheTargetScaledForFinisherAndAir()
+        {
+            PlacePlayer(new Vector2(-0.975f, 61.32f));
+            Assert.That(Combat.TryAttack(null, -1f, false, 0), Is.True); Combat.Tick(0.13);
+            Assert.That(Combat.ConsumeRecoil(out _, out _), Is.False, "A miss has nothing to push against.");
+            Combat.Tick(0.2); Combat.Tick(0.4);
+            Assert.That(Combat.TryAttack(enemy, 1f, false, 0.5), Is.True); Combat.Tick(0.63);
+            Assert.That(Combat.ConsumeRecoil(out float velocity, out float duration), Is.True);
+            Assert.That(velocity, Is.EqualTo(-combatSettings.RecoilSpeed), "Pushed back, away from the struck side.");
+            Assert.That(duration, Is.EqualTo(combatSettings.RecoilDuration));
+            Assert.That(Combat.ConsumeRecoil(out _, out _), Is.False, "Once per swing.");
+            Combat.Tick(0.7); Combat.Tick(0.9);
+            Assert.That(Combat.TryAttack(enemy, 1f, false, 1.0, false), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Air));
+            Assert.That(Combat.GetPresentation(1.0).Finisher, Is.True);
+            Combat.Tick(1.13);
+            Assert.That(Combat.ConsumeRecoil(out velocity, out duration), Is.True);
+            Assert.That(velocity, Is.EqualTo(-combatSettings.FinisherRecoilSpeed * combatSettings.AirRecoilMultiplier).Within(.0001f),
+                "The strong strike pushes farther; air swings less.");
+            Assert.That(duration, Is.EqualTo(combatSettings.FinisherRecoilDuration));
+            Combat.Tick(1.2); Combat.Tick(1.4);
+            FloatingTarget(new Vector2(-0.975f, 63.6f), enemy);
+            Assert.That(Combat.TryAttack(null, 1f, false, 1.5), Is.True);
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Lift));
+            Combat.Tick(1.63);
+            Assert.That(Combat.ConsumeRecoil(out _, out _), Is.False, "A lift rises with its target instead.");
+        }
+
+        [UnityTest] public IEnumerator LandedSwingPushesThePlayerBackOnlyAfterTheHitStop()
+        {
+            PlacePlayer(new Vector2(-1f, 61.32f));
+            yield return Step; yield return Step;
+            float start = player.Motor.Position.x;
+            int health = enemy.CurrentHealth;
+            input.Command = new PlayerCommand { AttackPressed = true };
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (enemy.CurrentHealth == health && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(enemy.CurrentHealth, Is.LessThan(health));
+            Assert.That(player.Motor.Position.x, Is.EqualTo(start).Within(.005f), "Nothing moves while the hit stop holds.");
+            while (Time.timeScale == 0f && Time.realtimeSinceStartup < deadline) yield return null;
+            for (int i = 0; i < 12; i++) yield return Step;
+            float pushed = start - player.Motor.Position.x;
+            Assert.That(pushed, Is.EqualTo(combatSettings.RecoilSpeed * combatSettings.RecoilDuration * .5f).Within(.07f));
+            Assert.That(player.Motor.IsGrounded, Is.True);
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            float rest = player.Motor.Position.x;
+            for (int i = 0; i < 5; i++) yield return Step;
+            Assert.That(player.Motor.Position.x, Is.EqualTo(rest).Within(.005f), "The push ends; the swing still holds position.");
+        }
+
+        [UnityTest] public IEnumerator RecoilStopsAgainstAWallAndAtAPlatformEdge()
+        {
+            // A wall right behind the player takes the push.
+            float face = -1f - 0.325f - 0.05f;
+            Block(new Vector2(face - 0.2f, 61.5f), new Vector2(0.4f, 2f));
+            PlacePlayer(new Vector2(-1f, 61.32f));
+            yield return Step; yield return Step;
+            int health = enemy.CurrentHealth;
+            input.Command = new PlayerCommand { AttackPressed = true };
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (enemy.CurrentHealth == health && Time.realtimeSinceStartup < deadline) yield return null;
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.GetComponent<Collider2D>().bounds.min.x, Is.GreaterThanOrEqualTo(face - .01f), "The wall stops the push.");
+
+            // On a narrow ledge the push ends at the edge instead of carrying the player off.
+            Block(new Vector2(-30f, 60f), new Vector2(2f, 1f));
+            var ledgeTarget = CreateEnemy(-29.9f);
+            for (int i = 0; i < 10; i++) yield return Step;
+            PlacePlayer(new Vector2(-30.9f, 61.32f));
+            yield return Step; yield return Step;
+            health = ledgeTarget.CurrentHealth;
+            input.Command = new PlayerCommand { AttackPressed = true };
+            deadline = Time.realtimeSinceStartup + 3f;
+            while (ledgeTarget.CurrentHealth == health && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(ledgeTarget.CurrentHealth, Is.LessThan(health));
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            for (int i = 0; i < 10; i++) yield return Step;
+            Assert.That(player.Motor.IsGrounded, Is.True, "Still standing on the ledge.");
+            Assert.That(player.Motor.Position.x, Is.GreaterThan(-31f), "Its center never passes the edge.");
+        }
+
         [Test] public void FinisherStrengthensWhicheverKindCarriesIt()
         {
             PlacePlayer(new Vector2(-0.975f, 61.32f));
             for (int i = 0; i < 2; i++)
             {
                 double now = i * 0.5;
-                Assert.That(Combat.FinisherReady(now), Is.False);
                 Assert.That(Combat.TryAttack(enemy, 1f, false, now), Is.True);
                 Combat.Tick(now + 0.13); Combat.Tick(now + 0.2); Combat.Tick(now + 0.4);
             }
             Assert.That(enemy.CurrentHealth, Is.EqualTo(180));
             Assert.That(Combat.ComboCount(1.0), Is.EqualTo(2));
-            Assert.That(Combat.FinisherReady(1.0), Is.True, "Two executed strikes load the strong one.");
             FloatingTarget(new Vector2(-0.975f, 63.6f), enemy);
             Assert.That(Combat.TryAttack(null, 1f, false, 1.0), Is.True);
             Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Lift));
             Assert.That(Combat.GetPresentation(1.0).Finisher, Is.True);
-            Assert.That(Combat.FinisherReady(1.05), Is.True, "Still loaded through the finisher's windup.");
             Assert.That(Combat.Tick(1.13), Is.True);
-            Assert.That(Combat.FinisherReady(1.13), Is.False, "Spent once the finisher executes.");
             float strong = combatSettings.LaunchSpeed * combatSettings.FinisherLaunchMultiplier;
             Assert.That(Combat.LaunchSpeed, Is.EqualTo(strong).Within(0.01f));
             Assert.That(Movement.Velocity.y, Is.EqualTo(strong).Within(0.01f));
@@ -1526,7 +1603,6 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.ComboCount(1.9), Is.EqualTo(1), "A glitch keeps a live chain going.");
             Combat.ExtendCombo(3.0);
             Assert.That(Combat.ComboCount(3.0), Is.Zero, "An expired chain is not revived.");
-            Assert.That(Combat.FinisherReady(3.0), Is.False);
         }
 
         [Test] public void MissConsumesStrikeAndInterruptedWindupDoesNotDamage()

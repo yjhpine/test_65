@@ -50,6 +50,80 @@ namespace ActionPlatformer.Tests
             Assert.That(feedback.IsHitStopped, Is.False);
         }
 
+        [Test] public void KillsHoldTheHitStopLongerAndTheFinalBlowSlowsAfterIt()
+        {
+            feedback.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Normal, killed: true), 10);
+            feedback.Tick(10 + tuning.HitStopDuration + .001);
+            Assert.That(feedback.IsHitStopped, Is.True, "A kill holds the freeze longer.");
+            feedback.Tick(10 + tuning.HitStopDuration + tuning.KillHitStopBonus + .001);
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+
+            feedback.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Normal, killed: true), 20);
+            feedback.PlayFinalBlow(20);
+            Assert.That(Time.timeScale, Is.Zero, "The slow motion waits for the blow's own hit stop.");
+            double end = 20 + tuning.HitStopDuration + tuning.KillHitStopBonus + .001;
+            feedback.Tick(end);
+            Assert.That(Time.timeScale, Is.EqualTo(tuning.FinalBlowSlowTimeScale).Within(.00001f));
+            Assert.That(feedback.IsTimeEffectActive, Is.True);
+            feedback.Tick(end + tuning.FinalBlowSlowDuration + tuning.FinalBlowSlowRecovery * .5);
+            Assert.That(Time.timeScale, Is.GreaterThan(tuning.FinalBlowSlowTimeScale).And.LessThan(1f), "Eases back to full speed.");
+            feedback.Tick(end + tuning.FinalBlowSlowDuration + tuning.FinalBlowSlowRecovery + .01);
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            Assert.That(Time.fixedDeltaTime, Is.EqualTo(initialFixedDeltaTime).Within(.00001f));
+
+            feedback.PlayFinalBlow(30);
+            Assert.That(Time.timeScale, Is.EqualTo(tuning.FinalBlowSlowTimeScale).Within(.00001f), "Without a hit stop it starts at once.");
+            feedback.PlayDamage(Vector2.left, 30.05);
+            feedback.PlayFinalBlow(30.06);
+            Assert.That(Time.timeScale, Is.EqualTo(tuning.DamageSlowTimeScale).Within(.00001f), "Damage slow motion keeps priority.");
+            feedback.Reset();
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+        }
+
+        [Test] public void SlamAndKillShakesRingWhileOrdinaryHitsOnlyKick()
+        {
+            Vector3 origin = camera.transform.position;
+            double half = .5 / tuning.ShakeFrequency;
+            feedback.Play(new PlayerImpact(Vector2.down, PlayerImpactStrength.Slam), 0);
+            feedback.LateTick(0);
+            Assert.That(camera.transform.position.y, Is.LessThan(origin.y));
+            feedback.LateTick(half);
+            Assert.That(camera.transform.position.y, Is.GreaterThan(origin.y), "A slam rings back past the rest position.");
+            feedback.Reset();
+            feedback.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Normal), 1);
+            feedback.LateTick(1);
+            Assert.That(camera.transform.position.x, Is.GreaterThan(origin.x));
+            feedback.LateTick(1 + half);
+            Assert.That(camera.transform.position.x, Is.GreaterThanOrEqualTo(origin.x), "An ordinary hit stays one push.");
+        }
+
+        [Test] public void StrongStrikeTearsTheScreenBrieflyExceptInReducedMotion()
+        {
+            var material = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Game/Art/PlayerDamageScreen.mat");
+            var screen = new PlayerImpactFeedback(tuning, camera, material);
+            try
+            {
+                float duration = tuning.FinisherGlitchDuration;
+                screen.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Heavy), 10);
+                Assert.That(screen.GlitchStrength(10), Is.Zero, "Only the combo's strong strike tears the screen.");
+                screen.Reset();
+                screen.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Heavy, finisher: true), 20);
+                Assert.That(screen.GlitchStrength(20), Is.EqualTo(1f));
+                Assert.That(screen.GlitchStrength(20 + duration * .75), Is.GreaterThan(0f).And.LessThan(1f));
+                Assert.That(screen.GlitchStrength(20 + duration + .001), Is.Zero);
+                screen.LateTick(20);
+                var surface = camera.transform.Find("Player Damage Screen").GetComponent<MeshRenderer>();
+                Assert.That(surface.enabled, Is.True);
+                Assert.That(surface.sharedMaterial.GetFloat("_Glitch"), Is.EqualTo(1f));
+                screen.LateTick(20 + duration + .01);
+                Assert.That(surface.enabled, Is.False, "Nothing stays on screen after the tear.");
+                screen.Reset(); screen.ReducedMotion = true;
+                screen.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Heavy, finisher: true), 30);
+                Assert.That(screen.GlitchStrength(30), Is.Zero);
+            }
+            finally { screen.Dispose(); }
+        }
+
         [Test] public void FeedbackDoesNotUnpauseAnExistingPauseOrOverwriteAnExternalSpeedChange()
         {
             Time.timeScale = 0f;

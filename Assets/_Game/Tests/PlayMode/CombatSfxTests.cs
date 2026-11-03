@@ -23,7 +23,6 @@ namespace ActionPlatformer.Tests
             public PlayerReactionPresentation ReactionPresentation => default;
             public GlitchPreview GlitchPreview => default;
             public float GlitchMaxDistance => 0f;
-            public bool FinisherReady => false;
             public bool IsUnderground => false;
             public bool CanEmerge => false;
             public Vector2 UndergroundPosition => default;
@@ -84,6 +83,34 @@ namespace ActionPlatformer.Tests
             Call("Hit", hit); Call("Hit", hit);
             Assert.That(Sources.Count(s => s.clip != null), Is.EqualTo(1));
             Assert.That(Sources.First(s => s.clip != null).clip.name, Is.EqualTo("HitA"));
+        }
+        [Test] public void StrikesRiseInPitchAndEverySoundVariesSlightly()
+        {
+            uint version = 1;
+            float Swing(PlayerAttack kind, int strike, bool finisher)
+            {
+                Call("Reset", state);
+                state.Attack = new PlayerAttackPresentation { Version = ++version, Kind = kind, Strike = strike, Finisher = finisher };
+                state.Phase = PlayerAttackPhase.Windup;
+                Call("Observe", state);
+                return Sources.Single(s => s.clip != null).pitch;
+            }
+            // Ranges mirror PlayerSoundEffects: +5% per strike, +-4% swing, +-6% hit, heavy 0.97 +-3%.
+            var first = Enumerable.Range(0, 20).Select(_ => Swing(PlayerAttack.Side, 1, false)).ToArray();
+            Assert.That(first, Has.All.InRange(.96f, 1.04f));
+            Assert.That(first.Distinct().Count(), Is.GreaterThan(1), "Repeated swings must not share one pitch.");
+            Assert.That(Swing(PlayerAttack.Side, 2, false), Is.InRange(1.05f * .96f, 1.05f * 1.04f));
+            Assert.That(Swing(PlayerAttack.Air, 3, true), Is.InRange(.97f * .97f, .97f * 1.03f), "The strong strike sounds a touch lower.");
+            target = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Enemies/TrainingDummy.prefab"));
+            var health = target.GetComponent<ActionPlatformer.Units.Features.UnitHealth>();
+            float Hit(bool killed)
+            {
+                Call("Reset", state);
+                Call("Hit", new PlayerHitPresentation(1, PlayerAttack.Side, health, Vector2.zero, Vector2.right, 10, 0, killed));
+                return Sources.Single(s => s.clip != null).pitch;
+            }
+            Assert.That(Enumerable.Range(0, 10).Select(_ => Hit(false)), Has.All.InRange(.94f, 1.06f));
+            Assert.That(Hit(true), Is.InRange(.97f * .97f, .97f * 1.03f));
         }
         [Test] public void LandingVariantsUseBoundedVoicesAndResetStopsPlayback()
         {
