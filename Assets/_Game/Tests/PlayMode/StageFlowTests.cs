@@ -137,7 +137,8 @@ namespace ActionPlatformer.Tests
             Assert.That(floor.GetComponent<BoxCollider2D>().size.x, Is.EqualTo(60f));
             Assert.That(floor.GetComponent<SpriteRenderer>().size.x, Is.EqualTo(60f));
             var ledges = floor.parent.Cast<Transform>().Where(t => t.name.StartsWith("Ledge ")).OrderBy(t => t.position.x).ToArray();
-            Assert.That(ledges.Select(t => t.position.x), Is.EqualTo(new[] { 26.5f, 36.5f, 45f }));
+            // Authored ledge layout (moved by the user on 2026-11-03).
+            Assert.That(ledges.Select(t => t.position.x), Is.EqualTo(new[] { 26.3f, 37.31f, 48.03f }).Within(.001f));
             Assert.That(floor.parent.Find("Right Boundary").position.x, Is.EqualTo(StageWidth + .5f));
             Assert.That(enemies.All(e => e.transform.position.x > 0f && e.transform.position.x < StageWidth), Is.True);
             Assert.That(goal.IsUnlocked, Is.False);

@@ -623,3 +623,10 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 흐름: `PlayerCombat`이 피해를 준 순간 반발을 계산해 두고(`ConsumeRecoil`), `PlayerUnit`이 같은 물리 단계에 받아 다음 단계부터 적용한다. 히트스톱 동안은 물리가 멈추므로 "멈춤 → 밀림" 순서가 된다. 반발이 남은 동안은 지상 공격의 이동 잠금이나 입력 이동 대신 `CharacterMotor2D.SimulateRecoil`(수평 속도만 지정, 중력·접지는 기존과 같음)을 쓴다. 벽은 물리로 막히고, 지상에서는 `HasGroundAhead`로 발밑이 끝나면 그 자리에서 멈춰 발판에서 떨어지지 않는다.
 - 취소: 글리치·잠복·출현·내려찍기 준비/하강·조작 잠금(구역 이동·컷신)·피격·사망·비활성화.
 - 연속 3타면 합쳐서 약 0.8유닛 물러난다. 사거리 2.4라 콤보는 이어지지만 적 넉백과 합쳐 간격이 이전보다 벌어진다.
+
+## 2026-11-03 — CoreLoopStage 발판 배치 변경 반영
+
+- 사용자가 CoreLoopStage의 발판 17개(`Terrain/Ledge 1~3`, `Wave 2 Ledge 1~4`, `Wave 3 Ledge 1/3/4/5`, `Wave 4 Ledge 1~6`)와 Ledge 2 위 감시 포탑 위치를 옮겼다(대부분 더 높게). 앞 절에 적힌 발판 좌표는 과거 기록이다. 현재 Ledge 1/2/3은 (26.3, 5.05), (37.31, 5.62), (48.03, 3.65)이고, Ledge 2의 포탑은 (37.31, 6.44)다.
+- 이 배치를 고정값으로 검사하던 테스트는 `StageFlowTests.StartsPlayableWithBalancedMixedEnemiesAndLockedExit`의 Ledge X 한 줄뿐이며, 새 값(26.3/37.31/48.03, 허용 오차 0.001)으로 바꿨다.
+- 고정형 적(감시 포탑)도 새 발판에 맞췄다. 포탑은 지지면 위 중심 높이 0.62(바닥 간격 0.02)로 서고, 원래 서 있던 발판이 옮겨진 만큼 같이 옮겼다(사용자가 옮긴 Ledge 2 포탑과 같은 방식). Encounter 2: (88.5, 3.62) → (89.30, 5.77, Wave 2 Ledge 3), Encounter 3: (138.5, 3.62) → (138.80, 4.17, Wave 3 Ledge 3), Encounter 4: (189, 3.62) → (188.61, 4.36, Wave 4 Ledge 3)과 (195.25, 6.62) → (196.96, 8.24, Wave 4 Ledge 4). 바닥 포탑 (29, 0.62)·(144.5, 0.62)은 그대로다.
+- 드론은 비행 유닛이라 옮기지 않았다. Encounter 2 드론(83.75, 7.63)은 올라간 Wave 2 Ledge 2 윗면과 0.18 간격, Encounter 4 드론(185.75, 8.63)은 Wave 4 Ledge 2와 1.28 간격이 됐다(이전 1.63).
