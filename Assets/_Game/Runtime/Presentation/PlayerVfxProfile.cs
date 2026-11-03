@@ -29,6 +29,13 @@ namespace ActionPlatformer.Presentation
         public Sprite[] FinisherAuraFrames => finisherAuraFrames;
         [SerializeField, Min(1f)] private float finisherAuraFps = 30f;
         public float FinisherAuraFps => finisherAuraFps;
+        // Looping glitch destination marker while aiming, at the sprites' own size. Empty keeps the plain circle.
+        [SerializeField] private Sprite[] glitchMarkerReadyFrames;
+        public Sprite[] GlitchMarkerReadyFrames => glitchMarkerReadyFrames;
+        [SerializeField] private Sprite[] glitchMarkerBlockedFrames;
+        public Sprite[] GlitchMarkerBlockedFrames => glitchMarkerBlockedFrames;
+        [SerializeField, Min(1f)] private float glitchMarkerFps = 30f;
+        public float GlitchMarkerFps => glitchMarkerFps;
         [SerializeField] private Vector2 dustFootOffset = new Vector2(0, -.83f);
         public Vector2 DustFootOffset => dustFootOffset;
         [SerializeField] private Material actionEffectMaterial;

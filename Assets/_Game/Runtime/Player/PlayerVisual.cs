@@ -293,10 +293,21 @@ namespace ActionPlatformer.Player
             glitchRing.enabled = visible;
             if (!visible) return;
 
-            Color color = preview.CanExecute ? new Color(0.15f, 1f, 1f, 0.95f) : new Color(1f, 0.25f, 0.2f, 0.95f);
             var bounds = preview.Bounds;
             Vector2 center = bounds.center;
             if (preview.IsUnderground) center.y += 0.04f;
+            // Authored glitch marker on the player's pixel grid: one looping renderer at native size.
+            var frames = vfxProfile == null ? null
+                : preview.CanExecute ? vfxProfile.GlitchMarkerReadyFrames : vfxProfile.GlitchMarkerBlockedFrames;
+            if (frames != null && frames.Length > 0)
+            {
+                glitchRing.enabled = false;
+                glitchFill.sprite = frames[(int)(Time.unscaledTimeAsDouble * vfxProfile.GlitchMarkerFps) % frames.Length];
+                SetPreviewShape(glitchFill, center, Vector2.one, Color.white);
+                return;
+            }
+            glitchFill.sprite = previewDiscSprite;
+            Color color = preview.CanExecute ? new Color(0.15f, 1f, 1f, 0.95f) : new Color(1f, 0.25f, 0.2f, 0.95f);
             // A destination marker, not a depiction of the unchanged body collision bounds.
             Vector2 size = Vector2.one * .8f;
             SetPreviewShape(glitchFill, center, size, new Color(color.r, color.g, color.b, 0.12f));

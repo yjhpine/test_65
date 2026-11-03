@@ -192,6 +192,57 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 3d528a8f4a70cbb4885a576fdbaad0fa, type: 3}
   - {fileID: 21300000, guid: 1d413c04a63b34442b59a2542a6048d1, type: 3}
   finisherAuraFps: 30
+  glitchMarkerReadyFrames:
+  - {fileID: 21300000, guid: 1acaa32e154cdb44abab500ee2dd02c0, type: 3}
+  - {fileID: 21300000, guid: e3d0a1af31c1a294a867ec92a045fe4e, type: 3}
+  - {fileID: 21300000, guid: 211b6c37b9dd26644b06e71ad204d5ec, type: 3}
+  - {fileID: 21300000, guid: a910877d63718824cbc206ae5b863a2b, type: 3}
+  - {fileID: 21300000, guid: f8c8c412cfe48af41ac1914976999083, type: 3}
+  - {fileID: 21300000, guid: 2fb0b9df0b946e3479a3a5845d3a6e80, type: 3}
+  - {fileID: 21300000, guid: 8547e5d9fa8cbe243aac8d1bc9e45ba1, type: 3}
+  - {fileID: 21300000, guid: b3b4f5f408da1d14aa5dbf452c1ed4ea, type: 3}
+  - {fileID: 21300000, guid: 024fbea3195464a4ab55d4c05cedde45, type: 3}
+  - {fileID: 21300000, guid: 918e11e5b5cc7694eadc5821272007a5, type: 3}
+  - {fileID: 21300000, guid: 53595f4e147fc644391d8c5e35d273ab, type: 3}
+  - {fileID: 21300000, guid: c97fb4992612fb04ea1f0ed7252eecf5, type: 3}
+  - {fileID: 21300000, guid: c0c32c8c35c1f044a8c7c93f8528b857, type: 3}
+  - {fileID: 21300000, guid: 1d96414811b15ad42a55ea32c29d66f2, type: 3}
+  - {fileID: 21300000, guid: 47382302c34f2e149b00bd557ec7bd92, type: 3}
+  - {fileID: 21300000, guid: 205d745953a396b4c93a7078427d3fb3, type: 3}
+  - {fileID: 21300000, guid: 4b2695fbcbdea7e42b38a164cbd70456, type: 3}
+  - {fileID: 21300000, guid: 0b3b46b32b1b2854c81515770d5657e6, type: 3}
+  - {fileID: 21300000, guid: af74930269b1d184f9977fa42e3f8518, type: 3}
+  - {fileID: 21300000, guid: 8c8e604ac101e264ab3382d325815b0d, type: 3}
+  - {fileID: 21300000, guid: f54f737a09e73454385a8393323f3afa, type: 3}
+  - {fileID: 21300000, guid: 9301a72f6db02f849ae818149d8fa684, type: 3}
+  - {fileID: 21300000, guid: a06c060c84402a743bafcb7c357ecf74, type: 3}
+  - {fileID: 21300000, guid: e6b65821cb8bd694a8bfc2194190c20e, type: 3}
+  glitchMarkerBlockedFrames:
+  - {fileID: 21300000, guid: cd74875bb5b783547bd36808dac4377a, type: 3}
+  - {fileID: 21300000, guid: 57f7b5681fec30e459ddd5b2e006314e, type: 3}
+  - {fileID: 21300000, guid: 670f1724d629c684e8b3cdd2f1a6047f, type: 3}
+  - {fileID: 21300000, guid: be51fb3c418557c40bb2736c878c10bd, type: 3}
+  - {fileID: 21300000, guid: fd7c4bf210e845d4ebec35517147c60c, type: 3}
+  - {fileID: 21300000, guid: 839c46c06cdca4d4ab0921c327d7caa0, type: 3}
+  - {fileID: 21300000, guid: 7e59f07129f4a5747aaeee0a8c3d4876, type: 3}
+  - {fileID: 21300000, guid: 736809e1ea83f04438fcb4800889f547, type: 3}
+  - {fileID: 21300000, guid: 79b5f78ab108f4b4884f2f659dc48180, type: 3}
+  - {fileID: 21300000, guid: d0cb198e92d0b83438e43a86ef4f042a, type: 3}
+  - {fileID: 21300000, guid: def4918ebe1b5a146b2c2d9ae2f201d2, type: 3}
+  - {fileID: 21300000, guid: a697b77eaeea56a44ac86de7930574fe, type: 3}
+  - {fileID: 21300000, guid: 5bc796ec849a81843838e28332aca9f5, type: 3}
+  - {fileID: 21300000, guid: 0fc09c25a6bd80f4faa7fc1bfd251e4a, type: 3}
+  - {fileID: 21300000, guid: 60e07b2d1b6989744ac763c09bf013f3, type: 3}
+  - {fileID: 21300000, guid: d9aa3263b954f1a4eabfe4b728111515, type: 3}
+  - {fileID: 21300000, guid: 615532e906b39f548904f6f4063dd320, type: 3}
+  - {fileID: 21300000, guid: a3a2bc8d5eca0ff41964a84829de4e31, type: 3}
+  - {fileID: 21300000, guid: e2c732719b2006041978652917d7028d, type: 3}
+  - {fileID: 21300000, guid: 05983e656f0c19d46b0621b3fb2bf125, type: 3}
+  - {fileID: 21300000, guid: 4722364b395d03145807ffc70b397e62, type: 3}
+  - {fileID: 21300000, guid: 9e49974c427a8c04f952ea12f355af27, type: 3}
+  - {fileID: 21300000, guid: 56ff26e58880df845927e713ca402ab5, type: 3}
+  - {fileID: 21300000, guid: 52a4c166d4fc3a0478deecfdd4d2180b, type: 3}
+  glitchMarkerFps: 30
   dustFootOffset: {x: 0, y: -0.83}
   actionEffectMaterial: {fileID: 2100000, guid: b3eaeace8aea28b4fa1750ee5e110d59, type: 2}
   basicAttackEffectSize: 5

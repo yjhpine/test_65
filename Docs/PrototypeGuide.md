@@ -588,3 +588,10 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 원화: `Tools/PixelFx/effects/finisher-aura.mjs`(PixelFX 자체 효과, 1.2초 루프, 30fps, 36프레임, 60×64). 플레이어 원화와 같은 18 PPU 격자로 그렸고 피벗(0.5, 0.28125)이 Visual 중심이다. 몸을 감싸는 불꽃 외곽(측면 파형이 위로 흐름), 머리 위 불꽃 끝 3개, 위로 흩어지는 빛줄기, 빨간 채널 어긋남·글리치 조각, 발밑 고리로 구성된다.
 - 표시: `PlayerActionEffects`의 `Finisher aura` 렌더러가 `PlayerVfxProfile.finisherAuraFrames / finisherAuraFps`를 비스케일 시간으로 재생한다. 몸과 같은 정렬 순서에 z만 0.01 뒤로 두어 지형(0) 위·플레이어 뒤에 그린다. 장전될 때마다 루프 첫 프레임부터 0.12초 동안 페이드 인하고 바라보는 방향으로 좌우 반전한다. 원화 색은 흰색 팔레트 덮어쓰기로 그대로 쓴다.
 - 다시 만들기: `node Tools/PixelFx/pipeline.mjs render custom/finisher-aura` 후 `Game > Effects > Import Generated Finisher Aura`. 가져오기는 `Art/Effects/PixelFxFinisherAura`의 프레임과 PlayerVfx의 오라 배열만 갱신한다. 전투 수치·콤보 규칙은 바꾸지 않았다.
+
+## 2026-11-03 — 글리치 조준 표시를 PixelFX 글리치 마커로 교체
+
+- 조준 중 적의 상하좌우 도착 지점에 표시하던 원(채움 + 테두리, 0.8유닛, 청록/빨강 색만 다름)을 PixelFX로 만든 글리치 마커 애니메이션으로 바꿨다. 사용 가능 판정·위치·지하 표시 높이 보정(+0.04)·숨김 조건은 그대로다.
+- 원화: `Tools/PixelFx/effects/glitch-marker.mjs` 하나에서 `glitch-marker-ready`(청록, 맥동하는 마름모 코어, 위→아래 스캔선)와 `glitch-marker-blocked`(빨강, 깜박이는 X 코어, 더 잦은 좌우 흔들림·찢김)를 만든다. 공통으로 숨 쉬듯 1px 줄었다 커지는 모서리 괄호, 다른 색 채널이 1px 어긋나는 RGB 분리, 괄호 하나가 옆으로 찢기는 프레임, 옆의 글리치 조각, 주변 픽셀 노이즈, 옅은 내부 판이 있다. 0.8초 루프 24프레임, 32×32, 플레이어 원화와 같은 18 PPU, 중앙 피벗(괄호 상자 약 0.9유닛). 색뿐 아니라 코어 모양(마름모/X)으로도 구분된다.
+- 표시: `PlayerVisual`의 `Glitch preview` 렌더러가 `PlayerVfxProfile.glitchMarkerReadyFrames / glitchMarkerBlockedFrames / glitchMarkerFps(30)`를 비스케일 시간으로 재생하고 원래 크기로 그린다. 이때 `Glitch preview ring`은 끈다. 프로필 배열이 비어 있으면 기존 원 표시로 돌아간다.
+- 다시 만들기: `node Tools/PixelFx/pipeline.mjs render custom/glitch-marker-ready`, `... custom/glitch-marker-blocked` 후 `Game > Effects > Import Generated Glitch Marker`. `Art/Effects/PixelFxGlitchMarker/Ready·Blocked`의 프레임과 PlayerVfx의 두 배열만 갱신한다. 글리치 규칙·거리·쿨타임은 바꾸지 않았다.

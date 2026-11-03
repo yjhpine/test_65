@@ -43,6 +43,26 @@ namespace ActionPlatformer.Editor
             Debug.Log("Finisher aura VFX imported into PlayerVfx; combat settings unchanged.");
         }
 
+        // Ready and blocked variants of the aiming marker, on the player's 18 px grid, centered on the destination.
+        [MenuItem("Game/Effects/Import Generated Glitch Marker")]
+        public static void ImportGlitchMarker()
+        {
+            var data = new SerializedObject(AssetDatabase.LoadAssetAtPath<PlayerVfxProfile>(ProfilePath));
+            foreach (var (variant, field) in new[] { ("ready", "glitchMarkerReadyFrames"), ("blocked", "glitchMarkerBlockedFrames") })
+            {
+                string id = "custom/glitch-marker-" + variant;
+                string manifest = $"Library/PixelFxPipeline/output/{id}/manifest.json";
+                if (!File.Exists(manifest)) throw new InvalidOperationException("Generate glitch-marker-ready/blocked with Tools/PixelFx first.");
+                var pivot = JsonUtility.FromJson<Manifest>(File.ReadAllText(manifest)).unityPivot;
+                Assign(data.FindProperty(field), ImportFrames(id, "Assets/_Game/Art/Effects/PixelFxGlitchMarker/" +
+                    char.ToUpperInvariant(variant[0]) + variant.Substring(1), 18, new Vector2(pivot[0], pivot[1]),
+                    "Generate glitch-marker-ready/blocked with Tools/PixelFx first."));
+            }
+            data.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log("Glitch marker VFX imported into PlayerVfx; glitch rules unchanged.");
+        }
+
         private static Sprite[] ImportFrames(string id, string destination, float pixelsPerUnit, Vector2 pivot, string missing)
         {
             string source = $"Library/PixelFxPipeline/output/{id}";

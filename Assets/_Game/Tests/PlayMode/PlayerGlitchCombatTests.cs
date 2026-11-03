@@ -993,7 +993,10 @@ namespace ActionPlatformer.Tests
                 var preview = player.GlitchPreview;
                 Assert.That(preview.Visible && preview.CanExecute, Is.True);
                 Assert.That(fill.enabled, Is.True);
-                Assert.That(fill.color.g, Is.GreaterThan(fill.color.r));
+                Assert.That(fill.sprite.name, Does.StartWith("glitch-marker-ready-"));
+                Assert.That(fill.bounds.size.x, Is.EqualTo(32f / 18f).Within(.01f), "Drawn at the player art's pixel size.");
+                Assert.That(player.transform.Find("Visual/Glitch preview ring").GetComponent<SpriteRenderer>().enabled, Is.False,
+                    "The authored marker replaces the plain ring.");
                 Assert.That(preview.IsUnderground, Is.EqualTo(direction == Vector2.down));
                 Assert.That(Vector2.Distance(fill.transform.position, (Vector2)preview.Bounds.center +
                     (preview.IsUnderground ? Vector2.up * 0.04f : Vector2.zero)), Is.LessThan(0.01f));
@@ -1005,7 +1008,7 @@ namespace ActionPlatformer.Tests
             Aim(Vector2.right); yield return null; yield return null;
             Assert.That(player.GlitchPreview.Visible, Is.True);
             Assert.That(player.GlitchPreview.CanExecute, Is.False);
-            Assert.That(fill.color.r, Is.GreaterThan(fill.color.g));
+            Assert.That(fill.sprite.name, Does.StartWith("glitch-marker-blocked-"));
             if (SystemInfo.graphicsDeviceType != UnityEngine.Rendering.GraphicsDeviceType.Null)
                 yield return Capture("PreviewBlocked", (Vector2)enemy.transform.position + Vector2.right * 0.35f);
             Object.DestroyImmediate(wall); Aim(Vector2.down); yield return null; yield return null;

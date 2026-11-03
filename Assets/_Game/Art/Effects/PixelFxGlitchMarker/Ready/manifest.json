@@ -1,0 +1,24 @@
+{
+  "id": "custom/glitch-marker-ready",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "0f389985728fc3b29c4b53616b6bf1ea6289314796548b936cd95c21555af553",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 24,
+  "frameSize": [
+    32,
+    32
+  ],
+  "duration": 0.8,
+  "loop": true,
+  "unityPivot": [
+    0.5,
+    0.5
+  ],
+  "rgbaSha256": "f819d8ec55827f0a45cb3657191d0da99fff199c9869758be5a8c0b72aae898c",
+  "deterministic": true,
+  "edgePixels": 0,
+  "lastFrameEmpty": false
+}
