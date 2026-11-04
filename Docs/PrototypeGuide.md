@@ -718,3 +718,36 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 
 - `Assets/_Game/Scenes/BossTest.unity`: MovementLab을 복사해 적 샘플과 허수아비를 뺀 씬이다. 바닥(X -14~14, 윗면 Y 0)·양쪽 벽·고정 카메라(크기 8)·플레이어(-10, 1)는 MovementLab과 같고, `Boss Test` 아래 TestBoss가 (5, 1.22)에서 왼쪽을 보고 서 있다. 빌드 설정에는 넣지 않았으므로 Editor에서 열어 Play로 확인한다.
 - 플레이어가 보스와 수평 14 안으로 들어오면 인식한다. 가까이(3.5 이내) 가면 근접/물러나기, 5~12 거리의 지상에서는 돌진을, 그 밖의 3.5~12 거리(플레이어가 공중이거나 4.5 같은 중간 거리)에서는 도약 내려찍기를 고른다. 체력 50% 아래(구간 1)에서는 소환이 먼저 나와 패트롤 에너미 2마리가 생긴다. 보스를 선택하면 Inspector에서 상태·패턴·선택 경로를 볼 수 있다.
+
+## 2026-11-04 — GameManager (씬 전환에도 남는 흐름 관리자)
+
+사용자 결정: 스테이지 흐름을 **전부** 씬 밖의 GameManager로 옮긴다. 설계는 `Docs/superpowers/specs/2026-11-04-game-manager-design.md`다. CoreLoopStage의 플레이 동작(0.35초·0.85초 대기, 사망 우선, 휴식 회복 1회, 클리어 시 시간 정지, 오류 문구)은 바뀌지 않았다.
+
+### 생성과 프리팹
+
+- 플레이를 시작하면 어느 씬에서든 `RuntimeInitializeOnLoadMethod(BeforeSceneLoad)`가 `Assets/_Game/Resources/GameManager.prefab`을 복제해 DontDestroyOnLoad에 `GameManager` 하나를 만든다. 이미 있으면 만들지 않는다. 씬을 바꾸거나 다시 불러와도 같은 물체가 남는다. 프로젝트는 Domain Reload를 끄고 있으므로 `SubsystemRegistration`에서 정적 참조를 지운다(`EffectsRuntime`과 같은 방식).
+- 프리팹은 루트 하나에 `UIDocument`(Panel Settings `UI/StagePanelSettings.asset`, Sorting Order 100), `StageFlowView`(Document 연결), `GameManager`(View 연결)를 둔다. Sorting Order는 예전 씬 `Stage UI`와 같아 대사·말풍선 UI와의 그리기 순서가 그대로다. HUD 설정은 이 프리팹에서 고친다. 프리팹이 없으면 `GameManager prefab is missing at Resources/GameManager.` 오류를 남긴다.
+- 코드에서는 `GameManager.Instance`(플레이 중이면 필요할 때 만듦, Edit Mode·종료 중에는 null)와 `GameManager.Existing`(만들지 않음)을 쓴다. 종료 중에도 불리는 `OnDisable`에서는 `Existing`만 쓴다.
+
+### StageLayout (씬 쪽 연결)
+
+- CoreLoopStage의 `Stage Flow` 물체에 있던 `StageFlowController`를 `StageLayout`으로 이름만 바꿨다(스크립트 GUID 유지, 기존 연결 값 그대로). Player, Required Enemies, Goal, Cinematics, Final Wave Cutscene, Encounters, Transfer Terrain Mask만 가진다. `View` 칸은 없어졌고 씬의 `Stage UI` 물체도 지웠다.
+- `StageLayout.Start`에서 GameManager에 등록하고 `OnDisable`에서 해제한다. 등록을 `Start`에 두는 이유는 테스트가 `sceneLoaded`(Start 이전)에서 `encounters`·`requiredEnemies`를 바꿔 끼우기 때문이다.
+- 등록할 때 시간 배율·고정 시간 간격을 기록하고, 상태를 Playing으로 두고, 이전 판의 HUD(클리어 화면, 꺼진 RESTART 버튼, 안내 문구, COMBO)를 지운 뒤 기존 시작 검증을 한다. 실패하면 예전과 같은 `Stage flow needs a live player, …` 오류를 남기고 등록하지 않는다(GameManager는 계속 동작). 한 번에 한 스테이지만 등록하며 두 번째 `StageLayout`은 `Only one StageLayout can be registered at a time; this one is ignored.` 오류 후 무시한다. 등록에 성공할 때마다 `StageVersion`이 1 오른다(재시작 감지용).
+- 등록이 풀리면(씬 언로드, StageLayout 비활성화) 예전 `OnDisable` 정리(구독 해제, 구역 이동 취소, 컷신 취소, 시간 복원)를 하고 스테이지 HUD를 숨긴다. 진행 중 설정 오류도 같은 오류를 남기고 등록을 푼다.
+- 공개 값 `State`, `RemainingEnemies`, `Player`, `FinalWaveCutscene`, `UsesEncounters`, `Phase`, `CurrentEncounterIndex`, `CurrentRestArea`, `ActiveEnemies`, `CanRequestTransfer`, `Restart()`는 GameManager에서 같은 뜻으로 읽는다. 추가로 `Stage`(등록된 StageLayout), `HasStage`, `StageVersion`, `View`가 있다. 재시작은 등록된 씬의 build index로 `LoadSceneAsync(Single)`이며 GameManager는 남고 새 씬의 StageLayout이 다시 등록된다.
+- 웨이브·휴식·구역 이동 규칙은 GameManager가 소유한 일반 C# `StageProgress`에 있다. 적 같은 씬 검사는 StageLayout의 씬을 기준으로 한다.
+
+### HUD 구역
+
+- `StageFlowView`는 UIDocument 루트 아래 `stage-hud` 구역에 목표·휴식 이동 안내, 글리치 사용 불가 문구, COMBO, 클리어 화면을 만든다. 이 구역은 스테이지 등록을 따라 보이고 숨는다(`ShowStage`, `IsStageVisible`). `ResetStage`가 이전 판의 표시를 지운다.
+- 다음 작업의 보스 체력바처럼 스테이지와 무관한 표시는 이 구역 밖 루트에 다른 구역으로 붙인다. 이번에는 스테이지 구역만 있다.
+
+### 스테이지가 없는 씬
+
+- MovementLab·BossTest에는 StageLayout이 없다. GameManager는 흐름 규칙을 돌리지 않고, 시간 배율을 건드리지 않으며, 스테이지 HUD를 숨긴다(글리치 사용 불가 문구·COMBO도 보이지 않는다).
+
+### 컷신 연결
+
+- `CutsceneRunner`의 `Stage` 칸을 지웠다. 시작 가능 여부, 실행 중 취소, 종료 후 입력 복원은 "GameManager에 이 러너와 같은 씬의 StageLayout이 등록돼 있고 상태가 Playing"으로 판단한다. `연결 검사`의 '스테이지 흐름' 항목은 같은 씬에 StageLayout이 있는지를 본다. `Game > Cinematics` 설치(`CutsceneAuthoring.InstallStageExample`)도 StageLayout을 찾는다.
+- 이 문서의 이전 절에 나오는 `StageFlowController`(`encounters`, Final Wave Cutscene, `UpdateObjective`, Stage Flow의 View 연결, `Stage UI`)는 이제 연결은 `StageLayout`, 규칙과 HUD는 GameManager(`StageProgress`, 프리팹의 `StageFlowView`)를 뜻한다.

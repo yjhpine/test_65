@@ -12,7 +12,7 @@ namespace ActionPlatformer.Tests
 {
     public sealed class RestCycleTests
     {
-        private StageFlowController flow;
+        private GameManager flow;
         private PlayerUnit player;
         private UnitHealth health;
         private StageRestArea rest;
@@ -25,7 +25,7 @@ namespace ActionPlatformer.Tests
             savedScale = Time.timeScale; savedFixed = Time.fixedDeltaTime; Time.timeScale = 1;
             yield return SceneManager.LoadSceneAsync("CoreLoopStage");
             yield return null;
-            flow = Object.FindFirstObjectByType<StageFlowController>(); player = flow.Player;
+            flow = GameManager.Instance; Assert.That(flow.HasStage, Is.True); player = flow.Player;
             health = player.GetComponent<UnitHealth>(); rest = flow.CurrentRestArea;
             driver = new Driver(); player.SetInputSource(driver);
             var intro = Object.FindFirstObjectByType<ActionPlatformer.Cinematics.CutsceneTrigger>();
@@ -227,13 +227,13 @@ namespace ActionPlatformer.Tests
         }
         [UnityTest] public IEnumerator DeathWinsOverFinalKillAndResetsTheWholeLoop()
         {
-            var previous = flow; KillRoom(); health.ApplyDamage(int.MaxValue); yield return null; yield return null;
+            int previous = flow.StageVersion; KillRoom(); health.ApplyDamage(int.MaxValue); yield return null; yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Dying)); Assert.That(rest.Visited, Is.False);
             Assert.That(health.RestoreToFull(), Is.Zero);
             float deadline = Time.realtimeSinceStartup + 6;
-            while (previous != null && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(previous == null, Is.True); yield return null;
-            var restarted = Object.FindFirstObjectByType<StageFlowController>();
+            while (flow.StageVersion <= previous && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(flow.StageVersion, Is.GreaterThan(previous)); yield return null;
+            var restarted = GameManager.Instance; Assert.That(restarted.HasStage, Is.True);
             Assert.That(restarted.CurrentEncounterIndex, Is.Zero); Assert.That(restarted.RemainingEnemies, Is.EqualTo(2));
             Assert.That(restarted.CurrentRestArea.Visited, Is.False);
         }
@@ -324,7 +324,7 @@ namespace ActionPlatformer.Tests
             Assert.That(player.Motor.Position.x, Is.EqualTo(3f).Within(.1f));
             Assert.That(health.CurrentHealth, Is.EqualTo(health.MaxHealth - 10));
             Assert.That(rest.Visited, Is.False); Assert.That(player.IsControlLocked, Is.False);
-            var view = Object.FindFirstObjectByType<StageFlowView>();
+            var view = flow.View;
             Assert.That(view.IsTransferHintVisible, Is.True);
             yield return RequestTransfer(); yield return Until(EncounterPhase.Rest);
             Assert.That(view.IsTransferHintVisible, Is.False);

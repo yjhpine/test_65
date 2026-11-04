@@ -17,7 +17,7 @@ namespace ActionPlatformer.Tests
 {
     public sealed class FinalWaveCutsceneTests
     {
-        private StageFlowController flow;
+        private GameManager flow;
         private CutsceneRunner reveal;
         private PlayerUnit player;
         private StageGoal goal;
@@ -28,8 +28,8 @@ namespace ActionPlatformer.Tests
         private static void IsolateFinalWave(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != "CoreLoopStage") return;
-            var stage = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<StageFlowController>(true)).Single();
-            var field = typeof(StageFlowController).GetField("encounters", BindingFlags.Instance | BindingFlags.NonPublic);
+            var stage = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<StageLayout>(true)).Single();
+            var field = typeof(StageLayout).GetField("encounters", BindingFlags.Instance | BindingFlags.NonPublic);
             var encounters = (StageEncounter[])field.GetValue(stage);
             foreach (var room in encounters) room.EnemyRoot.SetActive(false);
             field.SetValue(stage, new[] { encounters[encounters.Length - 1] });
@@ -45,7 +45,7 @@ namespace ActionPlatformer.Tests
         }
         private void FindStage()
         {
-            flow = Object.FindFirstObjectByType<StageFlowController>(); reveal = flow.FinalWaveCutscene;
+            flow = GameManager.Instance; Assert.That(flow.HasStage, Is.True); reveal = flow.FinalWaveCutscene;
             player = flow.Player; goal = Object.FindFirstObjectByType<StageGoal>();
             player.SetInputSource(new NoInput());
             Object.FindFirstObjectByType<CutsceneTrigger>().enabled = false;
@@ -107,10 +107,10 @@ namespace ActionPlatformer.Tests
             player.Motor.Teleport(new Vector2(215, .82f)); yield return new WaitForFixedUpdate();
             KillAll(); yield return Until(() => reveal.IsRunning);
             Assert.That(flow.State, Is.EqualTo(StageState.Playing));
-            Assert.That(Object.FindFirstObjectByType<StageFlowView>().IsCompletedVisible, Is.False);
+            Assert.That(flow.View.IsCompletedVisible, Is.False);
             reveal.Skip(); yield return Until(() => flow.State == StageState.Completed);
             Assert.That(reveal.IsRunning, Is.False);
-            Assert.That(Object.FindFirstObjectByType<StageFlowView>().IsCompletedVisible, Is.True);
+            Assert.That(flow.View.IsCompletedVisible, Is.True);
         }
 
         [UnityTest] public IEnumerator DisabledRevealReleasesControlAndDoesNotLoop()
@@ -132,10 +132,10 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator SimultaneousLethalDamageWinsAndRestartCanRevealAgain()
         {
-            var previous = flow; KillAll(); player.GetComponent<UnitHealth>().ApplyDamage(int.MaxValue);
+            int previous = flow.StageVersion; KillAll(); player.GetComponent<UnitHealth>().ApplyDamage(int.MaxValue);
             yield return null; yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Dying)); Assert.That(reveal.IsRunning, Is.False);
-            yield return Until(() => previous == null); yield return null; FindStage();
+            yield return Until(() => flow.StageVersion > previous); yield return null; FindStage();
             Assert.That(reveal.IsRunning, Is.False); Assert.That(goal.IsUnlocked, Is.False);
             KillAll(); yield return Until(() => reveal.IsRunning);
         }

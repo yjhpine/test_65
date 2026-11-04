@@ -1,35 +1,29 @@
+using System;
+using System.Collections.Generic;
+using ActionPlatformer.Cinematics;
 using ActionPlatformer.Player;
+using ActionPlatformer.Units;
 using ActionPlatformer.Units.Features;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
-using ActionPlatformer.Cinematics;
-using System.Collections.Generic;
-using ActionPlatformer.Units;
 
 namespace ActionPlatformer.Flow
 {
-    public enum StageState { Playing, Dying, Restarting, Completed }
-    public enum EncounterPhase { Combat, TransferPending, Transferring, Rest, TransferBlocked }
-
-    [DisallowMultipleComponent]
-    public sealed class StageFlowController : MonoBehaviour
+    // Wave, rest and transfer rules of a stage. The owner decides when it is allowed to run.
+    public sealed class StageProgress
     {
-        [SerializeField] private PlayerUnit player;
-        [SerializeField] private UnitHealth[] requiredEnemies;
-        [SerializeField] private StageGoal goal;
-        [SerializeField] private StageFlowView view;
-        [SerializeField] private CutsceneCoordinator cinematics;
-        [Tooltip("Optional one-shot reveal after the final encounter, before the player can finish at the goal.")]
-        [SerializeField] private CutsceneRunner finalWaveCutscene;
-        [Tooltip("Optional ordered encounter loop. Empty keeps the original single-stage objective.")]
-        [SerializeField] private StageEncounter[] encounters;
-        [SerializeField] private LayerMask transferTerrainMask = 1;
-        private UnitHealth playerHealth;
-        private PlayerInput playerInput;
-        private Collider2D playerBody;
-        private float initialTimeScale, initialFixedDeltaTime;
-        private bool initialized;
+        private readonly PlayerUnit player;
+        private readonly UnitHealth playerHealth;
+        private readonly Collider2D playerBody;
+        private readonly UnitHealth[] requiredEnemies;
+        private readonly StageEncounter[] encounters;
+        private readonly StageGoal goal;
+        private readonly CutsceneCoordinator cinematics;
+        private readonly StageFlowView view;
+        private readonly LayerMask transferTerrainMask;
+        private readonly Scene stageScene;
+        private readonly UnityEngine.Object logContext;
+        private readonly Action failConfiguration;
         private readonly List<Vector2> defeatPositions = new List<Vector2>();
         private readonly List<Collider2D> overlaps = new List<Collider2D>();
         private readonly List<UnitHealth> subscriptions = new List<UnitHealth>();
@@ -40,63 +34,58 @@ namespace ActionPlatformer.Flow
         private int passedWaypoint;
         private Vector2 bodyOffset;
         private bool transferRequested;
-        private bool finalWaveCutsceneAttempted;
-        private double finalWaveRevealReadyAt = double.PositiveInfinity;
 
-        public StageState State { get; private set; } = StageState.Playing;
+        public StageProgress(PlayerUnit player, UnitHealth playerHealth, Collider2D playerBody,
+            UnitHealth[] requiredEnemies, StageEncounter[] encounters, StageGoal goal,
+            CutsceneCoordinator cinematics, StageFlowView view, LayerMask transferTerrainMask, Scene stageScene,
+            UnityEngine.Object logContext, Action failConfiguration)
+        {
+            this.player = player; this.playerHealth = playerHealth; this.playerBody = playerBody;
+            this.requiredEnemies = requiredEnemies; this.encounters = encounters; this.goal = goal;
+            this.cinematics = cinematics; this.view = view; this.transferTerrainMask = transferTerrainMask;
+            this.stageScene = stageScene; this.logContext = logContext; this.failConfiguration = failConfiguration;
+        }
+
         public int RemainingEnemies { get; private set; }
-        public PlayerUnit Player => player;
-        public CutsceneRunner FinalWaveCutscene => finalWaveCutscene;
         public bool UsesEncounters => encounters != null && encounters.Length > 0;
         public EncounterPhase Phase { get; private set; }
         public int CurrentEncounterIndex { get; private set; }
         public StageRestArea CurrentRestArea => UsesEncounters ? encounters[CurrentEncounterIndex].FollowingRest : null;
         public IReadOnlyList<UnitHealth> ActiveEnemies => UsesEncounters ? encounters[CurrentEncounterIndex].Enemies : requiredEnemies;
-        public bool CanRequestTransfer => initialized && isActiveAndEnabled && UsesEncounters && State == StageState.Playing &&
+
+        // ownerPlaying: the owner is initialized, active and in its Playing state.
+        public bool CanRequestTransfer(bool ownerPlaying) => ownerPlaying && UsesEncounters &&
             (Phase == EncounterPhase.TransferPending || Phase == EncounterPhase.TransferBlocked) &&
             Time.timeScale > 0 && Time.timeAsDouble >= transferReadyAt &&
             player != null && player.isActiveAndEnabled && playerHealth != null && playerHealth.IsAlive &&
             !player.IsControlLocked && !(player.Feedback?.IsTimeEffectActive ?? false) && !(cinematics != null && cinematics.IsBusy);
 
-        private void Awake()
+        public bool TryInitialize()
         {
-            initialTimeScale = Time.timeScale;
-            initialFixedDeltaTime = Time.fixedDeltaTime;
-        }
-
-        private void Start()
-        {
-            if (player == null || goal == null || view == null || !goal.IsConfigured || !view.IsConfigured ||
-                (!UsesEncounters && (requiredEnemies == null || requiredEnemies.Length == 0)) ||
-                !player.TryGetComponent(out playerHealth) || !player.TryGetComponent(out playerInput) ||
-                !player.TryGetComponent(out playerBody) || !player.isActiveAndEnabled || player.Motor == null ||
-                playerHealth.MaxHealth <= 0 || gameObject.scene.buildIndex < 0)
-            { FailConfiguration(); return; }
             if (UsesEncounters)
             {
                 playerCapsule = playerBody as CapsuleCollider2D;
-                if (playerCapsule == null || !InitializeEncounters()) { FailConfiguration(); return; }
+                if (playerCapsule == null || !InitializeEncounters()) return false;
             }
             else
                 for (int i = 0; i < requiredEnemies.Length; i++)
                 {
                     var enemy = requiredEnemies[i];
-                    if (enemy == null || enemy == playerHealth || enemy.MaxHealth <= 0 || enemy.gameObject.scene != gameObject.scene)
-                    { FailConfiguration(); return; }
+                    if (enemy == null || enemy == playerHealth || enemy.MaxHealth <= 0 || enemy.gameObject.scene != stageScene)
+                        return false;
                     for (int j = 0; j < i; j++)
-                        if (requiredEnemies[j] == enemy) { FailConfiguration(); return; }
+                        if (requiredEnemies[j] == enemy) return false;
                 }
-            initialized = true;
-            view.RestartRequested += Restart;
-            player.GlitchPressed += RequestTransfer;
-            UpdateObjective();
+            return true;
         }
 
-        private void RequestTransfer()
+        public void RequestTransfer(bool ownerPlaying)
         {
             // Do not bank a combat-time press and unexpectedly depart when the final enemy dies.
-            if (CanRequestTransfer) transferRequested = true;
+            if (CanRequestTransfer(ownerPlaying)) transferRequested = true;
         }
+
+        public void ClearTransferRequest() => transferRequested = false;
 
         private bool InitializeEncounters()
         {
@@ -112,7 +101,7 @@ namespace ActionPlatformer.Flow
                 {
                     // Future inactive objects have not run Awake. Validate authored definitions, not zero runtime HP.
                     if (enemy == null || enemy == playerHealth || !unique.Add(enemy) ||
-                        enemy.gameObject.scene != gameObject.scene || !enemy.transform.IsChildOf(room.EnemyRoot.transform) ||
+                        enemy.gameObject.scene != stageScene || !enemy.transform.IsChildOf(room.EnemyRoot.transform) ||
                         !enemy.TryGetComponent<Unit>(out var unit) || unit.Definition == null || !unit.Definition.TryValidate(out _)) return false;
                 }
             }
@@ -149,63 +138,13 @@ namespace ActionPlatformer.Flow
                 }
         }
 
-        private void FailConfiguration()
-        {
-            Debug.LogError("Stage flow needs a live player, unique initialized enemies, a configured goal/view, and a scene in Build Settings.", this);
-            enabled = false;
-        }
-
-        // Resolve after combat Update/FixedUpdate. Death takes precedence over reaching the exit.
-        private void LateUpdate()
-        {
-            // Combat hints (unusable glitch, combo progress) show only while the player has gameplay control.
-            bool combatHud = initialized && State == StageState.Playing && player != null && player.isActiveAndEnabled &&
-                !player.IsControlLocked && (cinematics == null || !cinematics.IsBusy);
-            view?.ShowGlitchHint(combatHud ? player.GlitchPreview : default, player != null ? player.AimCamera : null);
-            view?.ShowCombo(combatHud ? player.ComboCount : 0, combatHud ? player.ComboLength : 0);
-            bool canTransfer = CanRequestTransfer;
-            if (!canTransfer) transferRequested = false;
-            view?.ShowTransferHint(canTransfer);
-            if (!initialized || State == StageState.Restarting || State == StageState.Completed) return;
-            if (playerHealth == null || player == null) { FailConfiguration(); return; }
-            if (!playerHealth.IsAlive)
-            {
-                CancelTransfer();
-                transferRequested = false;
-                cinematics?.CancelActive();
-                State = StageState.Dying;
-                view.ShowGoalHint(false);
-                if (!player.gameObject.activeInHierarchy) Restart();
-                return;
-            }
-            if (State != StageState.Playing || (cinematics != null && cinematics.IsBusy)) return;
-            if (UsesEncounters && UpdateEncounter()) return;
-            if (!UpdateObjective()) return;
-            if (UsesEncounters && RemainingEnemies == 0 && finalWaveCutscene != null && !finalWaveCutsceneAttempted)
-            {
-                view.ShowGoalHint(false);
-                // Let the authored death animations (up to 0.8s) finish before pausing the scene.
-                if (double.IsPositiveInfinity(finalWaveRevealReadyAt)) finalWaveRevealReadyAt = Time.timeAsDouble + .85;
-                // Finish combat-owned time effects before the cutscene acquires the camera and pauses the world.
-                if (Time.timeScale <= 0 || Time.timeAsDouble < finalWaveRevealReadyAt || player.IsControlLocked ||
-                    (player.Feedback?.IsTimeEffectActive ?? false)) return;
-                finalWaveCutsceneAttempted = true;
-                if (!finalWaveCutscene.TryPlay())
-                    Debug.LogWarning("Final-wave cutscene could not start; the unlocked exit remains available.", this);
-                return;
-            }
-            bool inside = player.isActiveAndEnabled && !player.IsUnderground && goal.Contains(playerBody);
-            view.ShowGoalHint(inside && RemainingEnemies > 0);
-            if (inside && RemainingEnemies == 0) Complete();
-        }
-
-        private bool UpdateObjective()
+        public bool UpdateObjective()
         {
             int remaining = 0;
             foreach (var enemy in ActiveEnemies)
             {
                 // Destroying an objective is a setup error, never an implicit kill.
-                if (enemy == null) { FailConfiguration(); return false; }
+                if (enemy == null) { failConfiguration(); return false; }
                 if (enemy.CurrentHealth > 0) remaining++;
             }
             // The kill that clears the current group gets a short slow motion after its hit stop.
@@ -216,7 +155,7 @@ namespace ActionPlatformer.Flow
         }
 
         // True means this frame belongs to an intermediate room, never to final-stage completion.
-        private bool UpdateEncounter()
+        public bool UpdateEncounter(bool ownerPlaying)
         {
             if (Phase == EncounterPhase.Transferring)
             {
@@ -235,7 +174,7 @@ namespace ActionPlatformer.Flow
                     defeatPositions.Clear();
                     var next = encounters[CurrentEncounterIndex];
                     next.EnemyRoot.SetActive(true);
-                    if (!EnemiesInitialized(next)) { FailConfiguration(); return true; }
+                    if (!EnemiesInitialized(next)) { failConfiguration(); return true; }
                     Phase = EncounterPhase.Combat;
                     UpdateObjective();
                 }
@@ -260,7 +199,7 @@ namespace ActionPlatformer.Flow
             }
             bool requested = transferRequested;
             transferRequested = false;
-            if (requested && CanRequestTransfer)
+            if (requested && CanRequestTransfer(ownerPlaying))
             {
                 view.ShowTransferHint(false);
                 BeginTransfer();
@@ -273,7 +212,7 @@ namespace ActionPlatformer.Flow
             if (!CurrentRestArea.TryArrival(playerCapsule, transferTerrainMask, overlaps, out var destination))
             {
                 Phase = EncounterPhase.TransferBlocked;
-                Debug.LogError("Rest transfer destination is blocked or unsupported; player control is preserved.", this);
+                Debug.LogError("Rest transfer destination is blocked or unsupported; player control is preserved.", logContext);
                 return;
             }
             var room = encounters[CurrentEncounterIndex];
@@ -307,9 +246,10 @@ namespace ActionPlatformer.Flow
             player.PresentTransferSpark(route[0] + bodyOffset);
         }
 
-        private void FixedUpdate()
+        // The owner calls this only while it is initialized and playing.
+        public void FixedTick()
         {
-            if (!initialized || Phase != EncounterPhase.Transferring || State != StageState.Playing) return;
+            if (Phase != EncounterPhase.Transferring) return;
             if (playerHealth == null || !playerHealth.IsAlive || player == null || !player.isActiveAndEnabled || !player.IsScriptedTransferring)
             { CancelTransfer(); return; }
             transferElapsed = Mathf.Min(route.Duration, transferElapsed + Time.fixedDeltaTime);
@@ -324,7 +264,7 @@ namespace ActionPlatformer.Flow
             {
                 player.Motor.Teleport(route[0]);
                 Phase = EncounterPhase.TransferBlocked;
-                Debug.LogError("Rest transfer arrival became invalid; recovery was not consumed.", this);
+                Debug.LogError("Rest transfer arrival became invalid; recovery was not consumed.", logContext);
                 route = null;
                 return;
             }
@@ -341,7 +281,7 @@ namespace ActionPlatformer.Flow
             Phase = EncounterPhase.Rest;
         }
 
-        private void CancelTransfer()
+        public void CancelTransfer()
         {
             if (Phase != EncounterPhase.Transferring) return;
             player?.EndScriptedTransfer();
@@ -349,49 +289,10 @@ namespace ActionPlatformer.Flow
             Phase = EncounterPhase.TransferBlocked;
         }
 
-        private void Complete()
+        public void Dispose()
         {
-            CancelTransfer();
-            cinematics?.CancelActive();
-            State = StageState.Completed;
-            playerInput.DeactivateInput();
-            // Existing disable cleanup cancels actions and releases feedback-owned time/camera changes.
-            player.enabled = false;
-            player.Motor.Hover();
-            playerHealth.SetDamageEnabled(false);
-            Time.fixedDeltaTime = initialFixedDeltaTime;
-            Time.timeScale = 0f;
-            view.ShowCompleted();
-        }
-
-        public void Restart()
-        {
-            if (!initialized || (State != StageState.Completed && State != StageState.Dying)) return;
-            State = StageState.Restarting;
-            view.SetRestartEnabled(false);
-            RestoreTime();
-            SceneManager.LoadSceneAsync(gameObject.scene.buildIndex, LoadSceneMode.Single);
-        }
-
-        private void RestoreTime()
-        {
-            if (player != null) player.Feedback?.Reset();
-            Time.timeScale = initialTimeScale;
-            Time.fixedDeltaTime = initialFixedDeltaTime;
-        }
-
-        private void OnDisable()
-        {
-            transferRequested = false;
-            if (player != null) player.GlitchPressed -= RequestTransfer;
-            view?.ShowTransferHint(false);
-            CancelTransfer();
             foreach (var enemy in subscriptions) if (enemy != null) enemy.DamageApplied -= OnEnemyDamage;
             subscriptions.Clear();
-            cinematics?.CancelActive();
-            if (!initialized) return;
-            if (view != null) view.RestartRequested -= Restart;
-            RestoreTime();
         }
     }
 }

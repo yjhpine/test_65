@@ -20,7 +20,7 @@ namespace ActionPlatformer.Tests
     {
         private CutsceneRunner runner;
         private PlayerUnit player;
-        private StageFlowController stage;
+        private GameManager stage;
         private CutsceneTrigger trigger;
         private float scale, fixedDelta;
         private bool background;
@@ -35,9 +35,9 @@ namespace ActionPlatformer.Tests
             yield return SceneManager.LoadSceneAsync("CoreLoopStage");
             yield return null;
             runner = Object.FindFirstObjectByType<CutsceneTrigger>().GetComponentInParent<CutsceneRunner>();
-            player = runner.Player; stage = Object.FindFirstObjectByType<StageFlowController>();
+            player = runner.Player; stage = GameManager.Instance;
             trigger = Object.FindFirstObjectByType<CutsceneTrigger>();
-            Assert.That(stage.isActiveAndEnabled, Is.True);
+            Assert.That(stage.HasStage, Is.True);
             runner.Finished += OnFinished;
             yield return new WaitForFixedUpdate();
         }
@@ -255,14 +255,15 @@ namespace ActionPlatformer.Tests
             trigger.enabled = false;
             runner.WorldMode = CutsceneWorldMode.Continue;
             Assert.That(runner.TryPlay(), Is.True);
-            var previousStage = stage;
+            int previousVersion = stage.StageVersion;
             var health = player.GetComponent<UnitHealth>();
             health.ApplyDamage(health.MaxHealth);
             yield return Until(() => !runner.IsRunning);
             Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
-            yield return Until(() => previousStage == null);
+            yield return Until(() => stage.StageVersion > previousVersion);
             yield return null;
-            var next = Object.FindFirstObjectByType<StageFlowController>();
+            var next = GameManager.Instance;
+            Assert.That(next.HasStage, Is.True);
             Assert.That(next.State, Is.EqualTo(StageState.Playing));
             Assert.That(next.Player.IsControlLocked, Is.False);
             Assert.That(next.Player.GetComponent<PlayerInput>().inputIsActive, Is.True);

@@ -10,7 +10,7 @@ namespace ActionPlatformer.Flow
     public sealed class StageFlowView : MonoBehaviour
     {
         [SerializeField] private UIDocument document;
-        private VisualElement completion;
+        private VisualElement stageSection, completion;
         private Label goalHint, glitchHint, comboReady;
         private VisualElement comboBar;
         private VisualElement[] comboPips = Array.Empty<VisualElement>();
@@ -25,14 +25,21 @@ namespace ActionPlatformer.Flow
         public bool IsComboVisible => comboBar != null && comboBar.style.display == DisplayStyle.Flex;
         public int ComboPipsLit { get; private set; }
         public bool IsStrongNextVisible => comboReady != null && comboReady.style.display == DisplayStyle.Flex;
+        public bool IsStageVisible => stageSection != null && stageSection.style.display == DisplayStyle.Flex;
 
         private void OnEnable()
         {
             if (document == null || document.panelSettings == null) return;
             var root = document.rootVisualElement;
-            root.Clear();
+            // Replace only this view's section so sibling sections under the same root survive a re-enable.
+            stageSection?.RemoveFromHierarchy();
             root.pickingMode = PickingMode.Ignore;
             root.style.flexGrow = 1;
+            // Everything below belongs to the stage section; other sections can sit beside it under the root.
+            stageSection = new VisualElement { name = "stage-hud", pickingMode = PickingMode.Ignore };
+            stageSection.style.position = Position.Absolute;
+            stageSection.style.left = stageSection.style.right = stageSection.style.top = stageSection.style.bottom = 0;
+            root.Add(stageSection);
 
             goalHint = new Label("DEFEAT ALL ENEMIES TO OPEN THE EXIT");
             goalHint.pickingMode = PickingMode.Ignore;
@@ -44,7 +51,7 @@ namespace ActionPlatformer.Flow
             goalHint.style.fontSize = 22;
             goalHint.style.color = Color.white;
             goalHint.style.backgroundColor = new Color(0.12f, 0.06f, 0.08f, 0.92f);
-            root.Add(goalHint);
+            stageSection.Add(goalHint);
 
             glitchHint = new Label { name = "glitch-hint" };
             glitchHint.pickingMode = PickingMode.Ignore;
@@ -55,7 +62,7 @@ namespace ActionPlatformer.Flow
             glitchHint.style.color = new Color(1f, 0.8f, 0.8f);
             glitchHint.style.backgroundColor = new Color(0.12f, 0.06f, 0.08f, 0.85f);
             glitchHint.style.display = DisplayStyle.None;
-            root.Add(glitchHint);
+            stageSection.Add(glitchHint);
 
             comboBar = new VisualElement { name = "combo" };
             comboBar.pickingMode = PickingMode.Ignore;
@@ -75,7 +82,7 @@ namespace ActionPlatformer.Flow
             comboReady.style.marginLeft = 8;
             comboBar.Add(comboReady);
             comboBar.style.display = DisplayStyle.None;
-            root.Add(comboBar);
+            stageSection.Add(comboBar);
             comboPips = Array.Empty<VisualElement>();
 
             completion = new VisualElement { name = "stage-complete" };
@@ -100,9 +107,26 @@ namespace ActionPlatformer.Flow
             restart.style.height = 56;
             restart.style.fontSize = 24;
             completion.Add(restart);
-            root.Add(completion);
+            stageSection.Add(completion);
             completion.style.display = DisplayStyle.None;
             ShowGoalHint(false);
+            ShowStage(false);
+        }
+
+        // The stage section follows stage registration in the GameManager.
+        public void ShowStage(bool visible)
+        {
+            if (stageSection != null) stageSection.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
+
+        // Clears what a previous stage left on screen, so a new run starts without its hints or clear screen.
+        public void ResetStage()
+        {
+            ShowGoalHint(false);
+            if (glitchHint != null) glitchHint.style.display = DisplayStyle.None;
+            ShowCombo(0, 0);
+            if (completion != null) completion.style.display = DisplayStyle.None;
+            SetRestartEnabled(true);
         }
 
         public void ShowGoalHint(bool show)

@@ -16,7 +16,7 @@ namespace ActionPlatformer.Tests
     {
         private const int ExpectedEnemyCount = 4;
         private const float StageWidth = 217f;
-        private StageFlowController flow;
+        private GameManager flow;
         private PlayerUnit player;
         private StageGoal goal;
         private StageFlowView view;
@@ -46,8 +46,8 @@ namespace ActionPlatformer.Tests
         private static void UseLegacyObjective(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != "CoreLoopStage") return;
-            var stage = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageFlowController>(true)).Single();
-            typeof(StageFlowController).GetField("encounters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            var stage = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageLayout>(true)).Single();
+            typeof(StageLayout).GetField("encounters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(stage, null);
             // Isolate the original four-kind objective independently of the authored 2/3/4/5 course.
             var authored = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<UnitHealth>(true))
@@ -63,18 +63,19 @@ namespace ActionPlatformer.Tests
                 selected[i].transform.position = positions[i];
                 selected[i].gameObject.SetActive(true);
             }
-            typeof(StageFlowController).GetField("requiredEnemies", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            typeof(StageLayout).GetField("requiredEnemies", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(stage, selected);
             foreach (var gate in scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageGate>(true))) gate.SetLocked(false);
         }
 
         private void FindStage()
         {
-            flow = Object.FindFirstObjectByType<StageFlowController>();
+            flow = GameManager.Instance;
             Assert.That(flow, Is.Not.Null);
+            Assert.That(flow.HasStage, Is.True);
             player = flow.Player;
             goal = Object.FindFirstObjectByType<StageGoal>();
-            view = Object.FindFirstObjectByType<StageFlowView>();
+            view = flow.View;
             enemies = flow.ActiveEnemies.ToArray();
             player.SetInputSource(new Driver());
             // These tests isolate gameplay; the cinematic suite covers automatic entry.
@@ -104,11 +105,11 @@ namespace ActionPlatformer.Tests
             Physics2D.SyncTransforms();
         }
 
-        private IEnumerator AwaitReload(StageFlowController previous)
+        private IEnumerator AwaitReload(int previousVersion)
         {
             float deadline = Time.realtimeSinceStartup + 8f;
-            while (previous != null && Time.realtimeSinceStartup < deadline) yield return null;
-            Assert.That(previous == null, Is.True, "Stage should reload once.");
+            while (flow.StageVersion <= previousVersion && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(flow.StageVersion, Is.EqualTo(previousVersion + 1), "Stage should reload once.");
             yield return null;
             FindStage();
             Assert.That(flow.State, Is.EqualTo(StageState.Playing));
@@ -122,6 +123,8 @@ namespace ActionPlatformer.Tests
             Assert.That(Time.timeScale, Is.EqualTo(1f));
             Assert.That(Time.fixedDeltaTime, Is.EqualTo(savedFixed).Within(.00001f));
             Assert.That(view.IsCompletedVisible, Is.False);
+            // The persistent HUD must not keep the previous run's clear screen or disabled button.
+            Assert.That(view.GetComponent<UIDocument>().rootVisualElement.Q<Button>("restart").enabledSelf, Is.True);
             Assert.That(enemies.All(e => e.IsAlive && e.CurrentHealth == e.MaxHealth), Is.True);
         }
 
@@ -133,7 +136,7 @@ namespace ActionPlatformer.Tests
             foreach (string id in new[] { "enemy.patrol", "enemy.shieldsoldier", "enemy.flyingdrone", "enemy.surveillanceturret" })
                 Assert.That(enemies.Count(e => e.Owner.Definition.UnitId == id), Is.EqualTo(1), id);
             Assert.That(goal.transform.position.x, Is.EqualTo(StageWidth - 2f));
-            var floor = flow.gameObject.scene.GetRootGameObjects().Single(g => g.name == "Terrain").transform.Find("Floor");
+            var floor = flow.Stage.gameObject.scene.GetRootGameObjects().Single(g => g.name == "Terrain").transform.Find("Floor");
             Assert.That(floor.GetComponent<BoxCollider2D>().size.x, Is.EqualTo(60f));
             Assert.That(floor.GetComponent<SpriteRenderer>().size.x, Is.EqualTo(60f));
             var ledges = floor.parent.Cast<Transform>().Where(t => t.name.StartsWith("Ledge ")).OrderBy(t => t.position.x).ToArray();
@@ -223,7 +226,7 @@ namespace ActionPlatformer.Tests
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 enemies[0].ApplyDamage(enemies[0].MaxHealth);
-                var previous = flow;
+                int previous = flow.StageVersion;
                 var health = player.GetComponent<UnitHealth>();
                 health.ApplyDamage(health.MaxHealth);
                 yield return null;
@@ -240,7 +243,7 @@ namespace ActionPlatformer.Tests
             KillEnemies();
             EnterGoal();
             player.GetComponent<UnitHealth>().ApplyDamage(int.MaxValue);
-            var previous = flow;
+            int previous = flow.StageVersion;
             yield return null;
             yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Dying));
@@ -257,13 +260,14 @@ namespace ActionPlatformer.Tests
                 yield return null;
                 yield return null;
                 Assert.That(Time.timeScale, Is.Zero);
-                var previous = flow;
+                int previous = flow.StageVersion;
                 var button = view.GetComponent<UIDocument>().rootVisualElement.Q<Button>("restart");
                 using (var submit = NavigationSubmitEvent.GetPooled()) button.SendEvent(submit);
                 Assert.That(flow.State, Is.EqualTo(StageState.Restarting));
                 flow.Restart();
                 yield return AwaitReload(previous);
-                Assert.That(Object.FindObjectsByType<StageFlowController>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
+                Assert.That(Object.FindObjectsByType<StageLayout>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
+                Assert.That(Object.FindObjectsByType<GameManager>(FindObjectsSortMode.None).Length, Is.EqualTo(1));
             }
         }
 
@@ -441,9 +445,10 @@ namespace ActionPlatformer.Tests
             yield return null;
             yield return null;
             Assert.That(Time.timeScale, Is.Zero);
+            var stage = flow.Stage.gameObject.scene;
             var blank = SceneManager.CreateScene("AfterCompletedStage");
             SceneManager.SetActiveScene(blank);
-            yield return SceneManager.UnloadSceneAsync(flow.gameObject.scene);
+            yield return SceneManager.UnloadSceneAsync(stage);
             Assert.That(Time.timeScale, Is.EqualTo(1f));
             Assert.That(Time.fixedDeltaTime, Is.EqualTo(savedFixed).Within(.00001f));
         }

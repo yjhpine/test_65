@@ -24,7 +24,6 @@ namespace ActionPlatformer.Cinematics
         [SerializeField] private CutsceneView view;
         [SerializeField] private CutsceneCoordinator coordinator;
         [SerializeField] private PlayerUnit player;
-        [SerializeField] private StageFlowController stage;
         [SerializeField] private InputActionAsset cutsceneInput;
         [SerializeField] private CutsceneWorldMode worldMode;
         [SerializeField] private bool allowSkip = true;
@@ -64,6 +63,16 @@ namespace ActionPlatformer.Cinematics
         public float MaxLandingWait { get => maxLandingWait; set { if (!IsRunning && float.IsFinite(value) && value >= 0) maxLandingWait = value; } }
         public double CurrentTime => currentTime;
         public event Action<CutsceneEndReason> Finished;
+        // The persistent GameManager has this scene's stage registered and playing.
+        private bool StagePlaying
+        {
+            get
+            {
+                var game = GameManager.Existing;
+                return game != null && game.Stage != null && game.Stage.gameObject.scene == gameObject.scene &&
+                    game.State == StageState.Playing;
+            }
+        }
 
         public void BindOutputs()
         {
@@ -84,11 +93,11 @@ namespace ActionPlatformer.Cinematics
             else if (view == null || !view.IsConfigured) error = "대화 UI의 Document, UXML, Panel Settings를 연결하세요.";
             else if (coordinator == null || coordinator.CameraRig == null || !coordinator.CameraRig.IsConfigured)
                 error = "씬의 CutsceneCoordinator와 카메라 연결을 확인하세요.";
-            else if (player == null || stage == null || cutsceneInput == null ||
+            else if (player == null || StageLayout.FindIn(gameObject.scene) == null || cutsceneInput == null ||
                 cutsceneInput.FindAction("Cutscene/Confirm") == null || cutsceneInput.FindAction("Cutscene/Skip") == null)
                 error = "플레이어, 스테이지 흐름, 연출 입력을 연결하세요.";
-            else if (player.gameObject.scene != gameObject.scene || coordinator.gameObject.scene != gameObject.scene ||
-                stage.gameObject.scene != gameObject.scene) error = "연출 연결은 같은 씬에 있어야 합니다.";
+            else if (player.gameObject.scene != gameObject.scene || coordinator.gameObject.scene != gameObject.scene)
+                error = "연출 연결은 같은 씬에 있어야 합니다.";
             else if (float.IsNaN(returnDuration) || float.IsInfinity(returnDuration) || returnDuration < 0)
                 error = "복귀 시간은 유한한 0 이상의 값이어야 합니다.";
             else if (float.IsNaN(maxLandingWait) || float.IsInfinity(maxLandingWait) || maxLandingWait < 0)
@@ -148,7 +157,7 @@ namespace ActionPlatformer.Cinematics
                     if (!actor.IsAvailable) return false;
                     boundSpeakers.Add(actor);
                 }
-            if (!player.isActiveAndEnabled || player.IsScriptedTransferring || player.Motor == null || stage.State != StageState.Playing ||
+            if (!player.isActiveAndEnabled || player.IsScriptedTransferring || player.Motor == null || !StagePlaying ||
                 !player.TryGetComponent(out health) || !health.IsAlive || !coordinator.TryAcquire(this)) return false;
             State = CutsceneState.Playing;
             try
@@ -226,8 +235,7 @@ namespace ActionPlatformer.Cinematics
             if (!IsRunning) return;
             if (player == null || !player.isActiveAndEnabled || health == null || !health.IsAlive ||
                 health.DamageVersion != initialDamage) { Finish(CutsceneEndReason.Damaged); return; }
-            if (stage == null || !stage.isActiveAndEnabled || stage.State != StageState.Playing)
-            { Cancel(); return; }
+            if (!StagePlaying) { Cancel(); return; }
             foreach (var actor in boundSpeakers)
                 if (actor == null || !actor.IsAvailable) { Cancel(); return; }
             if (State == CutsceneState.Landing)
@@ -368,7 +376,7 @@ namespace ActionPlatformer.Cinematics
                 controlLock?.Dispose(); controlLock = null;
                 if (inputWasActive && playerInput != null && playerInput.isActiveAndEnabled &&
                     player != null && player.isActiveAndEnabled && health != null && health.IsAlive &&
-                    stage != null && stage.isActiveAndEnabled && stage.State == StageState.Playing && !playerInput.inputIsActive)
+                    StagePlaying && !playerInput.inputIsActive)
                     playerInput.ActivateInput();
             }
             finally { cleaning = false; }
