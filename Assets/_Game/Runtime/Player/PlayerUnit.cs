@@ -258,7 +258,8 @@ namespace ActionPlatformer.Player
             if (command.AttackPressed && !pendingAttack && (Combat != null || IsUnderground))
             {
                 pendingAttack = true;
-                if (!IsUnderground) Combat?.BufferAttack(Time.timeAsDouble);
+                // A press during a swing is its single follow-up; underground it becomes the emergence.
+                Combat?.BufferAttack(Time.timeAsDouble);
             }
         }
 
@@ -317,7 +318,12 @@ namespace ActionPlatformer.Player
                 else if (IsUnderground)
                 {
                     Glitch.MoveUnderground(horizontalInput, Time.fixedDeltaTime);
-                    if (pendingAttack && (Combat == null || Combat.CanAttack(now)) && Glitch.TryEmerge())
+                    // Burrowing never shortens a swing's recovery, but it keeps running here so the emergence
+                    // waits only for Ready. A press kept during it emerges once Ready.
+                    Combat?.Tick(now);
+                    bool emerge = pendingAttack;
+                    if (Combat != null && Combat.ConsumeBufferedAttack(now)) emerge = true;
+                    if (emerge && (Combat == null || Combat.CanAttack(now)) && Glitch.TryEmerge())
                     {
                         unchecked { RepositionVersion++; }
                         relocated = true;
@@ -329,6 +335,8 @@ namespace ActionPlatformer.Player
                         Combat?.TryAttack(Glitch.ArrivalTarget, facing, true, now, Motor.IsGrounded);
                     }
                 }
+                // Leaving by cancel, timeout or a failed emergence drops the follow-up meant to emerge.
+                if (!IsUnderground && !relocated) Combat?.ClearBufferedAttack();
                 ClearJumpState();
             }
             else
@@ -350,7 +358,9 @@ namespace ActionPlatformer.Player
                     Combat?.TryAttack(Glitch?.ArrivalTarget, facing, false, now, Motor.IsGrounded);
                 }
             }
-            pendingGlitch = pendingAttack = pendingCancel = false;
+            // A press that arrived with a burrowing glitch is the next step's emergence request.
+            pendingAttack = pendingAttack && !wasUnderground && IsUnderground;
+            pendingGlitch = pendingCancel = false;
             glitchRequest = default;
             if (IsUnderground) return;
             bool wasDescending = Combat != null && Combat.IsDescending;

@@ -87,6 +87,8 @@ namespace ActionPlatformer.Player
             return true;
         }
 
+        public void ClearBufferedAttack() => bufferedAttack = false;
+
         // The swing's reaction force for PlayerUnit to apply: horizontal start speed (away from the struck side) and duration.
         public bool ConsumeRecoil(out float velocity, out float duration)
         {

@@ -1208,6 +1208,90 @@ namespace ActionPlatformer.Tests
             Assert.That(player.Motor.Velocity.x, Is.Zero.Within(.001f));
         }
 
+        // A missed swing, then a below-target glitch through the player's input while that swing is in Recovery.
+        private IEnumerator BurrowDuringRecovery()
+        {
+            Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble), Is.True);
+            float deadline = Time.realtimeSinceStartup + 2f;
+            while (Combat.Phase != PlayerAttackPhase.Recovery && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
+            input.Command = new PlayerCommand { GlitchPressed = true,
+                AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.down * .35f) };
+            yield return null; yield return Step; yield return null;
+            Assert.That(Glitch.IsUnderground, Is.True, "Recovery allows repositioning.");
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
+        }
+
+        [UnityTest] public IEnumerator BurrowDuringRecoveryStillEmergesOnALaterPress()
+        {
+            yield return BurrowDuringRecovery();
+            // The swing's recovery keeps running underground, so a press after it ends emerges at once.
+            double until = Time.timeAsDouble + combatSettings.Recovery + .05;
+            while (Time.timeAsDouble < until) yield return Step;
+            Assert.That(Glitch.IsUnderground, Is.True);
+            input.Command = new PlayerCommand { AttackPressed = true };
+            yield return null; yield return Step; yield return null;
+            AssertRestored();
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            Assert.That(player.RepositionVersion, Is.EqualTo(2));
+        }
+
+        [UnityTest] public IEnumerator UndergroundPressDuringRecoveryWaitsAsTheFollowUpThenEmerges()
+        {
+            Set(combatSettings, "recovery", .6f);
+            yield return BurrowDuringRecovery();
+            double burrowedAt = Time.timeAsDouble;
+            input.Command = new PlayerCommand { AttackPressed = true };
+            yield return null; yield return Step; yield return null;
+            Assert.That(Glitch.IsUnderground, Is.True, "Repositioning never shortens the recovery.");
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
+            Assert.That(Combat.HasBufferedAttack, Is.True, "The press waits as the single follow-up.");
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (Glitch.IsUnderground && Time.realtimeSinceStartup < deadline)
+            {
+                Assert.That(Combat.IsAttacking, Is.True, "Emergence waits for Ready.");
+                yield return Step;
+            }
+            AssertRestored();
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            Assert.That(Time.timeAsDouble - burrowedAt, Is.LessThan(glitchSettings.UndergroundDuration),
+                "The follow-up emerged before the stay timed out.");
+            Assert.That(Combat.HasBufferedAttack, Is.False);
+        }
+
+        [UnityTest] public IEnumerator CancellingTheBurrowDropsTheEmergenceWaitingForRecovery()
+        {
+            Set(combatSettings, "recovery", .6f);
+            yield return BurrowDuringRecovery();
+            input.Command = new PlayerCommand { AttackPressed = true };
+            yield return null; yield return Step; yield return null;
+            Assert.That(Combat.HasBufferedAttack, Is.True);
+            uint swings = player.AttackPresentation.Version;
+            input.Command = new PlayerCommand { JumpPressed = true };
+            yield return null; yield return Step; yield return null;
+            AssertRestored();
+            Assert.That(Combat.HasBufferedAttack, Is.False, "Space cancel takes priority over the waiting emergence.");
+            double until = Time.timeAsDouble + .7;
+            while (Time.timeAsDouble < until) yield return Step;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Ready));
+            Assert.That(player.AttackPresentation.Version, Is.EqualTo(swings), "No swing follows at the parked position.");
+            Assert.That(player.RepositionVersion, Is.EqualTo(1));
+        }
+
+        [UnityTest] public IEnumerator AttackPressedWithTheBurrowingGlitchEmergesOnTheNextStep()
+        {
+            input.Command = new PlayerCommand { GlitchPressed = true, AttackPressed = true,
+                AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.down * .35f) };
+            yield return null; yield return Step;
+            Assert.That(Glitch.SuccessVersion, Is.EqualTo(1));
+            Assert.That(Glitch.IsUnderground, Is.True, "The burrow itself happens first.");
+            Assert.That(Combat.IsAttacking, Is.False);
+            yield return Step;
+            AssertRestored();
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            Assert.That(player.RepositionVersion, Is.EqualTo(2));
+        }
+
         [Test] public void UndergroundMovementUsesConfiguredSpeedAndPhysicsDeltaWithoutExtendingStay()
         {
             Set(glitchSettings, "undergroundMoveSpeed", 4f);
