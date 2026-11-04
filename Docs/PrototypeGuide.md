@@ -652,3 +652,69 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 무거운 명중 `HitHeavy`(0.32초, 처치·내려찍기·충격파): 무거운 펀치 + 금속판 충격 + 크런치 0.24초. 일반 명중보다 낮고 무겁게 맞췄다(스펙트럼 중심 약 0.7kHz, 일반 약 1kHz, 기존 펀치 약 0.5~0.7kHz).
 - 음량: 체감 음량(LUFS)을 기존 클립과 ±0.6 이내로 맞춰 `Hit Volume`(0.42)·피치 변화·0.04초 합치기 규칙은 그대로다. HitA/HitB/HitHeavy는 같은 파일을 덮어써 GUID를 유지했다.
 - 재생성: `python -I Library/SfxDownloads/PrepareSfx.py`(프로젝트 루트에서). 히트음 레시피가 이 스크립트에 들어 있고, 다른 클립은 같은 결과(바이트 동일)로 다시 만들어진다. 원본 대응은 `Audio/Combat/Sources.json`.
+
+## 2026-11-04 — 보스 AI 구조 (FSM + 패턴 선택 트리)
+
+보스는 모든 보스가 같은 FSM(큰 행동 방식)을 쓰고, 보스마다 다른 것은 설정 값·선택 트리·패턴 에셋이다. 설계 근거는 `Docs/superpowers/specs/2026-11-04-boss-ai-design.md`다. 코드는 `Assets/_Game/Runtime/Units/Bosses`(네임스페이스 `ActionPlatformer.Units.Bosses`), 편집기 코드는 `Assets/_Game/Editor/Bosses`에 있다. 기존 `Unit`·`UnitHealth`·`FsmRuntime`·적 코드·`StageFlowController`는 바꾸지 않았고, `PlayerUnit`에는 `ICharacterMotionState` 전달만 추가했다. 이번에는 어느 씬에도 보스를 배치하지 않았다.
+
+### 구성
+
+- `BossFsmDefinition`(에셋): 상태 설정. 선택 트리(`selector`), 인식 거리·높이, 선택 주기(0.2초), 접근 속도·선호 거리, 경직 시간·면역, 체력 구간 경계(`phaseThresholds`, 엄격한 내림차순, 0~1 사이), 구간 전환 시간·무적, 사망 시간, 공통 애니메이션 이름(Idle/Run/Hit/PhaseShift/Death), 고정 시드.
+- 상태: Dormant → Approach → Telegraph → Execute → Recover → Approach … 경직(Staggered)·구간 전환(PhaseShift)·사망(Death). 우선순위는 사망 → 경직 → 현재 상태 진행이다. 구간 전환은 패턴·경직이 끝난 뒤에 들어가며 끼어들지 않는다.
+- 경직은 끊는 타격(띄우기·내려찍기·출현·충격파, `InterruptVersion` 증가)만 일으킨다. 패턴 정의의 `interruptibleDuringTelegraph`(기본 true)·`interruptibleDuringExecute`(기본 false)가 끊을 수 있는지를 정한다. 경직 면역(`staggerImmunity`)은 경직이 끝난 시점부터 센다(첫 경직은 항상 허용).
+- `BossBlackboard`(개체별): 대상, 거리, 플레이어 상태(지상·공중·잠복·공격 중·최근 글리치·화면 안), 체력 구간, 패턴 이력·쿨타임, 개체별 난수. 쿨타임은 예고를 시작할 때 센다. 플레이어 정보는 `ICharacterMotionState`·`IPlayerActionState`·`IUnitRepositionState`·`IUnitViewSource`로만 얻고 `PlayerUnit`을 직접 참조하지 않는다.
+- `BossPatternSelector`(에셋): 선택 전용 트리. 한 번 평가해 패턴 하나(또는 없음)를 돌려준다. 노드는 `[SerializeReference]`로 에셋 안에 중첩 저장된다.
+- 패턴: `BossPatternDefinition`(에셋, 수치) → `CreateRun`이 개체별 `BossPatternRun`을 만든다. 현재 `BossMeleeAreaPattern`·`BossChargePattern`·`BossRepositionPattern`·`BossLeapSlamPattern`·`BossSummonPattern` 5종이 있다.
+- `BossCombat2D`(대상 찾기·상자/휩쓸기 판정·방어 위임), `BossVisual2D`(`IBossActionState`를 읽어 애니메이션·방향·예고 상자 표시. 게임플레이를 바꾸지 않는다. Animation Event 없음).
+
+- 애니메이션 진행: `BossVisual2D`는 `IBossActionState.Progress`를 Float `ActionTime`에 쓴다. Telegraph·Execute(패턴 진행), Recover(`recovery`), Staggered(`staggerDuration`), PhaseShift(`phaseShiftDuration`), Death(`deathDuration`)가 모두 0→1로 오르므로 Motion Time으로 재생하는 클립을 쓸 수 있다. Dormant·Approach는 0이다.
+- 돌진 예고 상자는 실제 판정(몸체 폭 + 이동 거리)과 같은 범위를 덮는다.
+
+### 공중 도약 내려찍기와 하수인 소환 (2026-11-04, 사용자 요청)
+
+- `BossLeapSlamPattern`(메뉴 `Leap Slam`): 지상에서 `telegraphTime`(0.3) 웅크린 뒤 `BeginAirborne`으로 몸체를 Kinematic으로 바꾸고 `riseTime`(0.4)에 `jumpHeight`(5)만큼 올라간다(천장이 가까우면 그 아래에서 멈춘다). 이어 `aimTime`(0.6) 동안 착지 X가 플레이어 X를 따라가고(그 아래에 지면이 있는 X만 받아들이며 벽은 `ClampHorizontal`로 넘지 못한다) 보스는 `airSpeed`(10)로 그 위로 이동한다. 조준이 끝나면 착지 X가 고정되고(예고 상자 색이 붉게 바뀐다) 고정 후 정확히 `landDelay`(1)초에 착지한다. 마지막 `dropTime`(높이 ÷ `dropSpeed` 30) 동안 수직 하강하며, 착지하면 `EndAirborne` 후 반경 `shockwaveRadius`(3)의 원형 충격파로 `damage`(15)를 한 번 준다. 끝나고 `landingTime`(0.15) 뒤에 실행이 끝난다. 시작 조건은 보스가 지상에 있고 대상이 있을 때다. 취소·사망·비활성화는 `EndAirborne`으로 물리를 복원해 보스가 중력으로 떨어진다.
+- `BossSummonPattern`(메뉴 `Summon`): 하수인을 `minionPrefab`(Inspector에서 어떤 프리팹이든 지정, 루트에 `Unit`+`UnitHealth` 필요)로 `spawnOffsets`(보스 몸체 중심 기준, 기본 (-2.5,0)·(2.5,0), 보스 방향과 무관)마다 한 마리씩 소환한다. 살아 있는 하수인이 `maxAlive`(2)에 이르면 시작하지 않고, 일부만 죽었으면 모자란 만큼만 만든다. 벽 앞 0.6에서 멈추고 아래 지면이 없는 칸은 건너뛴다. 소환된 하수인은 보스와 같은 씬의 최상위 오브젝트이며 스테이지 적 루트에 속하지 않는다. `despawnWithBoss`(기본 true)이면 보스 사망 때 하수인이 같이 죽고(각자 사망 연출) 보스 전투가 멈추면(비활성화·FSM 정지) 하수인 오브젝트를 제거한다.
+- 공용 변경: `BossTelegraph.Locked`(예고가 고정되었는지, `BossVisual2D.lockedTelegraphColor`로 다른 색 표시), `BossCombat2D.HitCircle`·`TryFindGround`·`ClampHorizontal`·`ClampVertical`·`RayClampX`, `IBossMover.BeginAirborne/SetAirbornePosition/EndAirborne/IsAirborne`, `BossPatternRun.OnBossDied/OnBossStopped`(브레인이 캐시된 모든 Run에 부름), `BossContext.RunOf`(패턴 정의의 `CanStart`가 자기 Run을 읽는 길).
+- 하수인 프리팹을 바꾸려면 `Data/Bosses/TestBoss/Patterns/TestBossSummon.asset`(또는 새 Summon 에셋)의 `Minion Prefab`에 프리팹을 끌어 놓는다. 임시로 `Prefabs/Enemies/PatrolEnemy.prefab`이 지정되어 있다.
+
+### 새 패턴을 추가하는 순서
+
+1. `BossPatternDefinition`을 상속한 ScriptableObject를 만들고 `[CreateAssetMenu(menuName = "Action Platformer/Bosses/Patterns/...")]`를 붙인다. 자기 수치는 `[SerializeField] private`로 두고 `TryValidate`를 재정의해 잘못된 값을 거부한다.
+2. `BossPatternRun`을 상속한 중첩 클래스를 만들고 `CreateRun`에서 돌려준다. 수명은 `BeginTelegraph` → `TickTelegraph`(끝나면 true) → `BeginExecute` → `TickExecute`(끝나면 true) → `End`/`Cancel`이다. 패턴이 쓸 수 있는 것은 `BossContext`(이동 어댑터, `BossCombat2D`, 블랙보드)뿐이다.
+3. 실행 중 상태(타이머·타격 기록)는 Run 객체에 둔다. 공유 에셋에는 쓰지 않는다. Run은 보스 한 개체당 패턴마다 하나만 만들어 매 실행에 재사용하므로, 실행마다 초기화할 값은 생성자가 아니라 `BeginTelegraph`/`BeginExecute`에서 초기화한다.
+4. 예고 표시가 필요하면 `Telegraph`를 재정의해 상자 중심·크기를 돌려준다. 방패 같은 방어는 `BlocksDamage`로 알린다.
+5. 시작 조건이 있으면 `CanStart`를 재정의한다.
+6. Project 창 `Create > Action Platformer > Bosses > Patterns`에서 에셋을 만들고 선택 트리의 잎(패턴 노드)에 연결한다.
+
+### 새 보스를 추가하는 순서
+
+1. 패턴 에셋을 만들고(위) `Create > Action Platformer > Bosses > Pattern Selector`로 선택 트리를 만든다.
+2. `Create > Action Platformer > Bosses > Boss FSM Definition`을 만들고 `selector`와 수치·체력 구간 경계·애니메이션 이름을 정한다. Inspector 아래에 잘못된 값이 오류로 표시된다.
+3. `UnitDefinition`을 만든다(Kind Monster, MaxHealth, `fsm` = 위 FSM, `allowForcedMovement` false 권장).
+4. 프리팹: 루트 레이어 2, Rigidbody2D(회전 고정)·BoxCollider2D·`Unit`·`UnitHealth`(Deactivate On Death 끔)·`BossCombat2D`·`GroundMovement2D`(Ignore Knockback). 자식 Visual에 SpriteRenderer·Animator(Float `ActionTime`, Root Motion 끔, FSM·패턴이 부르는 상태 이름 모두 필요)·`BossVisual2D`(`stateSource` = 루트 `BossCombat2D`)·`UnitDamageFlash`, 예고용 SpriteRenderer를 `telegraphRenderer`에 연결한다. 애니메이터에 없는 상태 이름은 경고를 한 번 남기고 현재 모션을 유지한다.
+5. 기존 `Assets/_Game/Prefabs/Bosses/TestBoss.prefab`과 `Data/Bosses/TestBoss`를 복제해 시작하면 편하다.
+
+### 선택 트리 편집
+
+- `BossPatternSelector` 에셋을 선택하면 Inspector에 트리가 나온다. 노드 머리글은 한 줄 요약(예: `거리 0~3.5 / 높이 -1.5~2.5`, `패턴: TestBossMelee`)이고 오른쪽 `추가/교체`로 노드 종류를 고르고 `삭제`로 비운다.
+- 묶음: Selector(처음 성공한 자식), Sequence(모두 통과하면 마지막 자식의 패턴), Weighted Random(가능한 자식 중 가중치 추첨). 조건: 거리, 앞뒤, 플레이어 상태, 체력 구간, 확률. 장식: Inverter. 잎: 패턴(`avoidLast`로 최근 n번 사용 제외).
+- 새 노드 종류는 `BossSelectorNode`(조건은 `BossCondition`) 파생 클래스와 `[BossNodeMenu("묶음/이름")]` 하나면 추가 메뉴에 자동으로 뜬다. 이름을 바꿀 때는 `[MovedFrom]`을 붙인다.
+- 검증 오류(빈 묶음·패턴 없는 잎·뒤집힌 범위·같은 노드 중복 연결)는 Inspector 아래에 HelpBox로 보이고 FSM 생성도 막는다.
+- 목록의 `+`가 같은 노드를 가리키는 복사본을 만들면(Insert 경로) 다음 그리기에서 뒤의 복사본을 비워 노드를 새로 고르게 한다. 저장된 데이터에 없어진 노드 클래스가 있으면 빈 칸을 "비어 있음" 대신 `(missing type 클래스명 …)`으로 표시한다. 한 에셋에 비어 있는 칸과 없어진 타입이 같이 있으면 비어 있는 칸도 같은 문구로 보인다(Unity가 칸마다 구분해 주지 않는다).
+
+### 디버그 표시
+
+- Play Mode에서 보스 오브젝트를 선택하면 `UnitEditor`가 `Boss State / Boss Pattern / Boss Phase`를 표시한다(`BossCombat2D.State`가 있을 때만). 접을 수 있는 `Last Selection`에는 마지막 선택 경로(통과·실패한 노드 요약)가 나온다. 텍스트는 `Editor/Bosses/BossDebugText.cs`가 만들고 EditMode 테스트가 확인한다.
+- Play Mode에서 TestBoss 프리팹을 런타임에 인스턴스화해 선택한 Inspector 캡처가 `Library/PrototypeValidation/TestBossPlayModeInspector.png`에 있다(씬 파일은 건드리지 않음).
+- 머리 위 행동 표시(`BossDebugLabel`, 보스 루트 컴포넌트, TestBoss에 부착): Game 뷰에서 몸체 콜라이더 위 0.35에 두 줄을 그린다. 1줄은 현재 행동(`Telegraph · TestBossMelee 59%`, `Execute …`, `Recover …`, `Staggered 30%`, `PhaseShift → P1 30%`, `Death`, `Approach`, `Dormant`), 2줄은 `P구간 · HP 현재/최대`다. 글자색은 예고 주황, 실행 빨강, 회복 회색, 경직 청록, 구간 전환 보라, 그 밖 흰색. 퍼센트는 `IBossActionState.Progress`(예고·실행은 패턴 진행, 나머지는 각 지속 시간 기준)다.
+- `Visible`(체크 해제로 숨김), `Height Offset`, `Font Size`(기본 14)는 Inspector에서 바꾼다. IMGUI(`OnGUI`)로 그리므로 Editor와 Development Build에서만 보이고 일반 빌드에는 그려지지 않는다. 새 보스에도 루트에 컴포넌트를 붙이면 된다(`BossCombat2D` 필요). 문구는 `BossDebugLabel.Describe`가 만들고 EditMode `BossDebugLabelTests`가 확인한다.
+
+### 테스트 보스
+
+- `Assets/_Game/Prefabs/Bosses/TestBoss.prefab`: 체력 300, 근접(쿨타임 0)·돌진(3초)·뒤로 물러나기(4초)·도약 내려찍기(5초)·소환(12초) 패턴, 체력 50%에서 구간 전환. 선택 트리는 위에서부터 ① 체력 구간 1 이상이면 소환(하수인 2마리가 이미 살아 있으면 건너뜀) ② 근처(거리 0~3.5·높이 -1.5~2.5)에서 근접 ×3 / 물러나기 ×1(최근 1회 제외) 가중 추첨 ③ 먼 거리(5~12·높이 -1.5~1.5)에서 플레이어가 지상이면 돌진 ④ 거리 3.5~12·높이 -2~6이면 도약 내려찍기다. 외형은 중심 피벗 도형 스프라이트(1.6×2.4)이고 Visual은 루트와 같은 위치 (0,0)에 두어 몸체 콜라이더와 겹친다. 애니메이터는 빈 모션 상태만 있다.
+- 에셋은 `Data/Bosses/TestBoss`(정의·FSM·선택 트리·`Patterns/`), `Animations/Bosses/TestBoss/TestBoss.controller`에 있다. 보스 체력 HUD는 없다.
+
+### 보스 테스트 씬
+
+- `Assets/_Game/Scenes/BossTest.unity`: MovementLab을 복사해 적 샘플과 허수아비를 뺀 씬이다. 바닥(X -14~14, 윗면 Y 0)·양쪽 벽·고정 카메라(크기 8)·플레이어(-10, 1)는 MovementLab과 같고, `Boss Test` 아래 TestBoss가 (5, 1.22)에서 왼쪽을 보고 서 있다. 빌드 설정에는 넣지 않았으므로 Editor에서 열어 Play로 확인한다.
+- 플레이어가 보스와 수평 14 안으로 들어오면 인식한다. 가까이(3.5 이내) 가면 근접/물러나기, 5~12 거리의 지상에서는 돌진을, 그 밖의 3.5~12 거리(플레이어가 공중이거나 4.5 같은 중간 거리)에서는 도약 내려찍기를 고른다. 체력 50% 아래(구간 1)에서는 소환이 먼저 나와 패트롤 에너미 2마리가 생긴다. 보스를 선택하면 Inspector에서 상태·패턴·선택 경로를 볼 수 있다.

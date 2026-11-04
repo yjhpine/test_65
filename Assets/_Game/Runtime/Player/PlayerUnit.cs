@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 namespace ActionPlatformer.Player
 {
     [RequireComponent(typeof(PlayerInput), typeof(Rigidbody2D), typeof(CapsuleCollider2D))]
-    public sealed class PlayerUnit : Unit, IPlayerActionState, IUnitRepositionState, IUnitViewSource
+    public sealed class PlayerUnit : Unit, IPlayerActionState, IUnitRepositionState, IUnitViewSource, ICharacterMotionState
     {
         [SerializeField] private PlayerTuning tuning;
         [SerializeField] private LayerMask groundMask = 1;
@@ -106,6 +106,8 @@ namespace ActionPlatformer.Player
 
         public uint RepositionVersion { get; private set; }
         public CharacterMotor2D Motor { get; private set; }
+        public Vector2 Velocity => Motor == null ? Vector2.zero : Motor.Velocity;
+        public bool IsGrounded => Motor != null && Motor.IsGrounded;
         public PlayerGlitch Glitch { get; private set; }
         public PlayerCombat Combat { get; private set; }
         public PlayerImpactFeedback Feedback { get; private set; }
