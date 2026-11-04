@@ -751,3 +751,28 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 
 - `CutsceneRunner`의 `Stage` 칸을 지웠다. 시작 가능 여부, 실행 중 취소, 종료 후 입력 복원은 "GameManager에 이 러너와 같은 씬의 StageLayout이 등록돼 있고 상태가 Playing"으로 판단한다. `연결 검사`의 '스테이지 흐름' 항목은 같은 씬에 StageLayout이 있는지를 본다. `Game > Cinematics` 설치(`CutsceneAuthoring.InstallStageExample`)도 StageLayout을 찾는다.
 - 이 문서의 이전 절에 나오는 `StageFlowController`(`encounters`, Final Wave Cutscene, `UpdateObjective`, Stage Flow의 View 연결, `Stage UI`)는 이제 연결은 `StageLayout`, 규칙과 HUD는 GameManager(`StageProgress`, 프리팹의 `StageFlowView`)를 뜻한다.
+
+## 2026-11-04 — 일시정지(ESC)와 일시정지 메뉴
+
+사용자 요청: ESC로 게임을 멈추고 `계속하기`·`옵션`·`저장 후 종료` 버튼만 둔다. `계속하기`만 게임을 다시 진행하고, `옵션`·`저장 후 종료`는 눌러도 아무 일도 하지 않는다(기능 미구현).
+
+### 조작
+
+- `Esc` 또는 게임패드 `Start`를 누르면 멈추고, 멈춘 상태에서 한 번 더 누르면 다시 진행한다. 메뉴의 `계속하기`도 다시 진행한다. GameManager가 씬 전환에도 남으므로 CoreLoopStage·MovementLab·BossTest 어디서나 같다.
+- 멈춘 동안: `Time.timeScale = 0`, `AudioListener.pause = true`, 입력이 켜져 있던 모든 `PlayerInput`을 `DeactivateInput`한다. 메뉴가 스테이지 HUD 위에 보이고 글리치 사용 불가 문구·COMBO는 숨는다.
+- 키는 GameManager의 `LateUpdate` 끝에서 읽는다(모든 `Update`와 그 프레임의 스테이지 판정 뒤). 그래서 같은 프레임에 먼저 시작된 컷신이나 클리어·사망이 있으면 멈추지 않는다.
+- 다시 진행할 때: 멈출 때 기록한 `timeScale`으로 되돌리고(`fixedDeltaTime`은 일시정지가 바꾸지 않으므로 값이 달라졌을 때만 되돌린다), 오디오는 일시정지가 직접 멈춘 경우에만 다시 켜며, 일시정지가 끈 `PlayerInput`만 다시 켠다(파괴·비활성 입력은 건너뜀). 멈춘 동안 누른 공격·점프는 다시 진행한 뒤 실행되지 않는다(입력 동작이 꺼져 있어 기록되지 않음). 멈춘 동안 스테이지가 Playing을 벗어났다면(클리어·사망) 시간과 입력은 그쪽 소유이므로 되돌리지 않고, 메뉴를 숨기고 일시정지가 멈춘 오디오만 다시 켠다.
+
+### 멈추지 않는 경우
+
+- 컷신 진행 중(로드된 씬의 어느 `CutsceneCoordinator`라도 `IsBusy`)과 컷신이 끝난 바로 그 프레임. Esc는 컷신 건너뛰기 키이기도 해서, 건너뛰는 Esc가 메뉴까지 열지 않도록 GameManager가 마지막 `LateUpdate`에서 컷신이 진행 중이었는지를 기억한다(스크립트 실행 순서와 무관).
+- 스테이지가 등록돼 있고 `State`가 Playing이 아닐 때(사망 연출 중, 재시작 중, 클리어 화면).
+- 히트스톱·슬로 같은 전투 시간 효과(`PlayerImpactFeedback.IsTimeEffectActive`)가 있으면 멈추기 전에 그 효과를 `Reset()`으로 끝내고(효과가 가진 시간을 원래대로 되돌림) 그 시간을 기록한다. 그래서 다시 진행하면 평상시 시간으로 돌아온다.
+- 안전장치: 멈춘 채로 등록된 스테이지가 해제되거나(씬 언로드·설정 오류), 씬이 불러와지거나 활성 씬이 바뀌거나, GameManager가 비활성화·파괴되면 먼저 다시 진행한다. 씬을 바꿔도 `timeScale 0`이나 오디오 일시정지가 남지 않는다.
+
+### 구성 위치
+
+- 입력: `Assets/_Game/Data/GameControls.inputactions`(맵 `Game`, Button 동작 `Pause`, `<Keyboard>/escape`·`<Gamepad>/start`). GameManager가 복제본을 만들어 `OnEnable`에서 켜고 `OnDisable`에서 끈다. `PrototypeControls`·`CutsceneControls`·`InputSystem_Actions`와 프로젝트 전역 입력 등록은 바꾸지 않았다.
+- 코드: 상태와 시간·오디오·입력의 기록/복원은 일반 C# `Runtime/Flow/GamePause.cs`, 거부 규칙과 키 처리는 `GameManager`(`IsPaused`, `TryPause()`는 거부되면 false, `Resume()`, `PauseMenu`), 화면은 `Runtime/Flow/PauseMenuView.cs`.
+- 화면: `GameManager.prefab`의 `PauseMenuView`(Document = 같은 UIDocument, Font = `UI/Cinematics/Fonts/NotoSansKR-Regular.otf`)가 공유 루트 아래 `pause-menu` 구역을 코드로 만든다(반투명 어두운 배경, 가운데 버튼 3개 `pause-continue`/`pause-options`/`pause-save-quit`). 루트를 비우지 않고 `stage-hud`도 건드리지 않는다. 보일 때 `BringToFront()`로 스테이지 HUD 위에 그리고 `계속하기`에 포커스를 준다. HUD 기본 글꼴에는 한글이 없어 이 구역에 Noto Sans KR을 지정한다.
+- 아직 없는 것: 옵션 화면, 저장, 종료, 음량 설정, 타이틀 화면. 다른 키로 멈추기도 없다.

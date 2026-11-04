@@ -21,6 +21,8 @@ namespace ActionPlatformer.Flow
         private static bool ensureFailed;
 
         [SerializeField] private StageFlowView view;
+        [SerializeField] private InputActionAsset controls;
+        [SerializeField] private PauseMenuView pauseMenu;
         private StageLayout stage;
         private PlayerUnit player;
         private UnitHealth playerHealth;
@@ -34,6 +36,11 @@ namespace ActionPlatformer.Flow
         private StageProgress progress;
         private bool finalWaveCutsceneAttempted;
         private double finalWaveRevealReadyAt = double.PositiveInfinity;
+        private readonly GamePause pause = new GamePause();
+        private readonly List<CutsceneCoordinator> coordinators = new List<CutsceneCoordinator>();
+        private InputActionAsset controlsInstance;
+        private InputAction pauseAction;
+        private bool cutsceneBusyAtLateUpdate;
 
         // Created on demand while playing; null in Edit Mode or while the application quits.
         public static GameManager Instance
@@ -49,6 +56,8 @@ namespace ActionPlatformer.Flow
         public static GameManager Existing => instance != null ? instance : null;
 
         public StageFlowView View => view;
+        public PauseMenuView PauseMenu => pauseMenu;
+        public bool IsPaused => pause.IsPaused;
         public StageLayout Stage => stage;
         public bool HasStage => stage != null;
         // Rises on every successful registration, so a reload can be detected without a destroyed owner.
@@ -98,17 +107,80 @@ namespace ActionPlatformer.Flow
 
         private void OnApplicationQuit() => quitting = true;
 
+        private void OnEnable()
+        {
+            // A duplicate destroyed in Awake still gets OnEnable; it must not listen for the pause key.
+            if (instance != this) return;
+            if (controlsInstance == null && controls != null)
+            {
+                controlsInstance = Instantiate(controls);
+                pauseAction = controlsInstance.FindAction("Game/Pause");
+            }
+            pauseAction?.Enable();
+            if (pauseMenu != null) pauseMenu.ContinueRequested += Resume;
+            SceneManager.sceneLoaded += OnSceneLoaded;
+            SceneManager.activeSceneChanged += OnActiveSceneChanged;
+        }
+
         // Disabling releases the stage like destruction does; re-enabling does not re-register it (as with StageLayout).
         private void OnDisable()
         {
-            if (instance == this && stage != null) Unregister(stage);
+            if (instance != this) return;
+            // Nothing may stay frozen once the manager stops running.
+            Resume();
+            pauseAction?.Disable();
+            if (pauseMenu != null) pauseMenu.ContinueRequested -= Resume;
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+            SceneManager.activeSceneChanged -= OnActiveSceneChanged;
+            if (stage != null) Unregister(stage);
         }
 
         private void OnDestroy()
         {
             if (instance != this) return;
             if (stage != null) Unregister(stage);
+            if (controlsInstance != null) Destroy(controlsInstance);
             instance = null;
+        }
+
+        // Refused during cutscenes (Esc also skips them, so the frame one ends counts too) and outside stage play.
+        public bool TryPause()
+        {
+            if (IsPaused) return true;
+            if (instance != this || !isActiveAndEnabled || cutsceneBusyAtLateUpdate || CutsceneBusy(true) ||
+                (stage != null && State != StageState.Playing)) return false;
+            pause.Pause();
+            if (pauseMenu != null) pauseMenu.Show(true);
+            return true;
+        }
+
+        public void Resume()
+        {
+            if (!IsPaused) return;
+            // A clear or death resolved under the pause owns time and input now; give back only the audio.
+            pause.Resume(restoreTimeAndInput: stage == null || State == StageState.Playing);
+            if (pauseMenu != null) pauseMenu.Show(false);
+        }
+
+        // A scene load never keeps the pause; the coordinator list follows the loaded scenes.
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            Resume();
+            CutsceneBusy(true);
+        }
+
+        private void OnActiveSceneChanged(Scene previous, Scene next) => Resume();
+
+        private bool CutsceneBusy(bool rescan)
+        {
+            if (rescan)
+            {
+                coordinators.Clear();
+                coordinators.AddRange(FindObjectsByType<CutsceneCoordinator>(FindObjectsInactive.Include, FindObjectsSortMode.None));
+            }
+            foreach (var coordinator in coordinators)
+                if (coordinator != null && coordinator.IsBusy) return true;
+            return false;
         }
 
         internal bool Register(StageLayout layout)
@@ -155,6 +227,8 @@ namespace ActionPlatformer.Flow
         internal void Unregister(StageLayout layout)
         {
             if (layout == null || layout != stage) return;
+            // Leaving the stage gives back time, audio and input before the stage's own time is restored.
+            Resume();
             Release();
             if (view == null) return;
             view.ResetStage();
@@ -199,13 +273,26 @@ namespace ActionPlatformer.Flow
 
         private void RequestTransfer() => progress?.RequestTransfer(StagePlaying);
 
-        // Resolve after combat Update/FixedUpdate. Death takes precedence over reaching the exit.
         private void LateUpdate()
         {
-            if (stage == null) return;
+            if (stage != null) ResolveStage();
+            // The key is read after every Update and after the stage resolved, so a cutscene or clear that
+            // began earlier this frame refuses the pause instead of starting under it.
+            if (instance == this && pauseAction != null && pauseAction.WasPressedThisFrame())
+            {
+                if (IsPaused) Resume();
+                else TryPause();
+            }
+            // Read by the next frame's key: Esc also skips cutscenes, and the frame one ends still refuses.
+            cutsceneBusyAtLateUpdate = CutsceneBusy(false);
+        }
+
+        // Resolve after combat Update/FixedUpdate. Death takes precedence over reaching the exit.
+        private void ResolveStage()
+        {
             // Combat hints (unusable glitch, combo progress) show only while the player has gameplay control.
             bool combatHud = initialized && State == StageState.Playing && player != null && player.isActiveAndEnabled &&
-                !player.IsControlLocked && (cinematics == null || !cinematics.IsBusy);
+                !player.IsControlLocked && (cinematics == null || !cinematics.IsBusy) && !IsPaused;
             view?.ShowGlitchHint(combatHud ? player.GlitchPreview : default, player != null ? player.AimCamera : null);
             view?.ShowCombo(combatHud ? player.ComboCount : 0, combatHud ? player.ComboLength : 0);
             bool canTransfer = CanRequestTransfer;
