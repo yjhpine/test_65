@@ -28,6 +28,8 @@ MonoBehaviour:
   knockbackSpeed: 12
   knockbackDeceleration: 18
   launchSpeed: 20
+  finisherDamageMultiplier: 2
+  finisherLaunchMultiplier: 1.5
   slamHoverDuration: 0
   slamSpeed: 28
   slamKnockdownSpeed: 36
@@ -37,6 +39,15 @@ MonoBehaviour:
   emergenceSpeed: 25
   forcedDuration: 0.35
   hitStun: 0.25
+  damageInvulnerability: 1.5
+  damageKnockbackSpeed: 10
+  damageKnockbackDuration: 0.25
+  damageKnockbackLift: 7
+  recoilSpeed: 4
+  recoilDuration: 0.1
+  finisherRecoilSpeed: 7
+  finisherRecoilDuration: 0.12
+  airRecoilMultiplier: 0.6
   attackBufferTime: 0.1
   hitStopDuration: 0.035
   heavyHitStopDuration: 0.055
@@ -46,10 +57,15 @@ MonoBehaviour:
   slamShakeAmplitude: 3
   shakeDuration: 0.06
   shakeFrequency: 22
+  killHitStopBonus: 0.04
+  finalBlowSlowTimeScale: 0.3
+  finalBlowSlowDuration: 0.2
+  finalBlowSlowRecovery: 0.15
+  finisherGlitchDuration: 0.1
   damageSlowTimeScale: 0.2
-  damageSlowDuration: 0.15
+  damageSlowDuration: 0.35
   damageSlowRecovery: 0.1
-  damageShakeAmplitude: 4
+  damageShakeAmplitude: 8
   damageShakeDuration: 0.12
   damageZoom: 0
   damageZoomDuration: 0.18

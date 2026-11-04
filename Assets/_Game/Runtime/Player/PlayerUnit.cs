@@ -37,6 +37,10 @@ namespace ActionPlatformer.Player
         private bool recoilQueued;
         private float queuedRecoilVelocity, queuedRecoilDuration;
         private float recoilVelocity, recoilDuration, recoilRemaining;
+        // Damage knockback reuses the recoil step (no jump-hold gravity cut) and starts with a small hop.
+        private bool recoilIsKnockback, knockbackHopPending;
+        // Real-time protection after a hit; see PlayerCombatTuning.DamageInvulnerability.
+        private float invulnerableRemaining;
         private bool pendingJumpRelease;
         private bool pendingGlitch, pendingAttack, pendingCancel;
         private GlitchRequest glitchRequest;
@@ -142,14 +146,15 @@ namespace ActionPlatformer.Player
             {
                 if (!isActiveAndEnabled || health == null) return default;
                 bool dying = !health.IsAlive;
+                bool invulnerable = !dying && invulnerableRemaining > 0f;
                 float duration = dying ? Mathf.Max(0f, deathDuration) : .12f;
                 double started = dying ? deathStartedAt : hitVisualStartedAt;
                 double elapsed = (dying ? Time.timeAsDouble : Time.unscaledTimeAsDouble) - started;
-                if (!dying && (duration <= 0f || elapsed >= duration)) return default;
+                if (!dying && (duration <= 0f || elapsed >= duration)) return new PlayerReactionPresentation { Invulnerable = invulnerable };
                 return new PlayerReactionPresentation { Kind = dying ? PlayerReaction.Die : PlayerReaction.Hit,
                     Version = health.DamageVersion, HasDirection = visualDamage.HasDirection, Direction = visualDamage.Direction,
                     Progress = double.IsNegativeInfinity(started) ? 0f :
-                        duration > 0f ? Mathf.Clamp01((float)(elapsed / duration)) : 1f };
+                        duration > 0f ? Mathf.Clamp01((float)(elapsed / duration)) : 1f, Invulnerable = invulnerable };
             }
         }
 
@@ -192,7 +197,43 @@ namespace ActionPlatformer.Player
 
         private void OnDamageApplied(UnitDamageResult result)
         {
-            if (isActiveAndEnabled && result.HealthLost > 0) pendingDamageFeedback.Enqueue(result);
+            if (!isActiveAndEnabled || result.HealthLost <= 0) return;
+            pendingDamageFeedback.Enqueue(result);
+            // Protection starts with the hit itself, so a second enemy blow in the same step is already ignored.
+            if (health.IsAlive && combatTuning != null && combatTuning.DamageInvulnerability > 0f)
+            {
+                invulnerableRemaining = combatTuning.DamageInvulnerability;
+                health.SetInvulnerable(true);
+            }
+        }
+
+        // Real time, so the hit's own slow motion is part of it; a stopped world (pause, cutscene, hit stop) is not.
+        private void TickInvulnerability()
+        {
+            if (invulnerableRemaining <= 0f || Time.timeScale <= 0f) return;
+            invulnerableRemaining -= Time.unscaledDeltaTime;
+            if (invulnerableRemaining <= 0f) ClearInvulnerability();
+        }
+
+        private void ClearInvulnerability()
+        {
+            invulnerableRemaining = 0f;
+            if (health != null) health.SetInvulnerable(false);
+        }
+
+        // An enemy hit pushes the player away from its source with a small hop; damage without a source does not.
+        private void StartKnockback(UnitDamageResult damage)
+        {
+            if (combatTuning == null || !damage.HasDirection || damage.HealthLost <= 0) return;
+            float speed = combatTuning.DamageKnockbackSpeed, duration = combatTuning.DamageKnockbackDuration;
+            if (speed <= 0f || duration <= 0f) return;
+            // A blow from straight above or below still pushes, away from where the player faces.
+            float side = Mathf.Abs(damage.Direction.x) > .01f ? Mathf.Sign(damage.Direction.x) : -facing;
+            recoilQueued = false;
+            recoilIsKnockback = true;
+            recoilVelocity = side * speed;
+            recoilDuration = recoilRemaining = duration;
+            knockbackHopPending = true;
         }
 
         private void PresentDamage()
@@ -210,6 +251,7 @@ namespace ActionPlatformer.Player
         {
             if (Feedback != null && Feedback.ReducedMotion != reducedMotion) SetReducedMotion(reducedMotion);
             Feedback?.Tick(Time.unscaledTimeAsDouble);
+            TickInvulnerability();
             if (!UpdateReactions(Time.timeAsDouble)) return;
             if (IsScriptedTransferring) return;
             PlayerCommand command = IsControlLocked ? default : input.Sample();
@@ -305,8 +347,15 @@ namespace ActionPlatformer.Player
             if (recoilQueued)
             {
                 recoilQueued = false;
+                recoilIsKnockback = false;
                 recoilVelocity = queuedRecoilVelocity;
                 recoilDuration = recoilRemaining = queuedRecoilDuration;
+            }
+            if (knockbackHopPending)
+            {
+                knockbackHopPending = false;
+                // Leaving the ground first keeps the push from being cut at the edge it starts beside.
+                if (combatTuning.DamageKnockbackLift > 0f) Motor.SetVerticalVelocity(combatTuning.DamageKnockbackLift);
             }
             if (!IsUnderground) Motor.RefreshContacts();
             bool wasUnderground = IsUnderground;
@@ -457,6 +506,7 @@ namespace ActionPlatformer.Player
             {
                 if (double.IsNegativeInfinity(deathStartedAt))
                 {
+                    ClearInvulnerability();
                     ClearActions();
                     Motor.StopSlam();
                     deathStartedAt = now;
@@ -478,6 +528,7 @@ namespace ActionPlatformer.Player
                 PresentDamage();
                 Glitch?.CancelUnderground();
                 pendingGlitch = pendingAttack = pendingCancel = false;
+                StartKnockback(health.LastDamage);
             }
             return true;
         }
@@ -487,6 +538,7 @@ namespace ActionPlatformer.Player
             EndScriptedTransfer();
             ControlInterrupted?.Invoke();
             ClearActions();
+            ClearInvulnerability();
             Feedback?.Dispose();
             hitVisualStartedAt = double.NegativeInfinity;
             pendingDamageFeedback.Clear();
@@ -534,13 +586,14 @@ namespace ActionPlatformer.Player
             float velocity = recoilVelocity * Mathf.Clamp01(recoilRemaining / recoilDuration);
             recoilRemaining -= step;
             if (Motor.IsGrounded && !Motor.HasGroundAhead(velocity, Mathf.Abs(velocity) * step)) { ClearRecoil(); return false; }
-            Motor.SimulateRecoil(velocity, jumpHeld, step);
+            Motor.SimulateRecoil(velocity, !recoilIsKnockback && jumpHeld, step);
             return true;
         }
 
         private void ClearRecoil()
         {
             recoilQueued = false;
+            recoilIsKnockback = knockbackHopPending = false;
             recoilRemaining = 0f;
         }
 

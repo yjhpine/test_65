@@ -776,3 +776,23 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 코드: 상태와 시간·오디오·입력의 기록/복원은 일반 C# `Runtime/Flow/GamePause.cs`, 거부 규칙과 키 처리는 `GameManager`(`IsPaused`, `TryPause()`는 거부되면 false, `Resume()`, `PauseMenu`), 화면은 `Runtime/Flow/PauseMenuView.cs`.
 - 화면: `GameManager.prefab`의 `PauseMenuView`(Document = 같은 UIDocument, Font = `UI/Cinematics/Fonts/NotoSansKR-Regular.otf`)가 공유 루트 아래 `pause-menu` 구역을 코드로 만든다(반투명 어두운 배경, 가운데 버튼 3개 `pause-continue`/`pause-options`/`pause-save-quit`). 루트를 비우지 않고 `stage-hud`도 건드리지 않는다. 보일 때 `BringToFront()`로 스테이지 HUD 위에 그리고 `계속하기`에 포커스를 준다. HUD 기본 글꼴에는 한글이 없어 이 구역에 Noto Sans KR을 지정한다.
 - 아직 없는 것: 옵션 화면, 저장, 종료, 음량 설정, 타이틀 화면. 다른 키로 멈추기도 없다.
+
+## 2026-11-04 — 플레이어 피격 반응 (슬로·흔들림·넉백·피격 무적·피격음)
+
+사용자 요청: 피격 슬로 0.2배·0.35초 유지(같은 날 0.1배·0.75초 → 0.2배·0.5초를 거쳐 조정), 카메라 흔들림 8px, 캐릭터 기울기 제거, 전용 피격음, 넉백과 1.5초 피격 무적(스프라이트 깜빡임).
+
+### 동작
+
+- 시간: 체력이 줄면 0.2배 슬로를 실제 시간 0.35초 유지한 뒤 0.1초 동안 1배로 돌아온다(실제 0.45초 동안 게임 시간은 약 0.13초 흐른다). 나가는 히트스톱·처치 슬로보다 우선한다.
+- 화면: 카메라가 맞은 방향으로 8px(1120×660 기준) 밀렸다가 0.12초에 잦아든다. 흔들림 상한(`PlayerImpactFeedback.MaxShakePixels`)을 4에서 8로 올렸고, 다른 흔들림(1.5~3px)은 그대로다. 분홍 비네트·피격 모션·흰색 번쩍임·외곽선은 그대로이고 캐릭터 기울기는 없앴다.
+- 넉백: 적의 공격(방향이 있는 피해, `ApplyDirectedDamage`)은 공격 근원 반대쪽으로 10유닛/초에서 0.25초(게임 시간) 동안 선형으로 줄어드는 속도로 밀고, 시작할 때 위로 7유닛/초 살짝 뜬다. 그동안 걷기·점프 입력은 무시한다. 바로 위/아래에서 맞으면 바라보는 반대쪽으로 민다. 땅에 닿은 뒤 발판 끝에서는 멈춘다(공격 반발력과 같은 단계 사용). 근원이 없는 피해(`ApplyDamage(int)`)는 밀지 않는다. 사망하는 피해는 밀지 않고 그 자리에서 사망 연출을 한다.
+- 피격 무적: 체력이 줄면 1.5초 동안 적의 공격(위치·방향이 있는 피해)을 무시한다. 실제 시간 기준이라 피격 슬로 0.45초도 포함되고(정상 속도로 보호받는 시간은 약 1.05초), 일시정지·컷신처럼 timeScale이 0인 동안은 줄지 않는다. 적은 계속 플레이어를 대상으로 삼는다(`CanReceiveDamage` 그대로). 근원이 없는 `ApplyDamage(int)`는 방패처럼 무적도 우회한다(테스트·환경용 계약 유지). 사망·비활성화 때 풀린다.
+- 깜빡임: 무적 동안 스프라이트가 실제 시간 0.08초마다 알파 1 ↔ 0.2로 깜빡인다(슬로 중에도 같은 박자). reduced motion에서는 깜빡이지 않고 알파 0.6으로 유지한다. 사망 모션은 깜빡이지 않는다.
+- 피격음: 체력이 줄 때 `Hurt`(0.32초)를 음량 0.5, 피치 ±3%로 한 번 재생한다(0.05초 안에 겹친 피해는 한 번). 사망하는 피해도 같은 소리다.
+
+### 구성 위치
+
+- 값: `Data/PlayerCombatTuning.asset` — Player Damage Feedback(`Damage Slow Time Scale` 0.2, `Damage Slow Duration` 0.35, `Damage Shake Amplitude` 8)과 새 Player Damage Response(`Damage Invulnerability` 1.5, `Damage Knockback Speed` 10, `Damage Knockback Duration` 0.25, `Damage Knockback Lift` 7). 0이면 각각 끈다. 깜빡임 박자·알파는 Player 프리팹 Visual의 `PlayerVisual`(`Damage Blink Interval` 0.08, `Damage Blink Alpha` 0.2).
+- 코드: 무적 시간은 `PlayerUnit`이 갖고(`OnDamageApplied`에서 바로 켜서 같은 단계의 두 번째 공격도 막음) `UnitHealth.SetInvulnerable`로 알린다. `UnitHealth.Invulnerable`은 위치·방향 피해만 막는다. 넉백은 `PlayerUnit`의 공격 반발력 단계를 재사용한다(점프 키 중력 완화 없음). `PlayerReactionPresentation.Invulnerable`을 `PlayerVisual`이 읽어 깜빡인다. 피격음은 `PlayerVisual.NotifyDamage` → `PlayerSoundEffects.Hurt`.
+- 소리: `Audio/Combat/Hurt.wav`(Kenney Impact `impactPunch_heavy_002` + Sci-fi `laserRetro_004` 25% 낮춰 비트크러시 + `lowFrequency_explosion_000` 0.3초), `PlayerSfx.asset`의 `Hurt`·`Hurt Volume`(0.5). 레시피는 `Library/SfxDownloads/PrepareSfx.py`(`python -I`로 루트에서 실행, 다른 클립은 바이트 동일).
+- 테스트: PlayMode `PlayerDamageResponseTests` 5개, `PlayerVisualTests.InvulnerabilityBlinksTheSpriteButNeverWhileDying`, EditMode `PlayerVisualAssetTests.PlayerDamageFeedbackUsesTheRequestedSlowShakeAndHurtSound`.

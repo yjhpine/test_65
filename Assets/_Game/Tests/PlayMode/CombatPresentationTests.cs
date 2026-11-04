@@ -116,7 +116,7 @@ namespace ActionPlatformer.Tests
                 feedback.PlayDamage(Vector2.left, 10);
                 feedback.PlayHit(new PlayerHitPresentation(1, PlayerAttack.Side, target, Vector2.zero, Vector2.right, 10, 10, true), 10);
                 feedback.LateTick(10);
-                Assert.That(camera.transform.position.x, Is.EqualTo(-4f * 13f / 660f).Within(.00001));
+                Assert.That(camera.transform.position.x, Is.EqualTo(-8f * 13f / 660f).Within(.00001), "Player damage shakes 8 reference pixels.");
                 Assert.That(camera.orthographicSize, Is.EqualTo(6.5f));
                 feedback.Reset(); feedback.PlayHit(new PlayerHitPresentation(1, PlayerAttack.Side, target, Vector2.zero, Vector2.up, 10, 10, true), 11);
                 feedback.Play(new PlayerImpact(Vector2.right, PlayerImpactStrength.Normal), 11);

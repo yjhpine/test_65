@@ -30,6 +30,11 @@ namespace ActionPlatformer.Units.Features
 
         public void SetDamageEnabled(bool value) => DamageEnabled = value;
 
+        // Ignores positioned and directed (enemy) damage, e.g. the player's protection after a hit. Context-free damage
+        // still applies, as it already bypasses the directional guard. Targeting (CanReceiveDamage) is unchanged.
+        public bool Invulnerable { get; private set; }
+        public void SetInvulnerable(bool value) => Invulnerable = value;
+
         // Recovery is not a damage transaction and never revives an uninitialized/dead unit.
         public int RestoreToFull()
         {
@@ -59,7 +64,7 @@ namespace ActionPlatformer.Units.Features
         public int ApplyDamage(int amount, Vector2 sourcePosition, bool bypassDirectionalGuard = false, bool interruptsAttack = false)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
-            if (amount == 0 || !CanReceiveDamage) return 0;
+            if (amount == 0 || !CanReceiveDamage || Invulnerable) return 0;
             if (!bypassDirectionalGuard && damageGuard != null && damageGuard.BlocksDamage(sourcePosition))
             {
                 unchecked { GuardBlockVersion++; }
@@ -73,7 +78,10 @@ namespace ActionPlatformer.Units.Features
 
         // Direction is presentation-only. Keep the caller's existing guard policy unchanged.
         public int ApplyDirectedDamage(int amount, Vector2 direction)
-            => ApplyDamageCore(amount, direction);
+        {
+            if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
+            return Invulnerable ? 0 : ApplyDamageCore(amount, direction);
+        }
 
         private int ApplyDamageCore(int amount, Vector2 direction, bool interruptsAttack = false)
         {

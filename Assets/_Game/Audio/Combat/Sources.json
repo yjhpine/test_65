@@ -64,6 +64,16 @@
     "peak": 0.8
   },
   {
+    "clip": "Hurt.wav",
+    "sources": [
+      "impact/Audio/impactPunch_heavy_002.ogg",
+      "scifi/Audio/laserRetro_004.ogg",
+      "scifi/Audio/lowFrequency_explosion_000.ogg"
+    ],
+    "duration": 0.32,
+    "peak": 0.8
+  },
+  {
     "clip": "LandA.wav",
     "sources": [
       "impact/Audio/footstep_concrete_000.ogg"

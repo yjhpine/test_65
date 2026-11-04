@@ -157,7 +157,9 @@ namespace ActionPlatformer.Tests
             Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
             Assert.That(player.Feedback.CameraEffectsSuppressed, Is.False);
             Assert.That(player.Feedback.IsDamageFeedbackActive(Time.unscaledTimeAsDouble), Is.True);
-            yield return new WaitForSecondsRealtime(.6f);
+            // The damage slow lasts as long as its tuning says; wait for it rather than a fixed time.
+            yield return Until(() => !player.Feedback.IsTimeEffectActive);
+            yield return new WaitForSecondsRealtime(.2f);
             AssertRestored();
         }
         [UnityTest] public IEnumerator AirbornePauseStartLandsBeforeFreezingWorld()
@@ -187,7 +189,8 @@ namespace ActionPlatformer.Tests
             yield return Until(() => !runner.IsRunning);
             Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
             Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.False);
-            yield return new WaitForSecondsRealtime(.6f);
+            yield return Until(() => !player.Feedback.IsTimeEffectActive);
+            yield return new WaitForSecondsRealtime(.2f);
             AssertRestored();
         }
         [UnityTest] public IEnumerator LandingWaitLimitStartsWithoutFloor()

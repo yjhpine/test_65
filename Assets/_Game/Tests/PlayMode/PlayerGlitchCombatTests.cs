@@ -1775,12 +1775,9 @@ namespace ActionPlatformer.Tests
             uint version = player.ReactionPresentation.Version;
             yield return new WaitForSecondsRealtime(.04f);
             Assert.That(player.ReactionPresentation.Progress, Is.GreaterThan(.2f));
-            Health.ApplyDirectedDamage(1, Vector2.right);
+            Assert.That(Health.ApplyDirectedDamage(1, Vector2.right), Is.Zero, "A second enemy hit lands in the invulnerability.");
             yield return null; yield return null;
-            Assert.That(player.ReactionPresentation.Version, Is.GreaterThan(version));
-            Assert.That(player.ReactionPresentation.HasDirection, Is.True);
-            Assert.That(player.ReactionPresentation.Direction, Is.EqualTo(Vector2.right));
-            Assert.That(sprite.sprite.name, Does.StartWith("hurt_v1_"));
+            Assert.That(player.ReactionPresentation.Version, Is.EqualTo(version));
             yield return new WaitForSecondsRealtime(.14f);
             Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
             Assert.That(Combat.CanAttack(Time.timeAsDouble), Is.False, "Short visuals must not shorten gameplay hit stun.");
@@ -1790,9 +1787,19 @@ namespace ActionPlatformer.Tests
             Health.ApplyDamage(1); yield return null; yield return null;
             Assert.That(player.ReactionPresentation.HasDirection, Is.False);
             Assert.That(animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.False, "Unknown damage must not invent a directional pose.");
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (player.ReactionPresentation.Invulnerable && Time.realtimeSinceStartup < deadline) yield return null;
+            version = player.ReactionPresentation.Version;
+            Assert.That(Health.ApplyDirectedDamage(1, Vector2.right), Is.EqualTo(1));
+            yield return null; yield return null;
+            Assert.That(player.ReactionPresentation.Version, Is.GreaterThan(version), "Once protection ends the reaction restarts.");
+            Assert.That(player.ReactionPresentation.HasDirection, Is.True);
+            Assert.That(player.ReactionPresentation.Direction, Is.EqualTo(Vector2.right));
+            Assert.That(sprite.sprite.name, Does.StartWith("hurt_v1_"));
             player.enabled = false; player.enabled = true;
             yield return null; yield return null;
             Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None));
+            Assert.That(player.ReactionPresentation.Invulnerable, Is.False, "Disabling clears the protection.");
         }
 
         [UnityTest] public IEnumerator PlayerDeathPlaysEveryFrameBlocksActionsThenDeactivatesWithoutRevival()
@@ -2001,7 +2008,9 @@ namespace ActionPlatformer.Tests
             float x = player.transform.position.x;
             yield return Step; yield return Step;
             Assert.That(player.transform.position.x, Is.GreaterThan(x), "Physics keeps moving during damage slow motion.");
-            yield return new WaitForSecondsRealtime(.3f);
+            // The slow lasts as long as its tuning says (0.35 s hold + 0.1 s recovery since 11-04).
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (player.Feedback.IsTimeEffectActive && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(Time.timeScale, Is.EqualTo(originalScale));
             Assert.That(Time.fixedDeltaTime, Is.EqualTo(originalStep).Within(.0000001f));
             Health.ApplyDamage(1);

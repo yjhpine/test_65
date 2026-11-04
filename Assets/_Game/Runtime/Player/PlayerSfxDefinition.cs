@@ -11,6 +11,11 @@ namespace ActionPlatformer.Player
         [SerializeField, Range(0, 1)] private float hitVolume = .42f;
         [SerializeField, Range(0, 1)] private float landingVolume = .24f;
         [SerializeField, Range(0, 1)] private float glitchVolume = .38f;
+        [Tooltip("Played when the player loses health.")]
+        [SerializeField] private AudioClip hurt;
+        [SerializeField, Range(0, 1)] private float hurtVolume = .5f;
+        public AudioClip Hurt => hurt;
+        public float HurtVolume => hurtVolume;
         public AudioClip[] Swings => swings;
         public AudioClip[] Hits => hits;
         public AudioClip[] Landings => landings;

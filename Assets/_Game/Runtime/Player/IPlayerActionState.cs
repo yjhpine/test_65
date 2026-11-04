@@ -15,6 +15,8 @@ namespace ActionPlatformer.Player
         public float Progress;
         public bool HasDirection;
         public Vector2 Direction;
+        // Enemy hits are ignored for a while after a hit; the sprite blinks meanwhile. Set even when Kind is None.
+        public bool Invulnerable;
     }
 
     // Presentation facts only. Animation never advances combat or applies damage.

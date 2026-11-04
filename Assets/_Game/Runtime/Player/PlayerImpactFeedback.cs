@@ -83,10 +83,13 @@ namespace ActionPlatformer.Player
             QueueScreen(killed ? 2 : 1, direction, pixels, duration, now, killed || down);
         }
 
+        // Largest camera push in reference-screen pixels (1120x660); player damage uses all of it.
+        public const float MaxShakePixels = 8f;
+
         private void QueueScreen(int priority, Vector2 direction, float pixels, float duration, double now, bool oscillate = false)
         {
             if (priority < pendingPriority || (priority == pendingPriority && pixels <= pendingPixels)) return;
-            pendingPriority = priority; pendingDirection = direction; pendingPixels = Mathf.Clamp(pixels, 0, 4);
+            pendingPriority = priority; pendingDirection = direction; pendingPixels = Mathf.Clamp(pixels, 0, MaxShakePixels);
             pendingDuration = duration; pendingAt = now; pendingOscillates = oscillate;
         }
 
@@ -190,7 +193,7 @@ namespace ActionPlatformer.Player
             float halfHeight = camera.orthographic ? camera.orthographicSize :
                 Mathf.Tan(camera.fieldOfView * .5f * Mathf.Deg2Rad) * Mathf.Abs(camera.transform.position.z);
             // actualPixels = referencePixels * viewportHeight / 660; worldPerPixel = 2H / viewportHeight.
-            return Mathf.Clamp(pixels, 0, 4) * 2f * halfHeight / 660f;
+            return Mathf.Clamp(pixels, 0, MaxShakePixels) * 2f * halfHeight / 660f;
         }
 
         public void LateTick(double unscaledNow)

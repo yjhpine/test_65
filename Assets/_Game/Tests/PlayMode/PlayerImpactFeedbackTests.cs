@@ -19,6 +19,9 @@ namespace ActionPlatformer.Tests
             initialFixedDeltaTime = Time.fixedDeltaTime;
             Time.timeScale = 1f;
             tuning = Object.Instantiate(AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset"));
+            // These tests check the slow's hold/recovery/refresh mechanics on their own copy, at the timings they were
+            // written for; the asset's tuned values are pinned by PlayerVisualAssetTests.
+            Set("damageSlowTimeScale", .2f); Set("damageSlowDuration", .15f); Set("damageSlowRecovery", .1f);
             camera = new GameObject("Impact camera").AddComponent<Camera>();
             camera.enabled = false; camera.orthographic = true;
             camera.transform.position = new Vector3(4f, 6f, -10f);

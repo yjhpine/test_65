@@ -263,6 +263,28 @@ namespace ActionPlatformer.Tests
             Assert.That(visual.GetComponent<Animator>().GetBool("ActionOverride"), Is.False);
         }
 
+        [UnityTest] public IEnumerator InvulnerabilityBlinksTheSpriteButNeverWhileDying()
+        {
+            var state = new State(); var visual = Visual(state);
+            var renderer = visual.GetComponent<SpriteRenderer>();
+            state.ReactionPresentation = new PlayerReactionPresentation { Invulnerable = true };
+            bool dim = false, bright = false; float until = Time.realtimeSinceStartup + .4f;
+            while (Time.realtimeSinceStartup < until) { yield return RenderFrame(); dim |= renderer.color.a < .5f; bright |= renderer.color.a > .95f; }
+            Assert.That(dim && bright, Is.True, "Alternates between dim and fully visible.");
+            visual.SetReducedMotion(true);
+            until = Time.realtimeSinceStartup + .3f; float low = 1f, high = 0f;
+            while (Time.realtimeSinceStartup < until) { yield return RenderFrame(); low = Mathf.Min(low, renderer.color.a); high = Mathf.Max(high, renderer.color.a); }
+            Assert.That(high - low, Is.LessThan(.001f), "Reduced motion holds a steady dim instead of flickering.");
+            Assert.That(high, Is.InRange(.3f, .9f));
+            visual.SetReducedMotion(false);
+            state.ReactionPresentation = default; yield return RenderFrame();
+            Assert.That(renderer.color.a, Is.EqualTo(1f).Within(.001f), "Fully visible once protection ends.");
+            state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Die, Version = 1, Invulnerable = true };
+            until = Time.realtimeSinceStartup + .3f; float lowest = 1f;
+            while (Time.realtimeSinceStartup < until) { yield return RenderFrame(); lowest = Mathf.Min(lowest, renderer.color.a); }
+            Assert.That(lowest, Is.EqualTo(1f).Within(.001f), "The death pose never blinks.");
+        }
+
         [UnityTest] public IEnumerator AlternatingFramesSurviveTeleportAndNewAttacksOverrideHitPose()
         {
             var state = new State(); var visual = Visual(state);
@@ -277,9 +299,8 @@ namespace ActionPlatformer.Tests
             state.ReactionPresentation = new PlayerReactionPresentation { Kind = PlayerReaction.Hit, Version = 1,
                 HasDirection = true, Direction = Vector2.right, Progress = .4f };
             yield return RenderFrame(); Assert.That(visual.GetComponent<Animator>().GetCurrentAnimatorStateInfo(0).IsName("Hit"), Is.True);
-            Assert.That(Quaternion.Angle(visual.transform.localRotation, Quaternion.identity), Is.GreaterThan(1));
+            Assert.That(Quaternion.Angle(visual.transform.localRotation, Quaternion.identity), Is.LessThan(.01f), "Hits never tilt the player.");
             visual.SetReducedMotion(true); yield return RenderFrame();
-            Assert.That(Quaternion.Angle(visual.transform.localRotation, Quaternion.identity), Is.LessThan(.01f));
             state.AttackPresentation = new PlayerAttackPresentation { Kind = PlayerAttack.Side, Version = 3, StartedAt = 10.3 };
             yield return RenderFrame(); AssertFrame(visual, "Attack1", "attack_v7_punch_02");
             var properties = new MaterialPropertyBlock(); visual.GetComponent<SpriteRenderer>().GetPropertyBlock(properties);
@@ -334,7 +355,7 @@ namespace ActionPlatformer.Tests
                     var basePosition = camera.transform.position;
                     double now = Time.unscaledTimeAsDouble; feedback.PlayDamage(Vector2.left, now); feedback.LateTick(now);
                     float screenPixels = Vector3.Distance(basePosition, camera.transform.position) * size.y / (2 * camera.orthographicSize);
-                    Assert.That(screenPixels, Is.EqualTo(reduced ? 0 : 4f * size.y / 660f).Within(.001f));
+                    Assert.That(screenPixels, Is.EqualTo(reduced ? 0 : 8f * size.y / 660f).Within(.001f), "Player damage shakes 8 reference pixels.");
                     var rt = new RenderTexture(size.x, size.y, 24); var texture = new Texture2D(size.x, size.y, TextureFormat.RGB24, false);
                     var previous = RenderTexture.active;
                     try

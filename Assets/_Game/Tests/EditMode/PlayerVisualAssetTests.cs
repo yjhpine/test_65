@@ -31,6 +31,20 @@ namespace ActionPlatformer.Tests
             Assert.That(visual.GetComponentsInChildren<Collider2D>(true), Is.Empty);
             Assert.That(visual.GetComponent<Animator>().applyRootMotion, Is.False);
         }
+        [Test] public void PlayerDamageFeedbackUsesTheRequestedSlowShakeAndHurtSound()
+        {
+            var tuning = AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset");
+            Assert.That(tuning.DamageSlowTimeScale, Is.EqualTo(.2f).Within(1e-6f));
+            Assert.That(tuning.DamageSlowDuration, Is.EqualTo(.35f).Within(1e-6f));
+            Assert.That(tuning.DamageShakeAmplitude, Is.EqualTo(8f).Within(1e-6f));
+            Assert.That(tuning.DamageInvulnerability, Is.EqualTo(1.5f).Within(1e-6f));
+            Assert.That(tuning.TryValidate(), Is.True);
+            var sounds = AssetDatabase.LoadAssetAtPath<PlayerSfxDefinition>("Assets/_Game/Audio/Combat/PlayerSfx.asset");
+            Assert.That(sounds.Hurt, Is.Not.Null);
+            Assert.That(sounds.Hurt.name, Is.EqualTo("Hurt"));
+            Assert.That(AssetDatabase.GetAssetPath(sounds.Hurt), Is.EqualTo("Assets/_Game/Audio/Combat/Hurt.wav"));
+            Assert.That(sounds.Hurt.length, Is.InRange(.2f, .5f));
+        }
         [Test] public void PlayerActionsHaveCompleteSpriteOnlyClipsAndGuardedLocomotion()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");

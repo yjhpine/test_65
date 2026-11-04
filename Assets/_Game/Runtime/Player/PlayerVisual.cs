@@ -20,6 +20,11 @@ namespace ActionPlatformer.Player
         [Header("Sound effects")]
         [SerializeField] private PlayerSfxDefinition soundEffects;
         private PlayerSoundEffects audioEffects;
+        [Header("Damage protection blink")]
+        [Tooltip("Half-period of the blink while enemy hits are ignored after a hit (real time).")]
+        [SerializeField, Min(.01f)] private float damageBlinkInterval = .08f;
+        [Tooltip("Sprite alpha in the blink's dim half. Reduced motion holds halfway between this and 1 instead.")]
+        [SerializeField, Range(0f, 1f)] private float damageBlinkAlpha = .2f;
 
         private readonly System.Collections.Generic.Queue<PlayerHitPresentation> pendingHits = new System.Collections.Generic.Queue<PlayerHitPresentation>();
         private readonly PlayerAttackAlternation alternation = new PlayerAttackAlternation();
@@ -36,6 +41,7 @@ namespace ActionPlatformer.Player
         {
             observedReactionVersion = actions?.ReactionPresentation.Version ?? 0;
             alternation.Reset(); reactionAttackVersion = actions?.AttackPresentation.Version ?? 0;
+            audioEffects?.Hurt();
         }
         private ICharacterMotionState motionState;
         private SpriteRenderer spriteRenderer;
@@ -162,11 +168,18 @@ namespace ActionPlatformer.Player
             // Apply the selected sprite in this display frame, including during a global hit stop.
             if (hasActionAnimations && animator.GetBool(ActionOverride)) animator.Update(0f);
             spriteRenderer.color = originalColor;
+            // Protection after a hit blinks on real time, keeping its rhythm through the hit's slow motion.
+            // Reduced motion holds a steady dim instead of flickering. The death pose never blinks.
+            if (reaction.Invulnerable && reaction.Kind != PlayerReaction.Die)
+            {
+                bool dim = reducedMotion || (int)(Time.unscaledTime / damageBlinkInterval) % 2 == 1;
+                var faded = originalColor;
+                faded.a *= reducedMotion ? Mathf.Lerp(damageBlinkAlpha, 1f, .5f) : dim ? damageBlinkAlpha : 1f;
+                spriteRenderer.color = faded;
+            }
             bool hurt = reaction.Kind == PlayerReaction.Hit;
             bool newAttack = actions != null && actions.AttackPhase != PlayerAttackPhase.Ready && attack.Version != reactionAttackVersion;
             transform.localRotation = originalRotation;
-            if (hurt && !newAttack && reaction.HasDirection && !reducedMotion)
-                transform.localRotation *= Quaternion.Euler(0, 0, -reaction.Direction.x * 7f * Mathf.Sin(reaction.Progress * Mathf.PI));
             spriteRenderer.GetPropertyBlock(reactionProperties);
             reactionProperties.SetFloat("_HitFlash", hurt ? Mathf.Clamp01(1 - reaction.Progress * 2) : 0);
             reactionProperties.SetFloat("_OutlineWidth", hurt ? 1f : 0);

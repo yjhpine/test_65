@@ -42,6 +42,14 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(0f)] private float emergenceSpeed = 10f;
         [SerializeField, Min(0.01f)] private float forcedDuration = 0.35f;
         [SerializeField, Min(0f)] private float hitStun = 0.25f;
+        [Header("Player damage response (0 disables each part)")]
+        [Tooltip("Enemy hits are ignored this long after the player loses health. Real time, so the hit's slow motion counts; a stopped world (pause, cutscene) does not. The sprite blinks meanwhile.")]
+        [SerializeField, Min(0f)] private float damageInvulnerability = 1.5f;
+        [Tooltip("An enemy hit pushes the player away from its source: starting speed, falling linearly to zero over the duration (game time). Damage without a source does not push.")]
+        [SerializeField, Min(0f)] private float damageKnockbackSpeed = 10f;
+        [SerializeField, Min(0f)] private float damageKnockbackDuration = .25f;
+        [Tooltip("Upward speed of the small hop that starts the knockback.")]
+        [SerializeField, Min(0f)] private float damageKnockbackLift = 7f;
         [Header("Attack recoil (a landed basic swing pushes the player back; 0 disables)")]
         [Tooltip("Starting speed away from the struck side; it falls linearly to zero over the duration.")]
         [SerializeField, Min(0f)] private float recoilSpeed = 4f;
@@ -113,6 +121,10 @@ namespace ActionPlatformer.Player
         public float EmergenceSpeed => emergenceSpeed;
         public float ForcedDuration => forcedDuration;
         public float HitStun => hitStun;
+        public float DamageInvulnerability => damageInvulnerability;
+        public float DamageKnockbackSpeed => damageKnockbackSpeed;
+        public float DamageKnockbackDuration => damageKnockbackDuration;
+        public float DamageKnockbackLift => damageKnockbackLift;
         public float AttackBufferTime => attackBufferTime;
         public float RecoilSpeed => recoilSpeed;
         public float RecoilDuration => recoilDuration;
@@ -152,6 +164,8 @@ namespace ActionPlatformer.Player
             Positive(finisherLaunchMultiplier) && finisherLaunchMultiplier >= 1f && NonNegative(slamHoverDuration) && Positive(slamSpeed) && Positive(slamKnockdownSpeed) && Positive(shockwaveRadius) &&
             Positive(shockwaveDuration) && Positive(slamTimeout) && NonNegative(emergenceSpeed) &&
             Positive(forcedDuration) && NonNegative(hitStun) && NonNegative(attackBufferTime) &&
+            NonNegative(damageInvulnerability) && NonNegative(damageKnockbackSpeed) && NonNegative(damageKnockbackDuration) &&
+            NonNegative(damageKnockbackLift) &&
             NonNegative(recoilSpeed) && NonNegative(recoilDuration) && NonNegative(finisherRecoilSpeed) &&
             NonNegative(finisherRecoilDuration) && NonNegative(airRecoilMultiplier) && airRecoilMultiplier <= 1f &&
             NonNegative(hitStopDuration) && NonNegative(heavyHitStopDuration) && NonNegative(slamHitStopDuration) &&

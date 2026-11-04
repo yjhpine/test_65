@@ -11,7 +11,7 @@ namespace ActionPlatformer.Player
         private EffectOwnerHandle handle;
         private uint attackVersion, glitchVersion;
         private int swingIndex, hitIndex, landingIndex;
-        private double lastHit = double.NegativeInfinity;
+        private double lastHit = double.NegativeInfinity, lastHurt = double.NegativeInfinity;
         public PlayerSoundEffects(Transform owner, PlayerSfxDefinition settings)
         {
             this.settings = settings;
@@ -68,11 +68,18 @@ namespace ActionPlatformer.Player
                 slam ? settings.HitVolume : settings.LandingVolume);
         }
         public void PlayGlitch() { if (settings != null) Play(settings.Glitch, settings.GlitchVolume); }
+        // Losing health. Blows landing together sound once.
+        public void Hurt()
+        {
+            if (settings == null || Time.unscaledTimeAsDouble - lastHurt < .05) return;
+            lastHurt = Time.unscaledTimeAsDouble;
+            Play(settings.Hurt, settings.HurtVolume, Vary(HeavySpread));
+        }
         public void Reset(IPlayerActionState state)
         {
             manager?.ResetOwner(handle); attackVersion = state?.AttackPresentation.Version ?? 0;
             glitchVersion = state?.GlitchPresentation.Version ?? 0;
-            swingIndex = hitIndex = landingIndex = 0; lastHit = double.NegativeInfinity;
+            swingIndex = hitIndex = landingIndex = 0; lastHit = lastHurt = double.NegativeInfinity;
         }
     }
 }

@@ -30,3 +30,5 @@ MonoBehaviour:
   hitVolume: 0.42
   landingVolume: 0.24
   glitchVolume: 0.38
+  hurt: {fileID: 8300000, guid: 6703b2af25173e044a42900162d233eb, type: 3}
+  hurtVolume: 0.5
