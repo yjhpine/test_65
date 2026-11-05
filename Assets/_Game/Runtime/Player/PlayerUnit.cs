@@ -44,6 +44,10 @@ namespace ActionPlatformer.Player
         private bool pendingJumpRelease;
         private bool pendingGlitch, pendingAttack, pendingCancel;
         private GlitchRequest glitchRequest;
+        // A Shift press while a swing cannot be left yet (windup, active, slam descent): the latest one is kept,
+        // with the target and direction aimed at the press, and runs once the attack allows repositioning.
+        private bool bufferedGlitch;
+        private GlitchRequest bufferedGlitchRequest;
         private UnitHealth health;
         private uint observedDamage;
         private float facing = 1f;
@@ -103,7 +107,7 @@ namespace ActionPlatformer.Player
                 if (owner == null) return;
                 owner.controlLocks--;
                 owner.ClearJumpState();
-                owner.pendingGlitch = owner.pendingAttack = owner.pendingCancel = false;
+                owner.pendingGlitch = owner.pendingAttack = owner.pendingCancel = owner.bufferedGlitch = false;
                 owner = null;
             }
         }
@@ -292,6 +296,14 @@ namespace ActionPlatformer.Player
                         {
                             glitchRequest = selection;
                             pendingGlitch = true;
+                            bufferedGlitch = false;
+                        }
+                        // Pressed mid-swing: kept like the attack follow-up (Attack Buffer Time 0 turns both off).
+                        else if (command.GlitchPressed && !pendingGlitch && Combat != null && Combat.IsAttacking &&
+                            combatTuning.AttackBufferTime > 0f && health.DamageVersion == observedDamage)
+                        {
+                            bufferedGlitchRequest = selection;
+                            bufferedGlitch = true;
                         }
                     }
                 }
@@ -390,6 +402,14 @@ namespace ActionPlatformer.Player
             }
             else
             {
+                if (bufferedGlitch && !pendingGlitch && CanReposition(now))
+                {
+                    // The kept press runs now; the glitch re-checks the target and space exactly as a fresh press would.
+                    glitchRequest = bufferedGlitchRequest;
+                    pendingGlitch = true;
+                    bufferedGlitch = false;
+                }
+                else if (bufferedGlitch && (Combat == null || !Combat.IsAttacking)) bufferedGlitch = false;
                 if (pendingGlitch && Glitch != null && CanReposition(now) && Glitch.TryExecute(glitchRequest, now))
                 {
                     // Repositioning never shortens the attack interval; a follow-up waits for Ready.
@@ -527,7 +547,7 @@ namespace ActionPlatformer.Player
                 Feedback?.Reset();
                 PresentDamage();
                 Glitch?.CancelUnderground();
-                pendingGlitch = pendingAttack = pendingCancel = false;
+                pendingGlitch = pendingAttack = pendingCancel = bufferedGlitch = false;
                 StartKnockback(health.LastDamage);
             }
             return true;
@@ -554,8 +574,8 @@ namespace ActionPlatformer.Player
             else Glitch?.Reset();
             if (Combat != null && (Combat.IsDescending || Combat.IsPreparingSlam)) Motor?.StopSlam();
             Combat?.Reset();
-            pendingGlitch = pendingAttack = pendingCancel = false;
-            glitchRequest = default;
+            pendingGlitch = pendingAttack = pendingCancel = bufferedGlitch = false;
+            glitchRequest = bufferedGlitchRequest = default;
             ClearJumpState();
             ClearRecoil();
             horizontalInput = 0f;

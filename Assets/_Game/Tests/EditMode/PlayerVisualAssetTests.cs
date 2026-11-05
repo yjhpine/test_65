@@ -45,6 +45,16 @@ namespace ActionPlatformer.Tests
             Assert.That(AssetDatabase.GetAssetPath(sounds.Hurt), Is.EqualTo("Assets/_Game/Audio/Combat/Hurt.wav"));
             Assert.That(sounds.Hurt.length, Is.InRange(.2f, .5f));
         }
+        // Design v0.3: the player and the slammed enemy fall at one speed (user decision 2026-11-05: 36).
+        [Test] public void SlamDescentAndKnockdownShareOneSpeed()
+        {
+            var tuning = AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset");
+            Assert.That(tuning.SlamSpeed, Is.EqualTo(36f).Within(1e-6f));
+            Assert.That(tuning.SlamKnockdownSpeed, Is.EqualTo(tuning.SlamSpeed).Within(1e-6f));
+            var defaults = ScriptableObject.CreateInstance<PlayerCombatTuning>();
+            try { Assert.That(defaults.SlamSpeed, Is.EqualTo(defaults.SlamKnockdownSpeed).Within(1e-6f), "code defaults agree too"); }
+            finally { Object.DestroyImmediate(defaults); }
+        }
         [Test] public void PlayerActionsHaveCompleteSpriteOnlyClipsAndGuardedLocomotion()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");

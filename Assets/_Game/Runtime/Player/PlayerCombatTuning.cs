@@ -34,7 +34,7 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(1f)] private float finisherLaunchMultiplier = 1.5f;
         [Header("Air slam")]
         [SerializeField, Min(0f)] private float slamHoverDuration = 0.5f;
-        [SerializeField, Min(0.01f)] private float slamSpeed = 28f;
+        [SerializeField, Min(0.01f)] private float slamSpeed = 36f;
         [SerializeField, Min(0.01f)] private float slamKnockdownSpeed = 36f;
         [SerializeField, Min(0.01f)] private float shockwaveRadius = 2f;
         [SerializeField, Min(0.01f)] private float shockwaveDuration = 0.22f;

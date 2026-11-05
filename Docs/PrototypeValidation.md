@@ -1015,3 +1015,12 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
   - 테스트: `AttackZoneAssetTests` 3/3(빨강 계열만: 모든 불투명 픽셀에서 R ≥ G, R ≥ B / 구멍은 0보다 많고 10% 미만 / 8프레임이 모두 다름 / 프레임 순환), `AttackZoneTests` 3/3, `BossVisualTests` 5/5, `UnitCombatFsmTests` 14/14, `EnemyLaserVisualTests` 2/2, `BossDefinitionTests` 10/10.
   - 전체 실행: EditMode 112/112(새 프레임 순환 테스트 1 포함), PlayMode 409/409(간헐 VirtualKeyboard도 통과), 324초.
   - 캡처: `Library/PrototypeValidation/AttackZone/MovementLab-glitch-*.png`, `BossTest-glitch-*.png`(돼지는 단색 때 캡처만 있다).
+
+## 2026-11-05: 기획서 v0.3 대조 후 조정 (내려찍기 속도 36 통일 · 순간이동 입력 예약)
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절. 캐릭터 기획서 v0.3(웹 문서)을 코드·에셋 값과 대조한 뒤 사용자가 고른 두 항목이다.
+- 에셋: `PlayerCombatTuning.asset`의 `slamSpeed` 28 → 36만 바뀌었다(Editor API, diff 한 줄). 코드 기본값도 36.
+- 새 테스트: PlayMode `GlitchPressedMidSwingIsKeptAndRunsAtRecovery`(선딜레이 중 두 번 누르면 마지막 입력이 남고, 후딜레이 시작 뒤 한 번만 실행, 후딜레이 유지), `HitDropsAGlitchKeptDuringTheSwing`, `ZeroAttackBufferTimeKeepsNoGlitchEither`, EditMode `SlamDescentAndKnockdownShareOneSpeed`. 수정 전 코드는 선딜레이 중 Shift를 저장하지 않으므로 첫 테스트는 성공할 수 없다(수정 전 코드로 따로 돌려 보지는 않았다).
+- 클래스 실행: `PlayerVisualAssetTests` 4/4, `PlayerGlitchCombatTests` 140/140(새 3 포함).
+- 전체 실행: EditMode 113/113, PlayMode 411/412, 311초. 실패 1개는 간헐 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`이며 `CutsceneTests` 클래스 재실행 두 번은 19/19로 통과했다. Console 오류는 의도된 6건, 컴파일 오류 0.
+- 확인하지 않은 것: 실제 키보드·마우스로 공격 중 Shift를 누르는 수동 플레이, 스탠드얼론 빌드.

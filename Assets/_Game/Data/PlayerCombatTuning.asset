@@ -31,7 +31,7 @@ MonoBehaviour:
   finisherDamageMultiplier: 2
   finisherLaunchMultiplier: 1.5
   slamHoverDuration: 0
-  slamSpeed: 28
+  slamSpeed: 36
   slamKnockdownSpeed: 36
   shockwaveRadius: 2
   shockwaveDuration: 0.22

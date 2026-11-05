@@ -2133,6 +2133,56 @@ namespace ActionPlatformer.Tests
             Assert.That(enemy.DamageVersion, Is.Zero);
         }
 
+        // Shift during a swing is kept like the attack follow-up: the latest press, aimed when it was pressed,
+        // runs as soon as the swing allows repositioning (its recovery), without shortening that recovery.
+        [UnityTest] public IEnumerator GlitchPressedMidSwingIsKeptAndRunsAtRecovery()
+        {
+            Set(combatSettings, "windup", .5f);
+            Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble), Is.True);
+            Vector3 enemyAt = enemy.transform.position;
+            input.Command = new PlayerCommand { GlitchPressed = true, AimScreenPosition = camera.WorldToScreenPoint(enemyAt + Vector3.right * .35f) };
+            yield return null; yield return Step;
+            input.Command = new PlayerCommand { GlitchPressed = true, AimScreenPosition = camera.WorldToScreenPoint(enemyAt + Vector3.left * .35f) };
+            yield return null; yield return Step;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Windup));
+            Assert.That(Glitch.SuccessVersion, Is.Zero, "not during the windup");
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (Combat.Phase != PlayerAttackPhase.Recovery && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery));
+            yield return Step; yield return Step;
+            Assert.That(Glitch.SuccessVersion, Is.EqualTo(1), "the kept press runs once the swing reaches its recovery");
+            Assert.That(player.Motor.Position.x, Is.LessThan(enemyAt.x), "the latest press (left side) wins");
+            Assert.That(Combat.Phase, Is.EqualTo(PlayerAttackPhase.Recovery), "the recovery is not shortened");
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            yield return Step; yield return Step;
+            Assert.That(Glitch.SuccessVersion, Is.EqualTo(1), "a kept press runs once");
+        }
+
+        [UnityTest] public IEnumerator HitDropsAGlitchKeptDuringTheSwing()
+        {
+            Set(combatSettings, "windup", .5f);
+            Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble), Is.True);
+            input.Command = new PlayerCommand { GlitchPressed = true, AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.left * .35f) };
+            yield return null; yield return Step;
+            Health.ApplyDamage(1);
+            float until = Time.realtimeSinceStartup + 1f;
+            while (Time.realtimeSinceStartup < until) yield return Step;
+            Assert.That(Combat.CanReposition(Time.timeAsDouble), Is.True);
+            Assert.That(Glitch.SuccessVersion, Is.Zero, "being hit cancels the swing and the press kept with it");
+        }
+
+        [UnityTest] public IEnumerator ZeroAttackBufferTimeKeepsNoGlitchEither()
+        {
+            Set(combatSettings, "windup", .5f); Set(combatSettings, "attackBufferTime", 0f);
+            Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble), Is.True);
+            input.Command = new PlayerCommand { GlitchPressed = true, AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.left * .35f) };
+            yield return null; yield return Step;
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (Combat.IsAttacking && Time.realtimeSinceStartup < deadline) yield return null;
+            yield return Step; yield return Step;
+            Assert.That(Glitch.SuccessVersion, Is.Zero);
+        }
+
         private IEnumerator TopGlitchSlam(bool simultaneous, bool recovery = false)
         {
             var enemyBody = enemy.GetComponent<Rigidbody2D>();

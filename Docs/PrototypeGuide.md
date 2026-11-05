@@ -573,11 +573,11 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 
 - 공격 종류: 공격이 시작되는 순간 사거리 안(Reach + 몸 크기)의 적으로 정한다. 전달된 대상(마지막 글리치 대상)이 사거리 안이면 그 적을 쓰고, 아니면 시야가 열린 가장 가까운 적을 쓴다. 적 아래(적의 발이 머리 위)면 띄우기, 공중에서 적 위(플레이어 중심이 적 머리 위)면 내려찍기, 그 밖에는 지상 일반/공중 일반 공격이다. 공중에서도 띄우기가 나간다. '위쪽 글리치 후 첫 공중 공격만 내려찍기' 규칙은 없앴다. 출현은 지상에서만이다.
 - 이동: 지상 일반 공격 중에는 수평 이동과 점프를 막는다(10-28의 이동 허용 철회). 공중 일반 공격은 이동·중력을 유지한다.
-- 공격 간격: 글리치는 후딜레이를 취소하지 않는다. 공격 중 언제 누르든 다음 공격 1개를 예약해 Ready에서 실행한다(Attack Buffer Time 0이면 예약 끔). 수치(선딜/판정/후딜)는 바꾸지 않았다.
+- 공격 간격: 글리치는 후딜레이를 취소하지 않는다. 공격 중 언제 누르든 다음 공격 1개를 예약해 Ready에서 실행한다(Attack Buffer Time 0이면 예약 끔). 수치(선딜/판정/후딜)는 바꾸지 않았다. 2026-11-05부터 순간이동 입력도 예약된다(아래 같은 날 절).
 - 띄우기: 명중(피해 > 0)했을 때만 플레이어도 Launch Speed로 함께 상승한다. 방패 등으로 막히면 상승하지 않는다.
 - 내려찍기: 하강 판정이 플레이어 아래 칸(Width × Reach)으로 바뀌었다. 기본 내려찍기는 착지 충격파가 없고, 3타(마무리) 내려찍기만 충격파를 낸다.
 - 적 공격 끊기: 띄우기·내려찍기·출현·충격파 명중은 `UnitHealth.InterruptVersion`을 올린다. 순찰 돼지는 공격 중 일반 공격을 맞아도(가벼운 넉백 포함) 공격을 계속하고, 끊는 타격에만 피격 경직으로 넘어간다. 방패병·포탑·드론은 준비/조준 고정/돌진 중 끊는 타격을 맞으면 회복 상태로 넘어간다. 일반 공격은 기존처럼 준비를 초기화하지 않는다.
-- 3타 강공격: 세 공격이 하나의 타수를 공유하고, 실행한 공격마다(선딜레이가 끝날 때) 타수를 1 올린다. 빗나감·방패 차단도 타수에 포함한다(기획서의 미정 항목, 사용자 결정으로 실행 기준). 피격·사망·구역 이동은 초기화한다. 글리치·출현은 살아 있는 타수의 유지 시간을 다시 채운다. 3타는 종류와 관계없이 피해 × Finisher Damage Multiplier(기본 2), 강한 띄우기는 상승 속도 × Finisher Launch Multiplier(기본 1.5, 플레이어와 적 모두), 강한 내려찍기는 착지 충격파, 강한 일반 공격은 기존 강한 넉백을 쓴다. 강한 띄우기·내려찍기 검광은 1.3배·밝게, 3타 휘두르기는 무거운 효과음이다.
+- 3타 강공격: 세 공격이 하나의 타수를 공유하고, 실행한 공격마다(선딜레이가 끝날 때) 타수를 1 올린다. 빗나감은 타수에 포함한다(기획서의 미정 항목, 사용자 결정으로 실행 기준). 방패 차단은 이때 포함했지만, 2026-11-03 방패병 기획서 v1.8부터 한 공격에서 하나라도 막히면 그 공격 끝에 타수를 1로 초기화한다. 피격·사망·구역 이동은 초기화한다. 글리치·출현은 살아 있는 타수의 유지 시간을 다시 채운다. 3타는 종류와 관계없이 피해 × Finisher Damage Multiplier(기본 2), 강한 띄우기는 상승 속도 × Finisher Launch Multiplier(기본 1.5, 플레이어와 적 모두), 강한 내려찍기는 착지 충격파, 강한 일반 공격은 기존 강한 넉백을 쓴다. 강한 띄우기·내려찍기 검광은 1.3배·밝게, 3타 휘두르기는 무거운 효과음이다.
 - 타수 표시: 스테이지 HUD 왼쪽 아래 COMBO 칸(타수만큼 청록), 다음이 강공격이면 마지막 칸과 STRONG NEXT가 주황으로 켜진다. 조작 잠금·컷신 중에는 숨긴다.
 - 테스트 도구: Player/Visual의 Show Glitch Range를 켜면 플레이어 중심의 글리치 최대 거리 원을 표시한다. 거리는 Play Mode 중 GlitchTuning.asset Inspector에서 바로 바꿀 수 있다(에셋에 그대로 저장되므로 끝나면 되돌린다). 웹 프로토타입의 슬라이더·브라우저 저장·자동 일시정지는 Inspector와 에디터 일시정지로 대신한다.
 - 바꾸지 않은 것: 피해·체력 체계(10/50~90), 공격 타이밍 수치, 거리 8, 잠복·출현, 각 속도 수치(px 환산 미정).
@@ -851,3 +851,13 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 코드: 렌더러는 `VfxManager`가 만든다(`RegisterOwner(Transform, AttackZoneProfile, SpriteRenderer)`, `ShowAttackZone(handle, center, size, angle, urgency)`, `HideAttackZone`). 요청한 프레임에만 보인다. 각 외형은 `AttackZoneOwner`를 하나 들고 위치·크기·각도·긴급도만 넘긴다: `EnemyVisual2D`(방패병·포탑·드론), `BossVisual2D`, `UnitVisual2D`(돼지, 지상 FSM이 있을 때만). 프리팹은 각 외형의 `Attack Zone` 칸에 같은 에셋을 연결했다(ShieldFront는 ShieldSoldier에서 물려받음, Guide NPC는 비어 있음).
 - 새 몬스터: 외형의 `Attack Zone`에 `AttackZone.asset`을 연결하고, 예고 중 매 프레임 `AttackZoneOwner.Show`를 부른다. 보스 패턴은 `Telegraph`에 상자와 `Urgency`(0→1)만 돌려주면 된다.
 - 테스트: EditMode `AttackZoneAssetTests` 3개(에셋 형식·빨강 계열만·프레임마다 다름, 프레임 순환, 모든 몬스터 연결), PlayMode `AttackZoneTests` 3개(방패병 범위·투명도, 포탑·드론 띠·조준 고정까지 한 번에 진해짐, 비활성화 시 숨김), `UnitCombatFsmTests.AttackWindupShowsTheDangerZoneInFrontUntilImpact`, `BossVisualTests`의 위험구역 검사 2개(기존 상자·잠금 색 검사 대체, 늘어난 Visual에서도 구역 스케일 1).
+
+## 2026-11-05 — 기획서 v0.3 대조 후 조정: 내려찍기 속도 통일·순간이동 입력 예약
+
+사용자 요청: 캐릭터 기획서 v0.3과 대조한 결과 중 두 가지를 기획서대로 맞춘다.
+
+- 내려찍기 하강 속도: 플레이어 하강(`Slam Speed`)을 28 → 36으로 올려 맞은 적의 하강(`Slam Knockdown Speed` 36)과 같게 했다(기획서: 캐릭터·적 같은 속도). `PlayerCombatTuning.asset`과 코드 기본값 모두 36이다.
+- 순간이동 입력 예약: 공격의 선딜레이·판정·내려찍기 하강 중에는 순간이동을 쓸 수 없는데, 그때 누른 Shift를 버리지 않고 하나 남겨 둔다. 여러 번 누르면 마지막 입력(누른 순간의 대상·방향)이 남는다. 후딜레이가 시작되어 순간이동할 수 있게 되면 바로 실행한다(후딜레이는 줄이지 않는다). 실행할 때 거리·화면·문·도착 공간은 새로 누른 것처럼 다시 검사하고, 안 되면 버린다. 피격·사망·조작 잠금·비활성화와 공격이 아닌 이유(피격 경직 등)로 막혀 있을 때는 예약하지 않거나 버린다. 공격 예약과 같은 `Attack Buffer Time`(0이면 둘 다 끔)을 쓴다. 공격 입력까지 함께 예약했다면 순간이동이 먼저(후딜레이 시작), 공격은 Ready에서 나간다.
+- 안내 문구: 순간이동 불가 이유 문구(OUT OF RANGE 등)는 스테이지 HUD가 있는 씬, 즉 `StageLayout`이 GameManager에 등록된 CoreLoopStage에서만 보인다. MovementLab·BossTest에는 빨간 표시만 있다.
+- 코드: `PlayerUnit`(`bufferedGlitch`·`bufferedGlitchRequest`, 입력 수집 때 저장, FixedUpdate에서 `CanReposition`이 되면 실행). `PlayerCombatTuning.slamSpeed` 기본값 36.
+- 테스트: PlayMode `PlayerGlitchCombatTests.GlitchPressedMidSwingIsKeptAndRunsAtRecovery`·`HitDropsAGlitchKeptDuringTheSwing`·`ZeroAttackBufferTimeKeepsNoGlitchEither`, EditMode `PlayerVisualAssetTests.SlamDescentAndKnockdownShareOneSpeed`.
