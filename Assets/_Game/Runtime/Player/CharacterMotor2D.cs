@@ -10,12 +10,20 @@ namespace ActionPlatformer.Player
 
     public sealed class CharacterMotor2D : ICharacterMotionState
     {
+        // Only a flat floor under the feet counts: a rounded capsule resting on a corner is not support, so the body falls off at once.
+        private const float MinGroundNormalY = 0.9f;
+        private const float OneWayTopTolerance = 0.05f;
+        // Feet sunk deeper than this into a one-way platform are not "on" it: the body drops through instead of being pushed up.
+        private const float SinkTolerance = 0.15f;
         private readonly PlayerTuning tuning;
         private readonly Rigidbody2D body;
         private readonly Collider2D bodyCollider;
         private readonly ContactFilter2D groundFilter;
         private readonly RaycastHit2D[] groundHits = new RaycastHit2D[8];
         private readonly RaycastHit2D[] probeHits = new RaycastHit2D[4];
+        private readonly Collider2D[] attached = new Collider2D[8];
+        private readonly Collider2D[] overlaps = new Collider2D[8];
+        private readonly System.Collections.Generic.List<Collider2D> droppedThrough = new System.Collections.Generic.List<Collider2D>();
         private RigidbodyType2D savedBodyType;
         private bool savedSimulated;
         public bool IsTransferring { get; private set; }
@@ -41,10 +49,21 @@ namespace ActionPlatformer.Player
         public void RefreshContacts()
         {
             IsGrounded = false;
+            ReleaseDroppedPlatforms();
+            DropThroughSunkPlatforms();
             if (Velocity.y > 0.2f) return;
-            int count = bodyCollider.Cast(Vector2.down, groundFilter, groundHits, 0.075f);
+            // The whole body casts, so a flat foot collider (if present) is what meets the floor.
+            int count = body.Cast(Vector2.down, groundFilter, groundHits, 0.075f);
+            float footY = FootY();
             for (int i = 0; i < count; i++)
-                if (groundHits[i].normal.y > 0.65f) { IsGrounded = true; break; }
+            {
+                var hit = groundHits[i];
+                if (hit.normal.y <= MinGroundNormalY) continue;
+                // A one-way platform only supports feet that are on top of it; feet sunk into it (mid-jump) are not standing.
+                if (hit.collider.usedByEffector && footY < hit.collider.bounds.max.y - OneWayTopTolerance) continue;
+                IsGrounded = true;
+                break;
+            }
         }
 
         public void Jump()
@@ -92,6 +111,66 @@ namespace ActionPlatformer.Player
             return false;
         }
 
+        // Overlapping a one-way platform with feet well below its top: ignore it so the body falls through at once.
+        private void DropThroughSunkPlatforms()
+        {
+            if (Velocity.y > 0.2f) return;
+            int count = body.Overlap(groundFilter, overlaps);
+            float footY = FootY();
+            for (int i = 0; i < count; i++)
+            {
+                var platform = overlaps[i];
+                if (!platform.usedByEffector || droppedThrough.Contains(platform)) continue;
+                if (platform.bounds.max.y - footY <= SinkTolerance) continue;
+                SetIgnored(platform, true);
+                droppedThrough.Add(platform);
+            }
+        }
+
+        // Collision returns once the body has fully left the platform (fell below it or was lifted above it).
+        private void ReleaseDroppedPlatforms()
+        {
+            for (int i = droppedThrough.Count - 1; i >= 0; i--)
+            {
+                var platform = droppedThrough[i];
+                if (platform == null) { droppedThrough.RemoveAt(i); continue; }
+                if (OverlapsBody(platform)) continue;
+                SetIgnored(platform, false);
+                droppedThrough.RemoveAt(i);
+            }
+        }
+
+        private bool OverlapsBody(Collider2D platform)
+        {
+            int count = body.GetAttachedColliders(attached);
+            for (int i = 0; i < count; i++)
+                if (attached[i].bounds.Intersects(platform.bounds)) return true;
+            return false;
+        }
+
+        private void SetIgnored(Collider2D platform, bool ignored)
+        {
+            int count = body.GetAttachedColliders(attached);
+            for (int i = 0; i < count; i++) Physics2D.IgnoreCollision(attached[i], platform, ignored);
+        }
+
+        public void ClearDroppedPlatforms()
+        {
+            for (int i = droppedThrough.Count - 1; i >= 0; i--)
+                if (droppedThrough[i] != null) SetIgnored(droppedThrough[i], false);
+            droppedThrough.Clear();
+        }
+
+        // Lowest point of the whole body, so a thin foot collider counts as the feet.
+        private float FootY()
+        {
+            int count = body.GetAttachedColliders(attached);
+            float lowest = bodyCollider.bounds.min.y;
+            for (int i = 0; i < count; i++)
+                if (!attached[i].isTrigger) lowest = Mathf.Min(lowest, attached[i].bounds.min.y);
+            return lowest;
+        }
+
         public void Teleport(Vector2 position)
         {
             Relocate(position, Vector2.zero);
@@ -99,6 +178,7 @@ namespace ActionPlatformer.Player
 
         public void Relocate(Vector2 position, Vector2 velocity)
         {
+            ClearDroppedPlatforms();
             body.position = position;
             // Unsimulated bodies do not publish their physics pose to the Transform/camera.
             if (IsTransferring) body.transform.position = new Vector3(position.x, position.y, body.transform.position.z);
@@ -129,7 +209,7 @@ namespace ActionPlatformer.Player
             impact = default;
             if (IsHeld) return false;
             float travel = speed * deltaTime;
-            int count = bodyCollider.Cast(Vector2.down, groundFilter, groundHits, travel + 0.02f);
+            int count = body.Cast(Vector2.down, groundFilter, groundHits, travel + 0.02f);
             int nearest = -1;
             for (int i = 0; i < count; i++)
                 if (groundHits[i].normal.y > 0.65f &&

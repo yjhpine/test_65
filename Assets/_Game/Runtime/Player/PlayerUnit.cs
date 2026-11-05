@@ -602,6 +602,7 @@ namespace ActionPlatformer.Player
         protected override void OnUnitDisabled()
         {
             EndScriptedTransfer();
+            Motor?.ClearDroppedPlatforms();
             ControlInterrupted?.Invoke();
             ClearActions();
             ClearInvulnerability();
