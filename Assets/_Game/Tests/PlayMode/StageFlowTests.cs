@@ -46,6 +46,7 @@ namespace ActionPlatformer.Tests
         private static void UseLegacyObjective(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != "CoreLoopStage") return;
+            LegacyExitStage.Restore(scene);
             var stage = scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageLayout>(true)).Single();
             typeof(StageLayout).GetField("encounters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
                 .SetValue(stage, null);
@@ -135,7 +136,7 @@ namespace ActionPlatformer.Tests
             Assert.That(enemies.Length, Is.EqualTo(ExpectedEnemyCount));
             foreach (string id in new[] { "enemy.patrol", "enemy.shieldsoldier", "enemy.flyingdrone", "enemy.surveillanceturret" })
                 Assert.That(enemies.Count(e => e.Owner.Definition.UnitId == id), Is.EqualTo(1), id);
-            Assert.That(goal.transform.position.x, Is.EqualTo(StageWidth - 2f));
+            Assert.That(goal.transform.position.x, Is.EqualTo(LegacyExitStage.ExitX));
             var floor = flow.Stage.gameObject.scene.GetRootGameObjects().Single(g => g.name == "Terrain").transform.Find("Floor");
             Assert.That(floor.GetComponent<BoxCollider2D>().size.x, Is.EqualTo(60f));
             Assert.That(floor.GetComponent<SpriteRenderer>().size.x, Is.EqualTo(60f));

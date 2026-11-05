@@ -18,6 +18,8 @@ namespace ActionPlatformer.Flow
         [SerializeField] private CutsceneRunner finalWaveCutscene;
         [Tooltip("Optional ordered encounter loop. Empty keeps the original single-stage objective.")]
         [SerializeField] private StageEncounter[] encounters;
+        [Tooltip("Optional boss arena after the last encounter. Defeating the boss clears the stage in place of the exit goal.")]
+        [SerializeField] private StageBoss bossArena;
         [SerializeField] private LayerMask transferTerrainMask = 1;
 
         public PlayerUnit Player => player;
@@ -26,6 +28,7 @@ namespace ActionPlatformer.Flow
         public CutsceneCoordinator Cinematics => cinematics;
         public CutsceneRunner FinalWaveCutscene => finalWaveCutscene;
         public StageEncounter[] Encounters => encounters;
+        public StageBoss BossArena => bossArena;
         public LayerMask TransferTerrainMask => transferTerrainMask;
 
         // First layout under the scene roots, inactive objects included.

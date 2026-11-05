@@ -24,10 +24,11 @@ namespace ActionPlatformer.Tests
         private float scale, fixedDelta;
         private sealed class NoInput : IPlayerInputSource { public PlayerCommand Sample() => default; }
 
-        // RestCycleTests exercise all four authored encounters. Isolate the final encounter here.
+        // BossArenaTests and RestCycleTests exercise the authored encounters. Isolate the final encounter here.
         private static void IsolateFinalWave(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != "CoreLoopStage") return;
+            LegacyExitStage.Restore(scene);
             var stage = scene.GetRootGameObjects().SelectMany(r => r.GetComponentsInChildren<StageLayout>(true)).Single();
             var field = typeof(StageLayout).GetField("encounters", BindingFlags.Instance | BindingFlags.NonPublic);
             var encounters = (StageEncounter[])field.GetValue(stage);
@@ -40,7 +41,7 @@ namespace ActionPlatformer.Tests
             SceneManager.sceneLoaded += IsolateFinalWave;
             yield return SceneManager.LoadSceneAsync("CoreLoopStage"); yield return null;
             FindStage();
-            player.Motor.Teleport(new Vector2(191, .82f));
+            player.Motor.Teleport(new Vector2(131, .82f));
             yield return new WaitForFixedUpdate(); yield return null;
         }
         private void FindStage()
@@ -82,7 +83,7 @@ namespace ActionPlatformer.Tests
             foreach (var enemy in flow.ActiveEnemies.Skip(1)) enemy.ApplyDamage(int.MaxValue);
             yield return new WaitForSeconds(.15f);
             Assert.That(reveal.IsRunning, Is.False); Assert.That(goal.IsUnlocked, Is.False);
-            player.Motor.Teleport(new Vector2(191, 7)); yield return new WaitForFixedUpdate(); yield return null;
+            player.Motor.Teleport(new Vector2(131, 7)); yield return new WaitForFixedUpdate(); yield return null;
             KillAll(); yield return Until(() => reveal.IsRunning);
             Assert.That(goal.IsUnlocked, Is.True); Assert.That(player.IsControlLocked, Is.True);
             Assert.That(Time.timeScale, Is.Zero); Assert.That(flow.State, Is.EqualTo(StageState.Playing));
@@ -104,7 +105,7 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator AlreadyInsideGoalStillPlaysRevealBeforeCompleting()
         {
-            player.Motor.Teleport(new Vector2(215, .82f)); yield return new WaitForFixedUpdate();
+            player.Motor.Teleport(new Vector2(LegacyExitStage.ExitX, .82f)); yield return new WaitForFixedUpdate();
             KillAll(); yield return Until(() => reveal.IsRunning);
             Assert.That(flow.State, Is.EqualTo(StageState.Playing));
             Assert.That(flow.View.IsCompletedVisible, Is.False);

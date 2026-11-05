@@ -97,6 +97,7 @@ namespace ActionPlatformer.Flow
                     room.EndX <= room.StartX || (i > 0 && room.StartX < encounters[i - 1].EndX)) return false;
                 if (i < encounters.Length - 1 && (room.ExitGate == null || !room.ExitGate.IsConfigured ||
                     room.FollowingRest == null || !room.FollowingRest.IsConfigured)) return false;
+                if (i == encounters.Length - 1 && room.ExitGate != null && !room.ExitGate.IsConfigured) return false;
                 foreach (var enemy in room.Enemies)
                 {
                     // Future inactive objects have not run Awake. Validate authored definitions, not zero runtime HP.
@@ -183,7 +184,12 @@ namespace ActionPlatformer.Flow
                 return true;
             }
             if (!UpdateObjective()) return true;
-            if (CurrentEncounterIndex == encounters.Length - 1) return false;
+            if (CurrentEncounterIndex == encounters.Length - 1)
+            {
+                // The last room has no rest after it, but its optional exit gate still opens once the room is clear.
+                if (RemainingEnemies == 0) encounters[CurrentEncounterIndex].ExitGate?.SetLocked(false);
+                return false;
+            }
             if (RemainingEnemies > 0) return true;
             if (Phase == EncounterPhase.Combat)
             {

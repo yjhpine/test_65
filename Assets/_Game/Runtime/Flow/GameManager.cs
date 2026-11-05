@@ -29,6 +29,7 @@ namespace ActionPlatformer.Flow
         private PlayerInput playerInput;
         private Collider2D playerBody;
         private StageGoal goal;
+        private StageBoss bossArena;
         private CutsceneCoordinator cinematics;
         private CutsceneRunner finalWaveCutscene;
         private float initialTimeScale, initialFixedDeltaTime;
@@ -201,6 +202,7 @@ namespace ActionPlatformer.Flow
             progress = null;
             if (view != null) view.ResetStage();
             player = layout.Player; goal = layout.Goal; cinematics = layout.Cinematics; finalWaveCutscene = layout.FinalWaveCutscene;
+            bossArena = layout.BossArena;
             var requiredEnemies = layout.RequiredEnemies;
             var encounters = layout.Encounters;
             bool usesEncounters = encounters != null && encounters.Length > 0;
@@ -208,7 +210,8 @@ namespace ActionPlatformer.Flow
                 (!usesEncounters && (requiredEnemies == null || requiredEnemies.Length == 0)) ||
                 !player.TryGetComponent(out playerHealth) || !player.TryGetComponent(out playerInput) ||
                 !player.TryGetComponent(out playerBody) || !player.isActiveAndEnabled || player.Motor == null ||
-                playerHealth.MaxHealth <= 0 || layout.gameObject.scene.buildIndex < 0)
+                playerHealth.MaxHealth <= 0 || layout.gameObject.scene.buildIndex < 0 ||
+                (bossArena != null && !bossArena.IsConfigured))
                 return Reject(layout);
             progress = new StageProgress(player, playerHealth, playerBody, requiredEnemies, encounters, goal,
                 cinematics, view, layout.TransferTerrainMask, layout.gameObject.scene, layout, FailConfiguration);
@@ -268,7 +271,7 @@ namespace ActionPlatformer.Flow
             initialized = false;
             progress = null;
             player = null; playerHealth = null; playerInput = null; playerBody = null;
-            goal = null; cinematics = null; finalWaveCutscene = null;
+            goal = null; cinematics = null; finalWaveCutscene = null; bossArena = null;
         }
 
         private void RequestTransfer() => progress?.RequestTransfer(StagePlaying);
@@ -313,6 +316,13 @@ namespace ActionPlatformer.Flow
             if (State != StageState.Playing || (cinematics != null && cinematics.IsBusy)) return;
             if (UsesEncounters && progress.UpdateEncounter(StagePlaying)) return;
             if (!progress.UpdateObjective()) return;
+            // A boss arena replaces the exit: the stage ends a moment after the boss falls.
+            if (bossArena != null)
+            {
+                view.ShowGoalHint(false);
+                if (RemainingEnemies == 0 && bossArena.ShouldComplete(Time.timeAsDouble)) Complete();
+                return;
+            }
             if (UsesEncounters && RemainingEnemies == 0 && finalWaveCutscene != null && !finalWaveCutsceneAttempted)
             {
                 view.ShowGoalHint(false);

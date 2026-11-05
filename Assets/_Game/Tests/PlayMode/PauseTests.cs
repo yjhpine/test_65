@@ -103,6 +103,7 @@ namespace ActionPlatformer.Tests
         private static void UseSingleEnemyObjective(Scene scene, LoadSceneMode mode)
         {
             if (scene.name != "CoreLoopStage") return;
+            LegacyExitStage.Restore(scene);
             var stage = StageLayout.FindIn(scene);
             var enemy = stage.Encounters[0].Enemies[0];
             SetField(stage, "encounters", null);

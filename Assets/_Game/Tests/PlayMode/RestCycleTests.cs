@@ -77,7 +77,7 @@ namespace ActionPlatformer.Tests
         }
         [UnityTest] public IEnumerator ClearedGateAllowsWalkingIntoEachRestAndHealsOnlyOnce()
         {
-            for (int wave = 0; wave < 3; wave++)
+            for (int wave = 0; wave < 2; wave++)
             {
                 var area = flow.CurrentRestArea;
                 var exit = Object.FindObjectsByType<StageGate>(FindObjectsSortMode.None)
@@ -119,26 +119,26 @@ namespace ActionPlatformer.Tests
             Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(3));
             var all = Object.FindObjectsByType<UnitHealth>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .Where(h => h != health).ToArray();
-            Assert.That(all.Length, Is.EqualTo(18));
-            Assert.That(all.Count(h => !h.gameObject.activeInHierarchy), Is.EqualTo(15));
+            // 3 + 4 + 5 enemies and the sleeping boss.
+            Assert.That(all.Length, Is.EqualTo(13));
+            Assert.That(all.Count(h => !h.gameObject.activeInHierarchy), Is.EqualTo(10));
             Assert.That(all.Where(h => !h.gameObject.activeInHierarchy).All(h => !h.CanReceiveDamage && h.MaxHealth == 0), Is.True);
-            var goal = Object.FindFirstObjectByType<StageGoal>();
-            float[] destinations = { 66, 116, 168 };
-            // Authored 3/4/5/6 course (2026-11-05): earlier kinds mixed with the barrage/laser enemies, no domain enemies.
+            var goal = Object.FindFirstObjectByType<StageGoal>(FindObjectsInactive.Include);
+            float[] destinations = { 66, 116 };
+            // Authored 3/4/5 course (11-06: the 6-enemy wave became the boss arena): earlier kinds mixed with the barrage/laser enemies.
             string[][] expectedKinds = {
                 new[] { "enemy.patrol", "enemy.ranged.straight", "enemy.surveillanceturret" },
                 new[] { "enemy.shieldfront", "enemy.ranged.shotgun", "enemy.flyingdrone", "enemy.ranged.mortar" },
-                new[] { "enemy.patrol", "enemy.ranged.heavy", "enemy.laser.sweep", "enemy.shieldsoldier", "enemy.surveillanceturret" },
-                new[] { "enemy.ranged.shotgun", "enemy.shieldsoldier", "enemy.flyingdrone", "enemy.ranged.mortar", "enemy.laser.sweep", "enemy.ranged.heavy" }
+                new[] { "enemy.patrol", "enemy.ranged.heavy", "enemy.laser.sweep", "enemy.shieldsoldier", "enemy.surveillanceturret" }
             };
-            for (int wave = 0; wave < 4; wave++)
+            for (int wave = 0; wave < 3; wave++)
             {
                 Assert.That(flow.CurrentEncounterIndex, Is.EqualTo(wave));
                 Assert.That(flow.RemainingEnemies, Is.EqualTo(wave + 3));
                 Assert.That(flow.ActiveEnemies.Select(h => h.Owner.Definition.UnitId), Is.EquivalentTo(expectedKinds[wave]));
                 Assert.That(all.Count(h => h.gameObject.activeInHierarchy && h.IsAlive), Is.EqualTo(wave + 3));
                 Assert.That(goal.IsUnlocked, Is.False);
-                if (wave == 3) break;
+                if (wave == 2) break;
                 var currentRest = flow.CurrentRestArea;
                 Assert.That(currentRest.Visited, Is.False);
                 health.ApplyDamage(20); yield return null;
@@ -159,20 +159,15 @@ namespace ActionPlatformer.Tests
                 yield return EnterNextRoom();
             }
             Assert.That(flow.CurrentRestArea, Is.Null);
+            var lastGate = flow.Stage.Encounters[2].ExitGate;
+            Assert.That(lastGate.IsLocked, Is.True, "The way to the cliff stays shut while the last wave lives.");
             KillRoom(); yield return null; yield return null;
             Assert.That(goal.IsUnlocked, Is.True);
-            float revealStartDeadline = Time.realtimeSinceStartup + 5;
-            while (!flow.FinalWaveCutscene.IsRunning && Time.realtimeSinceStartup < revealStartDeadline) yield return null;
-            Assert.That(flow.FinalWaveCutscene.IsRunning, Is.True);
-            Assert.That(flow.ActiveEnemies.All(enemy => !enemy.gameObject.activeInHierarchy), Is.True,
-                "Death animations must finish before the reveal pauses the scene.");
-            flow.FinalWaveCutscene.Skip();
-            float revealDeadline = Time.realtimeSinceStartup + 3;
-            while (flow.FinalWaveCutscene.IsRunning && Time.realtimeSinceStartup < revealDeadline) yield return null;
+            Assert.That(lastGate.IsLocked, Is.False, "Clearing the last wave opens the way to the boss arena.");
+            // The boss arena replaces the exit reveal and the goal: nothing plays and nothing completes by itself.
+            yield return new WaitForSeconds(1.2f);
             Assert.That(flow.FinalWaveCutscene.IsRunning, Is.False);
-            Assert.That(flow.CanRequestTransfer, Is.False);
-            player.Motor.Teleport(new Vector2(215, .82f)); Physics2D.SyncTransforms(); yield return null; yield return null;
-            Assert.That(flow.State, Is.EqualTo(StageState.Completed)); Assert.That(Time.timeScale, Is.Zero);
+            Assert.That(flow.State, Is.EqualTo(StageState.Playing));
         }
         [UnityTest] public IEnumerator DisabledLivingEnemyDoesNotCountAsCleared()
         {
