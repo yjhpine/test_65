@@ -1067,3 +1067,10 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 첫 실행은 테스트 실행기가 띄운 "Scene(s) Have Been Modified" 대화상자에서 멈췄다. 저장 뒤 재컴파일 후 씬의 변경 표시만 다시 켜졌고 내용은 저장본과 같았다(비교 확인). 대화상자를 취소하고 다시 저장(파일 해시 동일)한 뒤 재실행했다.
 - 실제 동작: Play Mode에서 웨이브 2~4 루트를 켜고 5초 뒤 18마리 모두 제자리(지상 적 발 높이 0.01~0.02, 발판 위 적은 발판 윗면, 공중 적은 지정 높이). 플레이어를 X 86·194로 옮겨 샷건 발사, 훑기 레이저, 공중 투하병의 추적·투하를 확인했고 캡처는 `Library/PrototypeValidation/CoreLoopRelayout/Wave2.png`, `Wave4.png`다. 콘솔 새 오류 0. 끝난 뒤 Play Mode 종료, runInBackground 복원, 씬 dirty=false.
 
+## 2026-11-05 — 플레이어 그리기 순서 50
+
+- 원인 확인: Player Visual Sorting Order 1, 적·보스·NPC 프리팹 10~14(모두 Default 레이어). Play Mode 렌더러 목록에서도 적 몸체 10, 포탑 머리 11, 방패병 방어막 12였다.
+- `RenderOrderTests`(EditMode) 2개를 먼저 써서 수정 전 2/2 실패(플레이어 1 < 적 쪽 최대 16)를 확인했다. Player 프리팹 Visual을 50으로 바꾼 뒤 2/2 통과.
+- 관련 클래스만 실행: EditMode `PlayerVisualAssetTests` 5/5, PlayMode `PlayerVisualTests` 11/11·`AttackZoneTests` 3/3. 전체 실행은 하지 않았다.
+- 실제 화면: CoreLoopStage Play Mode에서 적을 모두 멈추고 플레이어를 돌진 방패병·큰 탄 몸체에 겹쳐 플레이어가 위에 그려지는 것을 캡처했다(`Library/PrototypeValidation/CoreLoopRelayout/OverlapShield.png`, `OverlapHeavy.png`). 그때 렌더러 순서는 적 10~12, 플레이어 먼지 49, 플레이어 50. 콘솔 새 오류 0. 끝난 뒤 Play Mode 종료, runInBackground 복원, 씬 dirty=false.
+

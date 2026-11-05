@@ -297,7 +297,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 1
+  m_SortingOrder: 50
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 6aa415561d019094b8e63a221c2d9716, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -344,5 +344,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.PlayerVisual
   showAttackArea: 0
+  showGlitchRange: 0
   vfxProfile: {fileID: 11400000, guid: e49104076c3f3224f9283c31ac8fbfc9, type: 2}
   soundEffects: {fileID: 11400000, guid: c4051214ea8288245a46df9ca8f32d27, type: 2}
+  damageBlinkInterval: 0.08
+  damageBlinkAlpha: 0.2
