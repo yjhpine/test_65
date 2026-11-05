@@ -13,6 +13,10 @@ namespace ActionPlatformer.Environment
         [Tooltip("Optional matching child image for a two-image horizontal belt. Each image must cover the camera width.")]
         [SerializeField] private SpriteRenderer repeatImage;
 
+        [Tooltip("Optional copies stacked one image height above the belt: [0] matches the primary image, [1] the repeat image.")]
+        [SerializeField] private SpriteRenderer[] upperImages;
+
+        private Vector3[] initialUpperLocalPositions;
         private Vector3 initialLocalPosition;
         private Vector3 initialCameraPosition;
         private Vector3 initialRepeatLocalPosition;
@@ -40,8 +44,25 @@ namespace ActionPlatformer.Environment
                 return;
             }
 
+            if (upperImages != null && upperImages.Length > 0)
+            {
+                bool valid = repeatImage != null && upperImages.Length <= 2;
+                foreach (var image in upperImages) valid &= image != null && image.transform.parent == transform;
+                if (!valid)
+                {
+                    Debug.LogError("Parallax upper images need a belt and at most two direct child SpriteRenderers.", this);
+                    enabled = false;
+                    return;
+                }
+            }
+
             if (!initialized)
             {
+                if (upperImages != null)
+                {
+                    initialUpperLocalPositions = new Vector3[upperImages.Length];
+                    for (int i = 0; i < upperImages.Length; i++) initialUpperLocalPositions[i] = upperImages[i].transform.localPosition;
+                }
                 initialLocalPosition = transform.localPosition;
                 initialCameraPosition = viewCamera.transform.position;
                 if (repeatImage != null) initialRepeatLocalPosition = repeatImage.transform.localPosition;
@@ -67,6 +88,18 @@ namespace ActionPlatformer.Environment
             // Absolute displacement avoids accumulated error on shake, teleports and return blends.
             transform.position = origin + offset * (1f - scrollSpeed);
             if (repeatImage != null) WrapImages();
+            PlaceUpperImages();
+        }
+
+        private void PlaceUpperImages()
+        {
+            if (upperImages == null || upperImages.Length == 0) return;
+            float height = primaryImage.bounds.size.y;
+            for (int i = 0; i < upperImages.Length; i++)
+            {
+                Transform source = i == 0 ? transform : repeatImage.transform;
+                upperImages[i].transform.position = source.position + Vector3.up * height;
+            }
         }
 
         private void WrapImages()
@@ -89,6 +122,8 @@ namespace ActionPlatformer.Environment
             RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
             if (initialized) transform.localPosition = initialLocalPosition;
             if (initialized && repeatImage != null) repeatImage.transform.localPosition = initialRepeatLocalPosition;
+            if (initialized && upperImages != null && initialUpperLocalPositions != null)
+                for (int i = 0; i < upperImages.Length; i++) upperImages[i].transform.localPosition = initialUpperLocalPositions[i];
         }
     }
 }
