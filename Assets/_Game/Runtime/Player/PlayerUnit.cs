@@ -51,6 +51,7 @@ namespace ActionPlatformer.Player
         private UnitHealth health;
         private uint observedDamage;
         private float facing = 1f;
+        private UnitHealth lockOnTarget;
         private bool hasAim;
         private Vector2 aimScreenPosition;
         private const float AimFacingDeadZone = 0.1f;
@@ -59,6 +60,9 @@ namespace ActionPlatformer.Player
         private Vector2 transferOrigin;
         public bool IsScriptedTransferring => transferLock != null;
         public bool IsControlLocked => controlLocks > 0;
+        public bool HasLockOn => lockOnTarget != null;
+        public UnitHealth LockOnTarget => lockOnTarget;
+        public Bounds LockOnBounds => lockOnTarget != null && UnitPhysics2D.Body(lockOnTarget) != null ? UnitPhysics2D.Body(lockOnTarget).bounds : default;
         // Relinquish external camera control before applying a new damage presentation.
         public event System.Action ControlInterrupted;
         // Local observers may react to the same input; normal combat glitch selection stays here.
@@ -66,7 +70,7 @@ namespace ActionPlatformer.Player
         public System.IDisposable AcquireControlLock() => AcquireControlLock(false);
         private System.IDisposable AcquireControlLock(bool preserveGlitchCooldown)
         {
-            if (controlLocks++ == 0) { ClearActions(preserveGlitchCooldown); Motor?.StopHorizontal(); }
+            if (controlLocks++ == 0) { lockOnTarget = null; ClearActions(preserveGlitchCooldown); Motor?.StopHorizontal(); }
             return new ControlLock(this);
         }
 
@@ -274,6 +278,8 @@ namespace ActionPlatformer.Player
             // Locomotion owns idle facing; the cursor is consulted only when an attack can start.
             if ((Combat == null || !Combat.IsAttacking) && Mathf.Abs(command.Move.x) > 0.01f)
                 facing = Mathf.Sign(command.Move.x);
+            // A glitch lock-on wins over movement and the cursor: the player keeps facing the target (backpedaling).
+            ApplyLockOn();
             if (IsUnderground)
             {
                 if (command.JumpPressed) pendingCancel = true;
@@ -339,8 +345,30 @@ namespace ActionPlatformer.Player
             if (health != null && health.IsAlive) health.ApplyDamage(health.CurrentHealth);
         }
 
+        // Lock-on is set by a successful glitch and ends when the target is gone or farther than the tuned distance.
+        private void BeginLockOn(UnitHealth target)
+        {
+            lockOnTarget = glitchTuning != null && glitchTuning.LockOnBreakDistance > 0f && UnitPhysics2D.IsAvailable(target) ? target : null;
+        }
+
+        private bool ApplyLockOn()
+        {
+            if (lockOnTarget == null) return false;
+            var body = UnitPhysics2D.Body(lockOnTarget);
+            if (!UnitPhysics2D.IsAvailable(lockOnTarget) || body == null || glitchTuning == null ||
+                Vector2.Distance(BodyCenter, body.bounds.center) > glitchTuning.LockOnBreakDistance)
+            {
+                lockOnTarget = null;
+                return false;
+            }
+            float delta = body.bounds.center.x - Motor.Position.x;
+            if (Mathf.Abs(delta) > 0.01f) facing = Mathf.Sign(delta);
+            return true;
+        }
+
         private bool RefreshAimFacing()
         {
+            if (ApplyLockOn()) return true;
             if (!hasAim || aimCamera == null || !float.IsFinite(aimScreenPosition.x) || !float.IsFinite(aimScreenPosition.y))
                 return false;
             Ray ray = Feedback != null ? Feedback.ScreenPointToRay(aimScreenPosition) : aimCamera.ScreenPointToRay(aimScreenPosition);
@@ -602,6 +630,7 @@ namespace ActionPlatformer.Player
         protected override void OnUnitDisabled()
         {
             EndScriptedTransfer();
+            lockOnTarget = null;
             Motor?.ClearDroppedPlatforms();
             ControlInterrupted?.Invoke();
             ClearActions();
@@ -643,6 +672,7 @@ namespace ActionPlatformer.Player
             {
                 float delta = Glitch.ArrivalTarget.transform.position.x - Motor.Position.x;
                 if (Mathf.Abs(delta) > 0.01f) facing = Mathf.Sign(delta);
+                BeginLockOn(Glitch.ArrivalTarget);
             }
         }
 

@@ -52,6 +52,7 @@ namespace ActionPlatformer.Player
         private SpriteRenderer attackShape, groundMarker;
         private SpriteRenderer glitchFill;
         private SpriteRenderer glitchRing;
+        private SpriteRenderer lockOnMarker;
         private Sprite previewDiscSprite, previewRingSprite, rangeRingSprite;
         private Texture2D previewDiscTexture, previewRingTexture, rangeRingTexture;
         private SpriteRenderer glitchRange;
@@ -128,6 +129,7 @@ namespace ActionPlatformer.Player
                 glitchFill.sprite = previewDiscSprite;
                 glitchRing = CreateShape("Glitch preview ring", Color.white);
                 glitchRing.sprite = previewRingSprite;
+                lockOnMarker = CreateShape("Lock-on marker", Color.white);
                 // A finer texture keeps the large range ring thin.
                 rangeRingSprite = CreatePreviewCircle(true, out rangeRingTexture, 256, 3f);
                 glitchRange = CreateShape("Glitch range", new Color(0.15f, 1f, 1f, 0.35f));
@@ -205,6 +207,7 @@ namespace ActionPlatformer.Player
                 }
             }
             UpdateGlitchPreview(underground);
+            UpdateLockOn(underground);
             if (glitchRange != null)
             {
                 float range = actions.GlitchMaxDistance;
@@ -295,6 +298,20 @@ namespace ActionPlatformer.Player
                 animator.Play(state, 0, 0f);
             currentAction = state;
             previousAttackVersion = attack.Version;
+        }
+
+        // Reticle round the locked monster: native pixel size, scaled up only so it still encloses a big body.
+        private void UpdateLockOn(bool underground)
+        {
+            if (lockOnMarker == null) return;
+            var frames = vfxProfile == null ? null : vfxProfile.LockOnFrames;
+            bool visible = actions.HasLockOn && !underground && frames != null && frames.Length > 0;
+            lockOnMarker.enabled = visible;
+            if (!visible) return;
+            var bounds = actions.LockOnBounds;
+            lockOnMarker.sprite = frames[(int)(Time.unscaledTimeAsDouble * vfxProfile.LockOnFps) % frames.Length];
+            float size = Mathf.Max(1f, Mathf.Max(bounds.size.x, bounds.size.y) / 1.2f);
+            SetPreviewShape(lockOnMarker, bounds.center, Vector2.one * size, Color.white);
         }
 
         private void UpdateGlitchPreview(bool underground)
@@ -400,6 +417,7 @@ namespace ActionPlatformer.Player
             if (groundMarker != null) groundMarker.enabled = false;
             if (glitchFill != null) glitchFill.enabled = false;
             if (glitchRing != null) glitchRing.enabled = false;
+            if (lockOnMarker != null) lockOnMarker.enabled = false;
         }
 
         private void OnDisable()

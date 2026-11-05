@@ -1,0 +1,24 @@
+{
+  "id": "custom/lock-on",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "785f2f3935e0036ad977b675157404590b940511dc25c465eca9687e7d38364b",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 24,
+  "frameSize": [
+    32,
+    32
+  ],
+  "duration": 0.8,
+  "loop": true,
+  "unityPivot": [
+    0.5,
+    0.5
+  ],
+  "rgbaSha256": "a9f53d06d64963f9bec4e55a965c28c27bc9a0c7e1fec961d9184d63a5b352f1",
+  "deterministic": true,
+  "edgePixels": 2,
+  "lastFrameEmpty": false
+}

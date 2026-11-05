@@ -104,6 +104,56 @@ namespace ActionPlatformer.Tests
             yield return null; yield return Step; yield return null;
         }
 
+        [UnityTest] public IEnumerator GlitchLocksOnAndFacesTheTargetWhateverTheCursorOrMovementUntilFourAway()
+        {
+            yield return PressGlitchRight();
+            Assert.That(player.HasLockOn, Is.True, "A successful glitch locks onto its target.");
+            Assert.That(player.LockOnTarget, Is.SameAs(enemy));
+            // The cursor is far on the player's right and the player walks right, away from the target: still faces the target.
+            input.Command = new PlayerCommand { HasAim = true, Move = Vector2.right,
+                AimScreenPosition = camera.WorldToScreenPoint(player.transform.position + Vector3.right * 6f) };
+            yield return null; yield return Step; yield return null;
+            Assert.That(player.HasLockOn, Is.True);
+            Assert.That(player.Facing, Is.EqualTo(-1f), "Backpedals: faces the target on its left, not the cursor or movement.");
+            float deadline = Time.realtimeSinceStartup + 3f;
+            while (player.HasLockOn && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(player.HasLockOn, Is.False, "Walking farther than the break distance releases the lock.");
+            Assert.That(Vector2.Distance(BodyCenter, enemy.GetComponent<Collider2D>().bounds.center), Is.GreaterThan(glitchSettings.LockOnBreakDistance));
+            yield return null; yield return null;
+            Assert.That(player.Facing, Is.EqualTo(1f), "Free again: movement decides the facing.");
+        }
+
+        [UnityTest] public IEnumerator LockOnEndsWhenTheTargetDiesOrLockOnIsDisabled()
+        {
+            yield return PressGlitchRight();
+            Assert.That(player.HasLockOn, Is.True);
+            enemy.ApplyDamage(enemy.CurrentHealth);
+            yield return null; yield return Step; yield return null;
+            Assert.That(player.HasLockOn, Is.False, "A dead target cannot stay locked.");
+        }
+
+        [UnityTest] public IEnumerator LockOnShowsTheReticleOnTheTargetOnlyWhileLocked()
+        {
+            Transform Find() { foreach (var r in player.GetComponentsInChildren<SpriteRenderer>(true)) if (r.name == "Lock-on marker") return r.transform; return null; }
+            Assert.That(Find(), Is.Not.Null, "PlayerVisual owns the reticle renderer.");
+            yield return PressGlitchRight();
+            yield return null; yield return null;
+            var marker = Find().GetComponent<SpriteRenderer>();
+            Assert.That(marker.enabled, Is.True);
+            Assert.That(marker.sprite.name, Does.StartWith("lock-on-"));
+            Assert.That(Vector2.Distance(marker.transform.position, enemy.GetComponent<Collider2D>().bounds.center), Is.LessThan(0.01f));
+            enemy.ApplyDamage(enemy.CurrentHealth);
+            yield return null; yield return Step; yield return null; yield return null;
+            Assert.That(marker.enabled, Is.False, "The reticle goes with the lock.");
+        }
+
+        [UnityTest] public IEnumerator ZeroBreakDistanceTurnsLockOnOff()
+        {
+            Set(glitchSettings, "lockOnBreakDistance", 0f);
+            yield return PressGlitchRight();
+            Assert.That(player.HasLockOn, Is.False);
+        }
+
         [UnityTest] public IEnumerator GlitchStartedInsideAnActiveDomainKillsWithoutMoving()
         {
             Vector2 start = player.Motor.Position;

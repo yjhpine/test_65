@@ -36,6 +36,18 @@ namespace ActionPlatformer.Editor
             Debug.Log("Glitch marker VFX imported into PlayerVfx; glitch rules unchanged.");
         }
 
+        // The reticle round the monster a glitch locked onto: native 18 px grid, centered on the monster.
+        [MenuItem("Game/Effects/Import Generated Lock-On Marker")]
+        public static void ImportLockOnMarker()
+        {
+            const string destination = "Assets/_Game/Art/Effects/PixelFxLockOn";
+            // A shorter render must not leave stale frames behind (they would sort into the array).
+            if (Directory.Exists(destination))
+                foreach (string old in Directory.GetFiles(destination, "*.png")) AssetDatabase.DeleteAsset(old.Replace('\\', '/'));
+            ImportOnPlayerGrid(("lock-on", destination, "lockOnFrames"));
+            Debug.Log("Lock-on marker imported into PlayerVfx; glitch rules unchanged.");
+        }
+
         // The straight glitch streak between departure and arrival: left-edge pivot, tiled along the path at its own size.
         [MenuItem("Game/Effects/Import Generated Glitch Streak")]
         public static void ImportGlitchStreak()

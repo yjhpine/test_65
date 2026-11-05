@@ -38,6 +38,11 @@ namespace ActionPlatformer.Presentation
         public Sprite[] GlitchMarkerBlockedFrames => glitchMarkerBlockedFrames;
         [SerializeField, Min(1f)] private float glitchMarkerFps = 30f;
         public float GlitchMarkerFps => glitchMarkerFps;
+        // Reticle round the monster a glitch locked onto, at the sprites' own size (scaled up only for big bodies). Empty shows nothing.
+        [SerializeField] private Sprite[] lockOnFrames;
+        public Sprite[] LockOnFrames => lockOnFrames;
+        [SerializeField, Min(1f)] private float lockOnFps = 30f;
+        public float LockOnFps => lockOnFps;
         // Straight teal/red streak between a glitch's departure and arrival, tiled at the sprites' own size along the
         // path (left-edge pivot, +x = travel). Empty keeps the older row of small sparks between the endpoints.
         [SerializeField] private Sprite[] glitchStreakFrames;

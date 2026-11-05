@@ -66,6 +66,9 @@ namespace ActionPlatformer.Player
     public interface IPlayerActionState
     {
         GlitchPreview GlitchPreview { get; }
+        // After a glitch the player stays locked on to its target until it dies or gets too far away (world-space body bounds).
+        bool HasLockOn => false;
+        Bounds LockOnBounds => default;
         // Maximum glitch distance for the optional range display; zero without glitch tuning.
         float GlitchMaxDistance { get; }
         bool IsUnderground { get; }
