@@ -37,17 +37,13 @@ namespace ActionPlatformer.Player
             return BarrierBetween(origin, center, tuning.ObstacleMask, hits) ? GlitchBlockReason.GateClosed : GlitchBlockReason.None;
         }
 
-        public static bool ValidTarget(Unit owner, UnitHealth target, Vector2 origin, GlitchTuning tuning, Camera view,
-            List<RaycastHit2D> hits) =>
-            IsCandidate(owner, target, tuning) && TargetBlock(target, origin, tuning, view, hits) == GlitchBlockReason.None;
-
         private static bool OnScreen(Camera view, Vector2 point)
         {
             Vector3 viewport = view.WorldToViewportPoint(point);
             return viewport.z >= 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
         }
 
-        private static bool BarrierBetween(Vector2 from, Vector2 to, int mask, List<RaycastHit2D> hits)
+        public static bool BarrierBetween(Vector2 from, Vector2 to, int mask, List<RaycastHit2D> hits)
         {
             int count = Physics2D.Linecast(from, to, Filter(mask), hits);
             for (int i = 0; i < count; i++)

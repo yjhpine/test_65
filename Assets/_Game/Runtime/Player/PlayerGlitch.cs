@@ -131,15 +131,17 @@ namespace ActionPlatformer.Player
             CanEmerge = TryGetEmergencePoint(out _);
         }
 
+        // The emergence column is the marker on the burrow floor, so only a lost target cancels it; where the target moved since
+        // (a boss leaping off the floor or stepping out of glitch range) does not. Range and view were judged when it was chosen.
         private bool TryGetEmergencePoint(out Vector2 destination, bool searchNearby = false)
         {
             destination = default;
-            if (!IsUnderground || !GlitchUtility.ValidTarget(owner, ArrivalTarget, motor.Position, tuning, view, hits)) return false;
-            var target = UnitPhysics2D.Body(ArrivalTarget).bounds;
-            if (!GlitchUtility.TryFloor(target, tuning.ObstacleMask, hits, out var currentFloor) || currentFloor != floor) return false;
-            return searchNearby
+            if (!IsUnderground || !GlitchUtility.IsCandidate(owner, ArrivalTarget, tuning)) return false;
+            bool free = searchNearby
                 ? GlitchUtility.TryNearestEmergence(body, motor.Position, floor, UndergroundPosition, emergenceSearchDirection, tuning, overlaps, out destination)
                 : GlitchUtility.TryEmergence(body, motor.Position, floor, UndergroundPosition, tuning, overlaps, out destination);
+            // A closed gate between the parked body and the emergence point still blocks it, as it blocks every glitch path.
+            return free && !GlitchUtility.BarrierBetween(motor.Position, destination, tuning.ObstacleMask, hits);
         }
 
         public bool TryEmerge()

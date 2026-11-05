@@ -1503,6 +1503,59 @@ namespace ActionPlatformer.Tests
             AssertRestored(); Assert.That(player.Motor.Position, Is.EqualTo(original));
         }
 
+        // A boss keeps acting on a burrowed player: it leaps off the floor and steps away. The emergence column is the marker on
+        // the burrow floor, so where the target went afterwards never sends the player back to the parked body.
+        [Test] public void EmergenceAtMarkerSurvivesTargetLeavingTheFloor()
+        {
+            EnterUnderground(); Vector2 marker = Glitch.GroundMarkerPosition;
+            FloatingTarget(new Vector2(enemy.transform.position.x, 65f), enemy);
+            Glitch.MoveUnderground(0f, Time.fixedDeltaTime);
+            Assert.That(Glitch.CanEmerge, Is.True, "An airborne target does not turn the marker red.");
+            Assert.That(Glitch.TryEmerge(), Is.True);
+            AssertRestored();
+            Assert.That(player.GetComponent<Collider2D>().bounds.center.x, Is.EqualTo(marker.x).Within(.001f));
+        }
+
+        [Test] public void EmergenceAtMarkerSurvivesTargetMovingOutOfGlitchRange()
+        {
+            EnterUnderground(); Vector2 marker = Glitch.GroundMarkerPosition; Vector2 parked = player.Motor.Position;
+            var body = enemy.GetComponent<Rigidbody2D>();
+            body.position = new Vector2(parked.x + glitchSettings.MaxDistance + 3f, body.position.y);
+            Physics2D.SyncTransforms();
+            Glitch.MoveUnderground(0f, Time.fixedDeltaTime);
+            Assert.That(Glitch.CanEmerge, Is.True, "Range and view are judged when the glitch is chosen, not at emergence.");
+            Assert.That(Glitch.TryEmerge(), Is.True);
+            AssertRestored();
+            Assert.That(player.GetComponent<Collider2D>().bounds.center.x, Is.EqualTo(marker.x).Within(.001f));
+        }
+
+        [Test] public void ClosedGateBetweenParkedBodyAndEmergenceStillReturnsToOrigin()
+        {
+            EnterUnderground(); Vector2 original = player.Motor.Position;
+            Gate(new Vector2(-1.5f, 62f), new Vector2(.2f, 4f));
+            Glitch.MoveUnderground(0f, Time.fixedDeltaTime);
+            Assert.That(Glitch.CanEmerge, Is.False);
+            Assert.That(Glitch.TryEmerge(), Is.False);
+            AssertRestored(); Assert.That(player.Motor.Position, Is.EqualTo(original));
+        }
+
+        [UnityTest] public IEnumerator AttackPressEmergesAtMarkerWhileTheTargetIsAirborne()
+        {
+            input.Command = new PlayerCommand { GlitchPressed = true,
+                AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.down * .35f) };
+            yield return null; yield return Step; yield return null;
+            Assert.That(Glitch.IsUnderground, Is.True);
+            float markerX = Glitch.GroundMarkerPosition.x;
+            FloatingTarget(new Vector2(enemy.transform.position.x, 65f), enemy);
+            yield return Step;
+            input.Command = new PlayerCommand { AttackPressed = true };
+            yield return null; yield return Step; yield return null;
+            AssertRestored();
+            Assert.That(player.RepositionVersion, Is.EqualTo(2), "The press emerges instead of returning to the parked body.");
+            Assert.That(Combat.Attack, Is.EqualTo(PlayerAttack.Emergence));
+            Assert.That(player.GetComponent<Collider2D>().bounds.center.x, Is.EqualTo(markerX).Within(.001f));
+        }
+
         [Test] public void TargetLossAndDisableRestoreUndergroundAndCooldown()
         {
             Vector3 originalVisualPosition = player.transform.Find("Visual").localPosition;
