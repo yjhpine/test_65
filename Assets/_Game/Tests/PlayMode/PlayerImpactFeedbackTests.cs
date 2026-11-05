@@ -278,12 +278,38 @@ namespace ActionPlatformer.Tests
             }
         }
 
+        // A 0 scale stops the world for the hold without touching the physics step, then eases back over the
+        // recovery (the step never shrinks below 5% of normal on the way), and leaves time and step as they were.
+        [Test] public void DamageFreezeStopsTimeThenEasesBackAndRestoresThePhysicsStep()
+        {
+            Set("damageSlowTimeScale", 0f); Set("damageSlowDuration", .2f); Set("damageSlowRecovery", .1f);
+            float step = Time.fixedDeltaTime;
+            feedback.PlayDamage(Vector2.left, 10);
+            Assert.That(Time.timeScale, Is.Zero, "stopped at once");
+            Assert.That(Time.fixedDeltaTime, Is.EqualTo(step), "a full stop leaves the physics step alone");
+            Assert.That(feedback.IsTimeEffectActive, Is.True); Assert.That(feedback.IsHitStopped, Is.False);
+            feedback.Tick(10.199); Assert.That(Time.timeScale, Is.Zero, "held for the duration");
+            feedback.Tick(10.2001); Assert.That(Time.timeScale, Is.LessThan(.01f), "the recovery starts from a stop");
+            Assert.That(Time.fixedDeltaTime, Is.GreaterThanOrEqualTo(step * .05f - 1e-6f));
+            feedback.Tick(10.25);
+            Assert.That(Time.timeScale, Is.GreaterThan(.3f).And.LessThan(.7f), "eases back");
+            feedback.Tick(10.301); Assert.That(Time.timeScale, Is.EqualTo(1f));
+            Assert.That(Time.fixedDeltaTime, Is.EqualTo(step).Within(1e-6f));
+            Assert.That(feedback.IsTimeEffectActive, Is.False);
+            // A hit during the freeze refreshes it instead of stacking.
+            feedback.PlayDamage(Vector2.left, 20); feedback.Tick(20.15);
+            feedback.PlayDamage(Vector2.right, 20.15); feedback.Tick(20.3);
+            Assert.That(Time.timeScale, Is.Zero, "the second hit restarts the hold");
+            feedback.Tick(20.451); Assert.That(Time.timeScale, Is.EqualTo(1f));
+        }
+
         [Test] public void DamageSlowScaleValidationAndInstantRecovery()
         {
-            foreach (float invalid in new[] { 0f, -1f, 1.1f, float.NaN, float.PositiveInfinity })
+            foreach (float invalid in new[] { -1f, 1.1f, float.NaN, float.PositiveInfinity })
             {
                 Set("damageSlowTimeScale", invalid); Assert.That(tuning.TryValidate(), Is.False);
             }
+            Set("damageSlowTimeScale", 0f); Assert.That(tuning.TryValidate(), Is.True, "0 is a full stop");
             Set("damageSlowTimeScale", 1f); Assert.That(tuning.TryValidate(), Is.True);
             feedback.PlayDamage(Vector2.left, 0); Assert.That(Time.timeScale, Is.EqualTo(1));
             Set("damageSlowTimeScale", .2f); Set("damageSlowRecovery", 0);

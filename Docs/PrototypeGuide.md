@@ -783,16 +783,16 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 
 ### 동작
 
-- 시간: 체력이 줄면 0.2배 슬로를 실제 시간 0.35초 유지한 뒤 0.1초 동안 1배로 돌아온다(실제 0.45초 동안 게임 시간은 약 0.13초 흐른다). 나가는 히트스톱·처치 슬로보다 우선한다.
+- 시간: 체력이 줄면 0.2배 슬로를 실제 시간 0.35초 유지한 뒤 0.1초 동안 1배로 돌아온다(실제 0.45초 동안 게임 시간은 약 0.13초 흐른다). 나가는 히트스톱·처치 슬로보다 우선한다. (2026-11-05부터 완전 정지 0.35초 + 0.1초 복귀, 아래 같은 날 절)
 - 화면: 카메라가 맞은 방향으로 8px(1120×660 기준) 밀렸다가 0.12초에 잦아든다. 흔들림 상한(`PlayerImpactFeedback.MaxShakePixels`)을 4에서 8로 올렸고, 다른 흔들림(1.5~3px)은 그대로다. 분홍 비네트·피격 모션·흰색 번쩍임·외곽선은 그대로이고 캐릭터 기울기는 없앴다.
 - 넉백: 적의 공격(방향이 있는 피해, `ApplyDirectedDamage`)은 공격 근원 반대쪽으로 10유닛/초에서 0.25초(게임 시간) 동안 선형으로 줄어드는 속도로 밀고, 시작할 때 위로 7유닛/초 살짝 뜬다. 그동안 걷기·점프 입력은 무시한다. 바로 위/아래에서 맞으면 바라보는 반대쪽으로 민다. 땅에 닿은 뒤 발판 끝에서는 멈춘다(공격 반발력과 같은 단계 사용). 근원이 없는 피해(`ApplyDamage(int)`)는 밀지 않는다. 사망하는 피해는 밀지 않고 그 자리에서 사망 연출을 한다.
-- 피격 무적: 체력이 줄면 1.5초 동안 적의 공격(위치·방향이 있는 피해)을 무시한다. 실제 시간 기준이라 피격 슬로 0.45초도 포함되고(정상 속도로 보호받는 시간은 약 1.05초), 일시정지·컷신처럼 timeScale이 0인 동안은 줄지 않는다. 적은 계속 플레이어를 대상으로 삼는다(`CanReceiveDamage` 그대로). 근원이 없는 `ApplyDamage(int)`는 방패처럼 무적도 우회한다(테스트·환경용 계약 유지). 사망·비활성화 때 풀린다.
+- 피격 무적: 체력이 줄면 1.5초 동안 적의 공격(위치·방향이 있는 피해)을 무시한다. 실제 시간 기준이라 피격 슬로 0.45초도 포함되고(정상 속도로 보호받는 시간은 약 1.05초), 일시정지·컷신처럼 timeScale이 0인 동안은 줄지 않는다. (2026-11-05부터는 피격 정지 0.35초 동안도 줄지 않으므로 실제로는 약 1.85초 뒤에 풀린다.) 적은 계속 플레이어를 대상으로 삼는다(`CanReceiveDamage` 그대로). 근원이 없는 `ApplyDamage(int)`는 방패처럼 무적도 우회한다(테스트·환경용 계약 유지). 사망·비활성화 때 풀린다.
 - 깜빡임: 무적 동안 스프라이트가 실제 시간 0.08초마다 알파 1 ↔ 0.2로 깜빡인다(슬로 중에도 같은 박자). reduced motion에서는 깜빡이지 않고 알파 0.6으로 유지한다. 사망 모션은 깜빡이지 않는다.
 - 피격음: 체력이 줄 때 `Hurt`(0.32초)를 음량 0.5, 피치 ±3%로 한 번 재생한다(0.05초 안에 겹친 피해는 한 번). 사망하는 피해도 같은 소리다.
 
 ### 구성 위치
 
-- 값: `Data/PlayerCombatTuning.asset` — Player Damage Feedback(`Damage Slow Time Scale` 0.2, `Damage Slow Duration` 0.35, `Damage Shake Amplitude` 8)과 새 Player Damage Response(`Damage Invulnerability` 1.5, `Damage Knockback Speed` 10, `Damage Knockback Duration` 0.25, `Damage Knockback Lift` 7). 0이면 각각 끈다. 깜빡임 박자·알파는 Player 프리팹 Visual의 `PlayerVisual`(`Damage Blink Interval` 0.08, `Damage Blink Alpha` 0.2).
+- 값: `Data/PlayerCombatTuning.asset` — Player Damage Feedback(`Damage Slow Time Scale` 0.2, `Damage Slow Duration` 0.35, `Damage Shake Amplitude` 8; 11-05부터 0 / 0.35)과 새 Player Damage Response(`Damage Invulnerability` 1.5, `Damage Knockback Speed` 10, `Damage Knockback Duration` 0.25, `Damage Knockback Lift` 7). 0이면 각각 끈다. 깜빡임 박자·알파는 Player 프리팹 Visual의 `PlayerVisual`(`Damage Blink Interval` 0.08, `Damage Blink Alpha` 0.2).
 - 코드: 무적 시간은 `PlayerUnit`이 갖고(`OnDamageApplied`에서 바로 켜서 같은 단계의 두 번째 공격도 막음) `UnitHealth.SetInvulnerable`로 알린다. `UnitHealth.Invulnerable`은 위치·방향 피해만 막는다. 넉백은 `PlayerUnit`의 공격 반발력 단계를 재사용한다(점프 키 중력 완화 없음). `PlayerReactionPresentation.Invulnerable`을 `PlayerVisual`이 읽어 깜빡인다. 피격음은 `PlayerVisual.NotifyDamage` → `PlayerSoundEffects.Hurt`.
 - 소리: `Audio/Combat/Hurt.wav`(Kenney Impact `impactPunch_heavy_002` + Sci-fi `laserRetro_004` 25% 낮춰 비트크러시 + `lowFrequency_explosion_000` 0.3초), `PlayerSfx.asset`의 `Hurt`·`Hurt Volume`(0.5). 레시피는 `Library/SfxDownloads/PrepareSfx.py`(`python -I`로 루트에서 실행, 다른 클립은 바이트 동일).
 - 테스트: PlayMode `PlayerDamageResponseTests` 5개, `PlayerVisualTests.InvulnerabilityBlinksTheSpriteButNeverWhileDying`, EditMode `PlayerVisualAssetTests.PlayerDamageFeedbackUsesTheRequestedSlowShakeAndHurtSound`.
@@ -883,3 +883,15 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 설정: `Data/Presentation/PlayerVfx.asset`의 `Glitch Streak Frames`(8), `Glitch Streak Fps`(30), `Glitch Streak Draw Time`(0.05, 뻗는 시간 = 도착 spark 지연), `Glitch Streak Retract Start`(0.6). 프레임 배열을 비우면 예전처럼 0.6 간격의 작은 spark 열로 돌아간다.
 - 코드: `PlayerActionEffects`의 `Glitch streak` 렌더러(VfxManager의 플레이어 세션 소유, Sorting Order +2로 spark +3 아래, 공용 효과 재질의 색조는 이 렌더러에서만 흰색으로 꺼서 원화 색 그대로). `PlayGlitch`는 줄기가 있으면 spark를 양 끝 2개만 쓴다.
 - 테스트: PlayMode `PlayerVisualTests.GlitchStreakJoinsTheEndpointBurstsThenPullsInFromTheDeparture`(출발 즉시·도착은 줄기 도달 뒤, 중간 spark 없음, 경로 각도·끝점, 스케일·회전된 소유자 아래 실제 크기 1, 꼬리는 도착 쪽으로만 이동, 끝나면 숨김, 거리 0·비활성화), `GlitchSparksFillThePathWhenThereIsNoStreak`(기존 spark 열 테스트를 프레임 없음 대체 동작으로 유지), EditMode `PlayerVisualAssetTests.GlitchStreakIsAnEightFrameTealAndRedTileOnThePlayerGrid`.
+
+## 2026-11-05 — 플레이어 피격: 슬로모션 대신 0.35초 완전 정지 + 0.1초 복귀
+
+사용자 요청: 피격 슬로모션을 "0.2초 동안 게임을 아예 멈췄다가 0.1초 만에 원래 속도로 돌아오는" 느낌으로 바꾼다. 같은 날 후속 요청으로 정지 시간을 0.35초로 늘렸다(아래 실제 측정값은 0.2초일 때 기록).
+
+- 시간: 체력이 줄면 게임 시간(timeScale)을 0으로 실제 시간 0.35초 멈추고, 이어서 0.1초 동안 부드럽게 1배로 돌린다(0.2초일 때 실제 측정: 0.19초까지 0, 0.21초 0.04 → 0.25초 0.55 → 0.29초 0.99 → 0.31초 1. 0.35초면 같은 곡선이 0.15초 늦게 온다). 멈춘 동안 적·플레이어 이동·물리·넉백이 모두 멈추고, 화면 흔들림·비네트·깜빡임·피격음은 실제 시간이라 그대로 나온다. 정지 중에 다시 맞으면 정지가 처음부터 다시 시작된다(겹쳐 길어지지 않음). 나가는 히트스톱·처치 슬로보다 우선하는 규칙은 그대로다.
+- 넉백은 정지가 풀린 뒤 게임 시간으로 진행한다.
+- 피격 무적 1.5초는 "timeScale이 0이면 세지 않는다"는 기존 규칙 그대로라, 정지 0.35초 뒤부터 세어 실제로는 약 1.85초 뒤에 풀린다(세계가 움직이는 시간 기준 1.5초).
+- 값: `Data/PlayerCombatTuning.asset`의 `Damage Slow Time Scale` 0(이전 0.2), `Damage Slow Duration` 0.35(처음 0.2로 바꿨다가 같은 날 0.35로 조정, 슬로였던 값과 같음), `Damage Slow Recovery` 0.1(그대로). `Damage Slow Time Scale`은 이제 0(완전 정지)을 허용한다(이전 최소 0.01).
+- 코드: `PlayerImpactFeedback.ApplySlowScale`이 배율 0이면 물리 간격(`fixedDeltaTime`)을 건드리지 않고(히트스톱과 같음), 복귀 중에는 물리 간격을 평소의 5% 아래로 줄이지 않는다. 끝나면 시간 배율과 물리 간격을 원래 값으로 되돌린다. `PlayerCombatTuning` 검증이 0을 허용한다.
+- 테스트: `PlayerImpactFeedbackTests.DamageFreezeStopsTimeThenEasesBackAndRestoresThePhysicsStep`(새), `DamageSlowScaleValidationAndInstantRecovery`(0은 이제 유효), EditMode `PlayerVisualAssetTests`의 에셋 값(0/0.35/0.1), `PlayerDamageResponseTests`의 무적 종료 시점(정지 시간만큼 늦춤). `PlayerGlitchCombatTests.ActualDamageFreezesMovingPlayer…`(이전 `ActualDamageSlows…`: 정지 중 위치 그대로·물리 간격 유지, 풀린 뒤 이동)과 `AirSwingJumpRelease…`(피격 반응은 정지 중 바로 확인), `PauseTests.PausingDuringHitStop…`(물리 간격을 줄이는 슬로 경로는 처치 슬로로 확인하고, 피격 정지 중 일시정지도 확인)을 바꿨다.
+- 피격 자세: 피격 반응 표시는 실제 0.12초라 정지 0.35초 안에 Hit 모션이 재생되고, 정지가 끝날 때까지 마지막 프레임에 멈춰 있다가 이어진다.

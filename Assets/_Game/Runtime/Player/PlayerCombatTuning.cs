@@ -80,7 +80,8 @@ namespace ActionPlatformer.Player
         [Tooltip("Glitch screen tear when the combo's strong strike lands. Off in reduced motion.")]
         [SerializeField, Min(0f)] private float finisherGlitchDuration = .1f;
         [Header("Player damage feedback (0 disables each effect)")]
-        [SerializeField, Range(.01f, 1f)] private float damageSlowTimeScale = .2f;
+        [Tooltip("Game speed while the hit holds: 0 stops the world for the duration, then it eases back over the recovery.")]
+        [SerializeField, Range(0f, 1f)] private float damageSlowTimeScale = .2f;
         [SerializeField, Min(0f)] private float damageSlowDuration = .15f;
         [SerializeField, Min(0f)] private float damageSlowRecovery = .1f;
         [Tooltip("Player damage movement in reference-screen pixels; zero direction never invents an axis.")]
@@ -173,7 +174,7 @@ namespace ActionPlatformer.Player
             NonNegative(shakeDuration) && Positive(shakeFrequency) && NonNegative(killHitStopBonus) &&
             Positive(finalBlowSlowTimeScale) && finalBlowSlowTimeScale <= 1f && NonNegative(finalBlowSlowDuration) &&
             NonNegative(finalBlowSlowRecovery) && NonNegative(finisherGlitchDuration) &&
-            Positive(damageSlowTimeScale) && damageSlowTimeScale <= 1f &&
+            NonNegative(damageSlowTimeScale) && damageSlowTimeScale <= 1f &&
             NonNegative(damageSlowDuration) && NonNegative(damageSlowRecovery) && NonNegative(damageShakeAmplitude) && NonNegative(damageShakeDuration) &&
             NonNegative(damageZoom) && damageZoom <= .2f && NonNegative(damageZoomDuration) &&
             NonNegative(damageFlashOpacity) && damageFlashOpacity <= 1f && NonNegative(damageFlashDuration) &&

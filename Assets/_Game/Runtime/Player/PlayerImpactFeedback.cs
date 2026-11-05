@@ -138,12 +138,18 @@ namespace ActionPlatformer.Player
             return true;
         }
 
+        // Below this share of normal speed the physics step stops shrinking (a full stop leaves it alone),
+        // so easing out of a freeze never asks Unity for a near-zero fixed step.
+        private const float MinPhysicsStepShare = .05f;
+
         private void ApplySlowScale(float multiplier)
         {
             appliedTimeScale = savedTimeScale * multiplier;
             Time.timeScale = appliedTimeScale;
+            // A full stop runs no physics at all: keep the step as it is, like a hit stop.
+            if (multiplier <= 0f) { appliedFixedDeltaTime = Time.fixedDeltaTime; return; }
             // Keep real-time physics cadence smooth while gameplay time advances more slowly.
-            appliedFixedDeltaTime = savedFixedDeltaTime * multiplier;
+            appliedFixedDeltaTime = savedFixedDeltaTime * Mathf.Max(multiplier, MinPhysicsStepShare);
             Time.fixedDeltaTime = appliedFixedDeltaTime;
             // Unity quantizes the physics interval internally; retain the value it actually stored.
             appliedFixedDeltaTime = Time.fixedDeltaTime;

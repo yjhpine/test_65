@@ -62,7 +62,7 @@ MonoBehaviour:
   finalBlowSlowDuration: 0.2
   finalBlowSlowRecovery: 0.15
   finisherGlitchDuration: 0.1
-  damageSlowTimeScale: 0.2
+  damageSlowTimeScale: 0
   damageSlowDuration: 0.35
   damageSlowRecovery: 0.1
   damageShakeAmplitude: 8

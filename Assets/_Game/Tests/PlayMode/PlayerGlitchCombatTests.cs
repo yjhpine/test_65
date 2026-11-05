@@ -564,9 +564,11 @@ namespace ActionPlatformer.Tests
             yield return null; yield return Step;
             Assert.That(player.Motor.Velocity.y, Is.LessThan(beforeRelease * .6f));
             Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
-            Health.ApplyDamage(1); yield return null; yield return Step;
+            // The hit reaction shows at once (real time); no physics step runs until the hit's freeze ends.
+            Health.ApplyDamage(1); yield return null;
             Assert.That(Combat.IsAttacking, Is.False);
             Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.Hit));
+            yield return Step;
             Assert.That(player.Motor.Velocity.x, Is.GreaterThan(0f));
             while (!Combat.CanAttack(Time.timeAsDouble) && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble, false), Is.True);
@@ -2049,19 +2051,24 @@ namespace ActionPlatformer.Tests
             Assert.That(Combat.HasBufferedAttack, Is.False);
         }
 
-        [UnityTest] public IEnumerator ActualDamageSlowsMovingPlayerThenRestoresAndDisableClearsTime()
+        // Since 11-05 a hit stops the world (scale 0) for its hold, then eases back; the physics step is left alone.
+        [UnityTest] public IEnumerator ActualDamageFreezesMovingPlayerThenRestoresAndDisableClearsTime()
         {
             float originalScale = Time.timeScale;
             float originalStep = Time.fixedDeltaTime;
             input.Command = new PlayerCommand { Move = Vector2.right };
-            Health.ApplyDamage(1);
-            yield return null; yield return null;
-            Assert.That(Time.timeScale, Is.GreaterThan(0f).And.LessThan(originalScale));
-            Assert.That(player.Feedback.IsHitStopped, Is.False);
-            float x = player.transform.position.x;
             yield return Step; yield return Step;
-            Assert.That(player.transform.position.x, Is.GreaterThan(x), "Physics keeps moving during damage slow motion.");
-            // The slow lasts as long as its tuning says (0.35 s hold + 0.1 s recovery since 11-04).
+            Health.ApplyDamage(1);
+            yield return null;
+            float x = player.transform.position.x;
+            yield return null; yield return null;
+            Assert.That(Time.timeScale, Is.Zero, "The hit holds the world still.");
+            Assert.That(Time.fixedDeltaTime, Is.EqualTo(originalStep).Within(.0000001f), "A full stop leaves the physics step alone.");
+            Assert.That(player.Feedback.IsHitStopped, Is.False);
+            Assert.That(player.transform.position.x, Is.EqualTo(x).Within(.0001f), "Nothing moves while frozen.");
+            yield return Step; yield return Step;
+            Assert.That(player.transform.position.x, Is.GreaterThan(x), "Movement resumes after the freeze.");
+            // The freeze lasts as long as its tuning says (0.2 s hold + 0.1 s recovery since 11-05).
             float deadline = Time.realtimeSinceStartup + 3f;
             while (player.Feedback.IsTimeEffectActive && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(Time.timeScale, Is.EqualTo(originalScale));

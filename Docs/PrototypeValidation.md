@@ -1033,3 +1033,19 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 테스트: `PlayerVisualAssetTests` 5/5, `PlayerVisualTests` 11/11(새 줄기 테스트 1, 기존 spark 열 테스트는 프레임 없음 대체 동작으로 유지), `CombatPresentationTests` 4/4.
 - 전체 실행: EditMode 114/114, PlayMode 412/413, 312초. 실패 1개는 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(288줄, 가상 Enter 뒤 대사 전부 표시가 False)이며 클래스 재실행 두 번에서도 같은 테스트만 실패했다. 입력·대화만 다루는 테스트이고 이번 변경은 효과 렌더링뿐이라 무관하다고 판단하지만, 수정 전 코드로 같은 조건에서 돌려 보지는 않았다(11-02·11-03에도 클래스 재실행 실패 기록이 있음, 원인 미확정). Console 오류는 의도된 6건, 컴파일 오류 0.
 - 확인하지 않은 것: 실제 Shift 입력으로의 수동 플레이, 빠른 연속 순간이동에서의 겹침, 스탠드얼론 빌드.
+
+## 2026-11-05: 플레이어 피격 — 0.2초 완전 정지 + 0.1초 복귀
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 에셋: `PlayerCombatTuning.asset`의 `damageSlowTimeScale` 0.2 → 0, `damageSlowDuration` 0.35 → 0.2(Editor API, diff 두 줄). `damageSlowRecovery` 0.1은 그대로.
+- 실제 화면(MovementLab, 전면 방패병의 실제 공격, 열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림, 씬 저장 없음): 맞은 순간부터 0.188초까지 timeScale 0·fixedDeltaTime 0.0200, 0.209초 0.04(물리 간격 0.0010), 0.229초 0.25, 0.250초 0.55, 0.271초 0.82, 0.291초 0.99, 0.311초부터 1.00·0.0200.
+- 첫 전체 실행: EditMode 114/114, PlayMode 411/414. 실패 3개는 모두 예전 슬로를 전제한 테스트였다.
+  - `PlayerDamageResponseTests.HitGrantsInvulnerability…`: 무적은 timeScale 0 동안 세지 않으므로 정지 0.2초만큼 늦게 풀린다. 규칙은 유지하고 기대 시점을 정지 시간만큼 늦췄다.
+  - `PlayerGlitchCombatTests.ActualDamageSlows…`: "슬로 중에도 물리가 움직인다"를 검사했다. "정지 중에는 움직이지 않고 풀린 뒤 움직인다"로 바꾸고 이름을 `ActualDamageFreezes…`로 바꿨다.
+  - `PlayerGlitchCombatTests.AirSwingJumpRelease…`: 피격 직후 물리 한 단계를 기다린 뒤 Hit 반응을 봤는데, 정지가 끝나야 물리 단계가 돌아 그때는 0.12초 반응이 끝나 있었다. 반응은 피격 직후 프레임에서 확인하도록 바꿨다.
+  - `PauseTests.PausingDuringHitStop…`: 물리 간격을 줄이는 슬로 중 일시정지를 피격 슬로로 확인하던 부분을 처치 슬로로 옮기고, 피격 정지 중 일시정지·재개도 따로 확인하게 했다.
+- 새 테스트: `PlayerImpactFeedbackTests.DamageFreezeStopsTimeThenEasesBackAndRestoresThePhysicsStep`. 검증 테스트에서 배율 0을 유효로 바꿨고, EditMode 에셋 값 검사를 0/0.2/0.1로 바꿨다.
+- 클래스 실행: `PlayerVisualAssetTests` 5/5, `PlayerImpactFeedbackTests` 19/19, `PlayerDamageResponseTests` 5/5, `CombatPresentationTests` 4/4, `PlayerVisualTests` 11/11, `PauseTests` 13/13, `PlayerGlitchCombatTests` 140/140.
+- 수정 후 전체 실행: EditMode 114/114, PlayMode 414/414(간헐 VirtualKeyboard도 통과), 311초. Console 오류는 의도된 6건, 컴파일 오류 0.
+- 확인하지 않은 것: 실제 입력으로의 수동 플레이 체감, CoreLoopStage 전체 플레이, 스탠드얼론 빌드.
+- 같은 날 정지 시간 0.2 → 0.35초(사용자 요청, `damageSlowDuration`만 변경, 복귀 0.1초 그대로). 전체 실행 EditMode 114/114, PlayMode 413/414: `PlayerDamageResponseTests.InvulnerabilityClockStopsWhileThePauseHoldsTime`이 맞고 0.3초 뒤 일시정지하는데, 정지가 0.35초로 늘어 그때까지 무적 시간이 하나도 세어지지 않았다(규칙대로 동작). 일시정지 시점을 "정지 시간 + 0.3초"로 옮겼다. 이후 클래스 재실행 `PlayerDamageResponseTests` 5/5, `PauseTests` 13/13, `CutsceneTests` 19/19. 테스트만 바꾼 뒤라 전체는 다시 돌리지 않았다.

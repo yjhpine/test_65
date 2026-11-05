@@ -358,14 +358,25 @@ namespace ActionPlatformer.Tests
             AssertResumed(game, scale, fixedStep);
             Assert.That(feedback.IsTimeEffectActive, Is.False);
 
-            // Damage slow motion also scales the physics step.
-            feedback.PlayDamage(Vector2.left, Time.unscaledTimeAsDouble);
+            // Slow motion (the room-clearing blow's) also scales the physics step.
+            feedback.PlayFinalBlow(Time.unscaledTimeAsDouble);
             Assert.That(feedback.IsTimeEffectActive, Is.True, "Precondition: slow motion owns time.");
-            Assert.That(Time.timeScale, Is.LessThan(1f));
+            Assert.That(Time.timeScale, Is.GreaterThan(0f).And.LessThan(1f));
             Assert.That(Time.fixedDeltaTime, Is.LessThan(fixedStep));
             Assert.That(game.TryPause(), Is.True);
             Assert.That(feedback.IsTimeEffectActive, Is.False);
             yield return new WaitForSecondsRealtime(.3f);
+            AssertPaused(game);
+            game.Resume();
+            AssertResumed(game, scale, fixedStep);
+
+            // The player's hit freeze (scale 0 since 11-05) ends the same way.
+            feedback.PlayDamage(Vector2.left, Time.unscaledTimeAsDouble);
+            Assert.That(feedback.IsTimeEffectActive, Is.True, "Precondition: the hit freeze owns time.");
+            Assert.That(Time.timeScale, Is.Zero);
+            Assert.That(game.TryPause(), Is.True);
+            Assert.That(feedback.IsTimeEffectActive, Is.False);
+            yield return new WaitForSecondsRealtime(.4f);
             AssertPaused(game);
             game.Resume();
             AssertResumed(game, scale, fixedStep);

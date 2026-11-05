@@ -34,8 +34,10 @@ namespace ActionPlatformer.Tests
         [Test] public void PlayerDamageFeedbackUsesTheRequestedSlowShakeAndHurtSound()
         {
             var tuning = AssetDatabase.LoadAssetAtPath<PlayerCombatTuning>("Assets/_Game/Data/PlayerCombatTuning.asset");
-            Assert.That(tuning.DamageSlowTimeScale, Is.EqualTo(.2f).Within(1e-6f));
+            // User decision 2026-11-05: a full stop for 0.35 s, then 0.1 s back to normal speed.
+            Assert.That(tuning.DamageSlowTimeScale, Is.EqualTo(0f).Within(1e-6f));
             Assert.That(tuning.DamageSlowDuration, Is.EqualTo(.35f).Within(1e-6f));
+            Assert.That(tuning.DamageSlowRecovery, Is.EqualTo(.1f).Within(1e-6f));
             Assert.That(tuning.DamageShakeAmplitude, Is.EqualTo(8f).Within(1e-6f));
             Assert.That(tuning.DamageInvulnerability, Is.EqualTo(1.5f).Within(1e-6f));
             Assert.That(tuning.TryValidate(), Is.True);

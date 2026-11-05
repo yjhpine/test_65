@@ -88,10 +88,13 @@ namespace ActionPlatformer.Tests
                 dim |= sprite.color.a < .5f; bright |= sprite.color.a > .95f;
             }
             Assert.That(dim && bright, Is.True, "The sprite blinks.");
-            yield return Realtime(1.25f - (Time.realtimeSinceStartup - hitAt));
-            Assert.That(player.ReactionPresentation.Invulnerable, Is.True, "Still protected at 1.25 s.");
-            yield return Realtime(1.65f - (Time.realtimeSinceStartup - hitAt));
-            Assert.That(player.ReactionPresentation.Invulnerable, Is.False, "Protection ends after about 1.5 s.");
+            // The clock does not run while the hit holds time at a full stop (like a pause), so 1.5 s of moving time
+            // follow that freeze.
+            float frozen = tuning.DamageSlowTimeScale <= 0f ? tuning.DamageSlowDuration : 0f;
+            yield return Realtime(frozen + 1.25f - (Time.realtimeSinceStartup - hitAt));
+            Assert.That(player.ReactionPresentation.Invulnerable, Is.True, "Still protected at 1.25 s of moving time.");
+            yield return Realtime(frozen + 1.65f - (Time.realtimeSinceStartup - hitAt));
+            Assert.That(player.ReactionPresentation.Invulnerable, Is.False, "Protection ends after about 1.5 s of moving time.");
             Assert.That(sprite.color.a, Is.EqualTo(1f).Within(.001f));
             Assert.That(health.ApplyDirectedDamage(10, Vector2.left), Is.EqualTo(10));
         }
@@ -99,7 +102,9 @@ namespace ActionPlatformer.Tests
         [UnityTest] public IEnumerator InvulnerabilityClockStopsWhileThePauseHoldsTime()
         {
             Assert.That(health.ApplyDirectedDamage(10, Vector2.left), Is.EqualTo(10));
-            yield return Realtime(.3f);
+            // Let 0.3 s of the protection run first; the hit's own full stop (if any) does not count either.
+            float frozen = tuning.DamageSlowTimeScale <= 0f ? tuning.DamageSlowDuration : 0f;
+            yield return Realtime(frozen + .3f);
             var manager = GameManager.Instance;
             Assert.That(manager.TryPause(), Is.True);
             yield return Realtime(1.5f);
