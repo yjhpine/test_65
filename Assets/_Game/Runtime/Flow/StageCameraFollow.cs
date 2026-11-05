@@ -16,6 +16,13 @@ namespace ActionPlatformer.Flow
         [Tooltip("Climb needed above the start height before the camera starts rising, so normal jumps do not bob the view.")]
         [SerializeField, Min(0f)] private float verticalDeadZone = 4.5f;
         [SerializeField, Min(0f)] private float verticalSmoothTime = 0.2f;
+        [Header("Descending (arenas below the start height)")]
+        [Tooltip("Deepest the target may drop below its start height while the camera still follows. 0 keeps the camera at its authored height.")]
+        [SerializeField, Min(0f)] private float maxDrop;
+        [Tooltip("Drop needed below the start height before the camera starts sinking.")]
+        [SerializeField, Min(0f)] private float lowerDeadZone = 1f;
+        [Tooltip("Falls are fast, so the camera follows them with a shorter smoothing time than climbs.")]
+        [SerializeField, Min(0f)] private float descentSmoothTime = 0.08f;
         private float baseOrthographicSize;
         private IPlayerActionState targetActions;
         private float baseRigY;
@@ -49,7 +56,8 @@ namespace ActionPlatformer.Flow
         {
             if (target == null) return;
             Vector3 position = CalculateRigPosition();
-            position.y = Mathf.SmoothDamp(transform.position.y, position.y, ref velocityY, verticalSmoothTime);
+            float smooth = position.y < transform.position.y ? descentSmoothTime : verticalSmoothTime;
+            position.y = Mathf.SmoothDamp(transform.position.y, position.y, ref velocityY, smooth);
             transform.position = position;
         }
 
@@ -72,10 +80,10 @@ namespace ActionPlatformer.Flow
                 ? targetActions.GroundMarkerPosition.x : target.position.x;
             float targetY = targetActions != null && targetActions.IsUnderground
                 ? targetActions.GroundMarkerPosition.y : target.position.y;
-            // The target's climb is capped at maxRise; the dead zone only delays the camera, never lets it sink below its authored height.
-            float climb = Mathf.Clamp(targetY - referenceTargetY, 0f, maxRise);
+            // The target's climb is capped at maxRise (and its drop at maxDrop, 0 by default: the camera never sinks); the dead zones only delay the camera.
+            float climb = Mathf.Clamp(targetY - referenceTargetY, -maxDrop, maxRise);
             Vector3 position = transform.position;
-            position.y = baseRigY + Mathf.Max(0f, climb - verticalDeadZone);
+            position.y = baseRigY + (climb >= 0f ? Mathf.Max(0f, climb - verticalDeadZone) : Mathf.Min(0f, climb + lowerDeadZone));
             position.x = minimum < maximum ? Mathf.Clamp(targetX, minimum, maximum) : (leftBoundary + rightBoundary) * 0.5f;
             return position;
         }
