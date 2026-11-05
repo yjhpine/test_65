@@ -7,7 +7,7 @@
 - 체력·피해: 기획서의 '3/1' 체계 대신 3타 의도만 반영. 적 체력 30(일반 공격 10 × 3), 적이 주는 피해 10.
 - 직선·샷건 탄은 '약한 피격': 넉백·정지·콤보 초기화·공격 취소 없이 다음 순간이동만 0.2초 제한. 피격 무적은 현재 1.5초 유지(기획서 0.7초 미적용).
 - 외형: 임시 도형 몸체(Block.png 색·크기·회전). 탄·폭발·영역은 PixelFX.
-- 배치: 새 테스트 씬 `Scenes/RangedEnemyTest.unity`(빌드 미포함). CoreLoopStage·MovementLab은 그대로. 같은 날 사용자 요청으로 기존 적 5종도 함께 모으며 `Scenes/EnemyTest.unity`로 이름을 바꿨다.
+- 배치: 새 테스트 씬 `Scenes/RangedEnemyTest.unity`(빌드 미포함). MovementLab은 그대로. 같은 날 사용자 요청으로 기존 적 5종도 함께 모으며 `Scenes/EnemyTest.unity`로 이름을 바꿨다. 또 같은 날 사용자 요청으로 CoreLoopStage의 적을 모두 지우고 영역 전개형을 뺀 5종을 기존 적과 섞어 3/4/5/6마리로 다시 배치했다(`Docs/PrototypeGuide.md` 같은 날 절).
 
 ## Claude가 정한 것
 

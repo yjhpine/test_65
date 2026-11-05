@@ -1058,3 +1058,12 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - PlayMode `PlayerGlitchCombatTests` 146/146(새 영역 즉사 5·약한 피격 1), `RestCycleTests` 20/20(구역 클리어 시 탄 정리 1).
 - 실제 동작: `Scenes/RangedEnemyTest.unity`(이후 기존 적까지 모아 `EnemyTest.unity`로 이름 변경) Play Mode에서 플레이어를 각 적 앞으로 옮겨 7종의 예고·발사·폭발·훑기·영역 활성을 Game 뷰 캡처로 확인했다. 투하병 기둥 띠가 늘린 몸체 스케일 때문에 찌그러진 것을 발견해 세션을 비스케일 루트로 옮겼고(위험구역 띠 스케일 1 검사는 테스트로 확인), 수정 후 재캡처는 하지 않았다.
 - 에셋: `render custom/{enemy-bolt, enemy-pellet, enemy-heavy, enemy-shell, enemy-blast, enemy-shot-pop, domain-field}` → 4/4/6/4/4/4/6 frames, `Import Generated Ranged Enemy Effects`로 18 PPU 가져오기, 영역 타일 Border 1.
+
+## 2026-11-05 — CoreLoopStage 적 재배치 (기존 적 + 원거리 5종, 영역형 제외)
+
+- 변경: 열린 Editor의 CoreLoopStage에서 몬스터 21개(저장된 14마리 + 저장 안 된 채 맨 위에 놓인 원거리·영역 7개, 디스크와 비교해 다른 변경 없음을 확인)를 지우고 18마리를 3/4/5/6으로 배치했다. 저장 후 fileID 단위 비교에서 바뀐 것은 적 인스턴스·웨이브 루트 자식 목록·`StageLayout`의 적 목록뿐이고 지형·문·카메라는 그대로다. 좌표는 `Docs/PrototypeGuide.md` 같은 날 절.
+- 테스트 수정: `RestCycleTests`의 저작 배치 검사(총 18·비활성 15·웨이브별 3+n마리·종류 목록, 재시작 3마리, 잠복 테스트 대상은 첫 웨이브의 순찰 돼지).
+- 열린 Editor에서 CoreLoopStage를 쓰는 PlayMode 클래스만 실행: `RestCycleTests` 20/20, `StageFlowTests` 15/15, `PauseTests` 13/13, `GameManagerTests` 9/9, `FinalWaveCutsceneTests` 4/5. 실패는 `AirborneLastKill…`의 `fixedDeltaTime` 0.0199999921 → 0.0199999865로, 이 클래스만 따로 돌릴 때 생기는 기존 1 tick 반올림 문제(배치와 무관)다. 전체 실행은 하지 않았다.
+- 첫 실행은 테스트 실행기가 띄운 "Scene(s) Have Been Modified" 대화상자에서 멈췄다. 저장 뒤 재컴파일 후 씬의 변경 표시만 다시 켜졌고 내용은 저장본과 같았다(비교 확인). 대화상자를 취소하고 다시 저장(파일 해시 동일)한 뒤 재실행했다.
+- 실제 동작: Play Mode에서 웨이브 2~4 루트를 켜고 5초 뒤 18마리 모두 제자리(지상 적 발 높이 0.01~0.02, 발판 위 적은 발판 윗면, 공중 적은 지정 높이). 플레이어를 X 86·194로 옮겨 샷건 발사, 훑기 레이저, 공중 투하병의 추적·투하를 확인했고 캡처는 `Library/PrototypeValidation/CoreLoopRelayout/Wave2.png`, `Wave4.png`다. 콘솔 새 오류 0. 끝난 뒤 Play Mode 종료, runInBackground 복원, 씬 dirty=false.
+

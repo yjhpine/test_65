@@ -116,26 +116,27 @@ namespace ActionPlatformer.Tests
 
         [UnityTest] public IEnumerator WholeCycleHealsOnceActivatesNextRoomAndCompletes()
         {
-            Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(2));
+            Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(3));
             var all = Object.FindObjectsByType<UnitHealth>(FindObjectsInactive.Include, FindObjectsSortMode.None)
                 .Where(h => h != health).ToArray();
-            Assert.That(all.Length, Is.EqualTo(14));
-            Assert.That(all.Count(h => !h.gameObject.activeInHierarchy), Is.EqualTo(12));
+            Assert.That(all.Length, Is.EqualTo(18));
+            Assert.That(all.Count(h => !h.gameObject.activeInHierarchy), Is.EqualTo(15));
             Assert.That(all.Where(h => !h.gameObject.activeInHierarchy).All(h => !h.CanReceiveDamage && h.MaxHealth == 0), Is.True);
             var goal = Object.FindFirstObjectByType<StageGoal>();
             float[] destinations = { 66, 116, 168 };
+            // Authored 3/4/5/6 course (2026-11-05): earlier kinds mixed with the barrage/laser enemies, no domain enemies.
             string[][] expectedKinds = {
-                new[] { "enemy.surveillanceturret", "enemy.surveillanceturret" },
-                new[] { "enemy.patrol", "enemy.surveillanceturret", "enemy.flyingdrone" },
-                new[] { "enemy.patrol", "enemy.surveillanceturret", "enemy.flyingdrone", "enemy.surveillanceturret" },
-                new[] { "enemy.patrol", "enemy.surveillanceturret", "enemy.flyingdrone", "enemy.surveillanceturret", "enemy.shieldsoldier" }
+                new[] { "enemy.patrol", "enemy.ranged.straight", "enemy.surveillanceturret" },
+                new[] { "enemy.shieldfront", "enemy.ranged.shotgun", "enemy.flyingdrone", "enemy.ranged.mortar" },
+                new[] { "enemy.patrol", "enemy.ranged.heavy", "enemy.laser.sweep", "enemy.shieldsoldier", "enemy.surveillanceturret" },
+                new[] { "enemy.ranged.shotgun", "enemy.shieldsoldier", "enemy.flyingdrone", "enemy.ranged.mortar", "enemy.laser.sweep", "enemy.ranged.heavy" }
             };
             for (int wave = 0; wave < 4; wave++)
             {
                 Assert.That(flow.CurrentEncounterIndex, Is.EqualTo(wave));
-                Assert.That(flow.RemainingEnemies, Is.EqualTo(wave + 2));
+                Assert.That(flow.RemainingEnemies, Is.EqualTo(wave + 3));
                 Assert.That(flow.ActiveEnemies.Select(h => h.Owner.Definition.UnitId), Is.EquivalentTo(expectedKinds[wave]));
-                Assert.That(all.Count(h => h.gameObject.activeInHierarchy && h.IsAlive), Is.EqualTo(wave + 2));
+                Assert.That(all.Count(h => h.gameObject.activeInHierarchy && h.IsAlive), Is.EqualTo(wave + 3));
                 Assert.That(goal.IsUnlocked, Is.False);
                 if (wave == 3) break;
                 var currentRest = flow.CurrentRestArea;
@@ -246,13 +247,13 @@ namespace ActionPlatformer.Tests
             while (flow.StageVersion <= previous && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(flow.StageVersion, Is.GreaterThan(previous)); yield return null;
             var restarted = GameManager.Instance; Assert.That(restarted.HasStage, Is.True);
-            Assert.That(restarted.CurrentEncounterIndex, Is.Zero); Assert.That(restarted.RemainingEnemies, Is.EqualTo(2));
+            Assert.That(restarted.CurrentEncounterIndex, Is.Zero); Assert.That(restarted.RemainingEnemies, Is.EqualTo(3));
             Assert.That(restarted.CurrentRestArea.Visited, Is.False);
         }
         [UnityTest] public IEnumerator UndergroundClearCancelsHoldAndCannotCrossTheOriginalFloor()
         {
             foreach (var enemy in flow.ActiveEnemies) { enemy.Owner.Fsm.Stop(); enemy.GetComponent<GroundMovement2D>()?.Stop(); }
-            var target = flow.ActiveEnemies.Single(h => h.transform.position.y < 1);
+            var target = flow.ActiveEnemies.Single(h => h.Owner.Definition.UnitId == "enemy.patrol");
             player.Motor.Teleport(new Vector2(target.transform.position.x - 3, .82f)); yield return new WaitForFixedUpdate();
             yield return null; // Glitch targets must be on screen, so let the camera follow the teleport first.
             Assert.That(player.Glitch.TryExecute(new GlitchRequest { Target = target, Direction = GlitchDirection.Down }, Time.timeAsDouble), Is.True);
