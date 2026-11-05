@@ -989,3 +989,14 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 실제 플레이 확인(MovementLab, 열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림): 전면 방패병 앞에 세워 실제 적 공격을 맞혔다. 14 피해(왼쪽에서), 오른쪽으로 1.32유닛 밀리고 0.23유닛 뜸, 최저 timeScale 0.10, 무적은 맞은 뒤 1.50초에 풀림, 그동안 추가 피해 없음, 스프라이트 알파 0.2~1.0 깜빡임. 시작부터 기록하면 돌진 방패병의 공격이 약 5.5초 간격으로 14씩 들어왔다. 캡처 `Library/PrototypeValidation/PlayerHurt/MovementLab-hurt-slow.png`·`-blink.png`. 씬·ProjectSettings 변경 없음.
 - 한계: 피격음은 파형(길이 0.32초, 최고 0.8, 40ms RMS 0.30→0.01 감쇠)만 확인했고 직접 들어 보지 않았다. CoreLoopStage 전체 플레이, 실제 입력, 빌드는 확인하지 않았다.
 - 같은 날 사용자 요청으로 슬로를 0.2배·0.5초, 다시 0.2배·0.35초로 조정했다(`PlayerCombatTuning.asset`, EditMode 에셋 테스트 기대값 갱신, 슬로 관련 7개 클래스 재실행). 위 실제 플레이 수치(최저 timeScale 0.10)는 조정 전 0.1배·0.75초 때 기록이다.
+
+## 2026-11-04: 잠복 출현 버그 수정 2건
+
+- 동작 설명은 `Docs/PrototypeGuide.md`의 같은 날 절을 본다. 두 수정 모두 다른 세션에서 했고, 이 기록은 그 세션의 보고와 커밋을 옮긴 것이다.
+- `d7da531b`(후딜레이 중 잠복 → 출현 지연): `PlayerGlitchCombatTests`에 회귀 테스트 4개를 추가했다. 이 4개는 ESC 일시정지 전체 실행(PlayMode 392/392) 때 이미 포함돼 있었다(위 일시정지 절의 '커밋되지 않은 4개').
+- `3c6826e5`(보스 아래 잠복 후 출현 거부):
+  - 재현: BossTest에서 보스가 공중에 있을 때 출현이 거부됐고, 그때 출현 지점은 비어 있었다(실측 로그).
+  - 새 테스트 4개 중 3개가 수정 전 코드에서 실패했다. 닫힌 문 테스트는 이미 있던 동작을 지키는 테스트라 수정 전에도 통과했다.
+  - GREEN: `PlayerGlitchCombatTests` 137/137. BossTest 재확인에서 잠복 75번이 모두 출현했고 실패는 0건이었다. 확인용 파일은 지웠다.
+  - 전체 실행(열린 Editor): EditMode 109/109, PlayMode 405/405(기존 401 + 새 4).
+- 한계: 실제 물리 키보드·마우스 입력과 스탠드얼론 빌드는 확인하지 않았다.

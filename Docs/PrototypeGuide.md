@@ -204,7 +204,7 @@ Pig의 Attack 5프레임, Hit 2프레임, Dead 4프레임을 기존 원본 압�
 - Shift 입력 시 대상·방향을 고정하고 실제 실행 직전에 생존·활성·거리·시야·도착 공간을 다시 검사합니다. 성공한 재배치에서만 이전 점프 버퍼와 코요테 상태를 지웁니다.
 - 적의 상하좌우를 마우스로 조준하면 해당 방향의 도착 몸체 영역이 청록색 테두리로 표시됩니다. 공간 차단·쿨타임·공격/피격 제한 중에는 빨간색입니다. 아래 조준이 지하 진입으로 이어지면 지면에 납작한 표시가 나타납니다. 미리보기는 실제 이동과 같은 배치 검사를 사용하며 이동이나 쿨타임을 발생시키지 않습니다. 조준 해제·대상 소멸·입력 비활성화·지하 체류·플레이어 비활성화 시 사라집니다.
 - 지하는 정적인 수평 BoxCollider2D 바닥만 지원합니다. 이동 발판·경사·인접한 중첩 층은 제외합니다. 실제 몸체는 원래 위치에서 Kinematic으로 고정되고 Collider를 유지하지만 유닛 간 충돌은 하지 않습니다. 화면에는 적 아래의 지면 표시만 보입니다. 지하 중에는 피해와 적의 타깃 선정을 명시적으로 차단합니다.
-- 출현 시 대상과 **현재 잠복 표시 지점 바로 위의 지상 공간**을 재검사합니다. 입력이 없으면 X좌표를 유지하며 대상이 이동해도 따라가지 않습니다. 잠복 중 A/D·좌우 방향키는 몸체 대신 표시의 X좌표를 조절합니다. `GlitchTuning.asset`의 **Underground Move Speed=3**(월드 단위/초, 0이면 위치 조절 꺼짐)으로 속도를 설정합니다. Collider 전체가 같은 바닥 안에 출현할 수 있는 범위로 제한합니다. 장애물 아래로 표시를 움직일 수 있지만, 출현 불가한 위치에서는 표시가 빨간색이 됩니다. 주변 출현 후보 없음·대상 소멸·체류 시간 만료·Space 취소는 원래 몸체 위치로 복귀하며, 비활성화도 물리·피격·표시 상태를 복원합니다. 이동해도 2초 체류 시간과 쿨타임은 연장하지 않습니다. Space 취소가 이동·공격보다 우선하며, 이동과 공격을 함께 입력하면 해당 물리 단계의 이동을 반영한 지점에서 출현합니다. 지하 중 재글리치는 금지합니다.
+- 출현 시 **현재 잠복 표시 지점 바로 위의 지상 공간**과 원래 몸 위치에서 그 지점까지의 닫힌 문을 검사합니다. 대상은 살아 있는 글리치 후보인지만 다시 보고, 잠복 뒤 대상이 바닥을 떠나거나 사거리·화면 밖으로 움직여도 출현을 막지 않습니다(2026-11-04 수정, 아래 같은 날 절). 입력이 없으면 X좌표를 유지하며 대상이 이동해도 따라가지 않습니다. 잠복 중 A/D·좌우 방향키는 몸체 대신 표시의 X좌표를 조절합니다. `GlitchTuning.asset`의 **Underground Move Speed=3**(월드 단위/초, 0이면 위치 조절 꺼짐)으로 속도를 설정합니다. Collider 전체가 같은 바닥 안에 출현할 수 있는 범위로 제한합니다. 장애물 아래로 표시를 움직일 수 있지만, 출현 불가한 위치에서는 표시가 빨간색이 됩니다. 주변 출현 후보 없음·대상 소멸·체류 시간 만료·Space 취소는 원래 몸체 위치로 복귀하며, 비활성화도 물리·피격·표시 상태를 복원합니다. 이동해도 2초 체류 시간과 쿨타임은 연장하지 않습니다. Space 취소가 이동·공격보다 우선하며, 이동과 공격을 함께 입력하면 해당 물리 단계의 이동을 반영한 지점에서 출현합니다. 지하 중 재글리치는 금지합니다.
 - 공격과 글리치가 동시에 요청되면 재배치 후 공격합니다. 지하에서는 Space 취소가 공격보다 우선합니다. 공격 판정이 끝난 후에는 글리치로 후딜레이를 취소할 수 있습니다.
 - 후딜레이 중 함께 누른 공격 입력도 FixedUpdate까지 보관하고, 글리치가 성공해 후딜레이를 취소한 다음 공격 가능 여부를 판단합니다. 글리치가 실패하면 기존 후딜레이 제한을 유지합니다. 단, 마지막 공격 예약 구간에서 누른 입력은 후딜레이 종료 뒤 한 번 실행됩니다.
 - 콤보는 공격 판정 시작에 소비하며 공중 내려찍기는 하강 시작에 소비합니다. 헛공격·출현 공격도 한 타이며 대상 변경은 타수를 유지합니다. 피격·사망·비활성화·유효 시간 만료 시 초기화합니다.
@@ -234,7 +234,7 @@ Pig의 Attack 5프레임, Hit 2프레임, Dead 4프레임을 기존 원본 압�
 
 ### 공격과 연계 규칙의 분리
 
-잠복 출현 위치가 막혔을 때는 공격 입력 시에만 같은 바닥을 좌우로 탐색합니다. 현재 위치가 비어 있으면 그대로 사용하고, 막혔으면 0.05월드 단위 간격으로 가까운 후보부터 검사한 뒤 처음 발견한 빈 공간의 경계를 6번 세분화합니다(경계 보정 오차 0.001 미만). 양쪽 거리가 같으면 마지막 잠복 이동 방향, 이동이 없으면 진입 전 몸체가 있던 쪽을 우선합니다. 아주 좁은 빈 중심 좌표 구간이 탐색 간격보다 작으면 놓칠 수 있으므로 0.05는 탐색 해상도이며 수학적으로 모든 연속 좌표의 최솟값을 보장하지는 않습니다. 바닥 끝·몸체 전체 공간·대상과 지면 유효성 검사는 유지합니다. 성공 시 보정 지점에서 출현 공격을 시작하며 쿨타임을 다시 시작하지 않습니다. 같은 바닥에 후보가 없거나 대상/지면이 무효하면 진입 전 몸체 위치로 복귀합니다.
+잠복 출현 위치가 막혔을 때는 공격 입력 시에만 같은 바닥을 좌우로 탐색합니다. 현재 위치가 비어 있으면 그대로 사용하고, 막혔으면 0.05월드 단위 간격으로 가까운 후보부터 검사한 뒤 처음 발견한 빈 공간의 경계를 6번 세분화합니다(경계 보정 오차 0.001 미만). 양쪽 거리가 같으면 마지막 잠복 이동 방향, 이동이 없으면 진입 전 몸체가 있던 쪽을 우선합니다. 아주 좁은 빈 중심 좌표 구간이 탐색 간격보다 작으면 놓칠 수 있으므로 0.05는 탐색 해상도이며 수학적으로 모든 연속 좌표의 최솟값을 보장하지는 않습니다. 바닥 끝·몸체 전체 공간 검사는 유지합니다. 성공 시 보정 지점에서 출현 공격을 시작하며 쿨타임을 다시 시작하지 않습니다. 같은 바닥에 후보가 없거나, 대상이 죽거나 비활성화됐거나, 원래 몸 위치와 출현 지점 사이에 닫힌 문이 있으면 진입 전 몸체 위치로 복귀합니다. 대상의 현재 위치(바닥·사거리·화면)는 출현 때 다시 보지 않습니다(2026-11-04).
 
 몬스터와 몸체가 겹친 상태의 일반 공격은 옆 공격으로 처리합니다. 위치 기반 띄우기는 몬스터 몸체 하단이 플레이어 몸체 상단 이상에 있을 때만 선택하며 접촉 오차 0.02를 허용합니다. 중심 높이만으로 큰 몬스터를 위쪽 대상으로 분류하지 않습니다. 잠복 출현은 명시적인 출현 공격이므로 이 규칙과 별도로 띄우기를 유지하고, 타격 영역도 잠복 위치의 X축을 중심으로 대칭입니다.
 
@@ -567,7 +567,7 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 화면 밖: 대상 몸 중심이 PlayerUnit의 Aim Camera 화면 밖이면 사용할 수 없다. Aim Camera가 없으면 이 검사는 건너뛴다.
 - 커서 근처(Aim Assist Radius)의 사용할 수 없는 대상도 선택해 빨간 도착 표시와 이유를 보여준다. 사용 가능한 대상이 있으면 그쪽이 우선이다. 실행은 사용 가능한 경우에만 된다.
 - 이유(`GlitchPreview.Reason`): OutOfRange / OffScreen / GateClosed / NoSpace(도착 공간 막힘) / Cooldown / Busy(공격·피격 중). StageFlowView가 Busy를 뺀 이유를 도착 표시 위에 짧은 영문 문구(OUT OF RANGE, OFF SCREEN, GATE CLOSED, NO SPACE, COOLDOWN)로 띄운다. 조작 잠금·컷신 중에는 숨긴다. StageFlowController가 없는 MovementLab에는 문구가 없다.
-- 플레이어 공격·충격파가 벽 너머에 닿지 않는 규칙(`UnitPhysics2D.HasSight`)과 잠복·출현, 거리 8, 쿨타임 0은 바꾸지 않았다. 잠복 중 출현 가능 판정도 같은 대상 판정을 쓰므로 벽 너머 대상에게도 잠복·출현이 된다.
+- 플레이어 공격·충격파가 벽 너머에 닿지 않는 규칙(`UnitPhysics2D.HasSight`)과 잠복·출현, 거리 8, 쿨타임 0은 바꾸지 않았다. 잠복 중 출현 가능 판정도 같은 대상 판정을 쓰므로 벽 너머 대상에게도 잠복·출현이 된다. (2026-11-04부터 출현은 대상 판정을 다시 하지 않고 대상 생존과 닫힌 문만 본다. 잠복 진입은 그대로 이 판정을 쓴다.)
 
 ## 2026-11-02 — 기획서 v0.3 4~7단계: 공격 선택·강공격·적 반응
 
@@ -796,3 +796,26 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 코드: 무적 시간은 `PlayerUnit`이 갖고(`OnDamageApplied`에서 바로 켜서 같은 단계의 두 번째 공격도 막음) `UnitHealth.SetInvulnerable`로 알린다. `UnitHealth.Invulnerable`은 위치·방향 피해만 막는다. 넉백은 `PlayerUnit`의 공격 반발력 단계를 재사용한다(점프 키 중력 완화 없음). `PlayerReactionPresentation.Invulnerable`을 `PlayerVisual`이 읽어 깜빡인다. 피격음은 `PlayerVisual.NotifyDamage` → `PlayerSoundEffects.Hurt`.
 - 소리: `Audio/Combat/Hurt.wav`(Kenney Impact `impactPunch_heavy_002` + Sci-fi `laserRetro_004` 25% 낮춰 비트크러시 + `lowFrequency_explosion_000` 0.3초), `PlayerSfx.asset`의 `Hurt`·`Hurt Volume`(0.5). 레시피는 `Library/SfxDownloads/PrepareSfx.py`(`python -I`로 루트에서 실행, 다른 클립은 바이트 동일).
 - 테스트: PlayMode `PlayerDamageResponseTests` 5개, `PlayerVisualTests.InvulnerabilityBlinksTheSpriteButNeverWhileDying`, EditMode `PlayerVisualAssetTests.PlayerDamageFeedbackUsesTheRequestedSlowShakeAndHurtSound`.
+
+## 2026-11-04 — 잠복 출현 버그 수정 2건
+
+### 후딜레이 중 잠복한 뒤 공격이 출현으로 이어지지 않던 문제 (`d7da531b`)
+
+- 공격 후딜레이 중에 잠복해도 지하에서 전투 시간이 계속 흐른다. 후딜레이를 줄여 주지는 않지만, 끝나는 즉시(공격 가능 상태가 되면) 출현할 수 있다.
+- 후딜레이 중 지하에서 누른 공격은 예약 입력 1개로 남았다가 공격 가능 상태가 되면 출현한다.
+- 잠복을 여는 글리치와 같은 물리 단계에 누른 공격은 다음 단계의 출현 요청이 된다.
+- Space 취소·체류 시간 만료·출현 실패로 지하를 벗어나면 예약 입력을 버린다(`PlayerCombat.ClearBufferedAttack`). 지상으로 돌아온 뒤 남은 입력이 일반 공격으로 나가지 않는다.
+- 코드: `PlayerUnit`(지하에서 `Combat.Tick`·예약 입력 소비), `PlayerCombat.ClearBufferedAttack`.
+
+### 보스 아래 잠복 후 출현이 거부돼 원위치로 돌아가던 문제 (`3c6826e5`)
+
+- 원인: 출현할 때마다 대상이 잠복한 바닥 위에 있는지, 원래 몸 위치에서 사거리·화면 안인지 다시 검사했다. 보스는 잠복 중인 플레이어도 계속 쫓으며 도약하거나 물러나므로, 출현 지점이 비어 있어도 이 검사에 걸려 원위치로 돌아갔다.
+- 지금 규칙: 출현은 잠복 바닥의 표시 지점에서 한다. 대상은 살아 있는 글리치 후보(활성·생존·`AllowGlitchTarget`·대상 레이어)인지만 다시 보고, 대상의 현재 위치(바닥·사거리·화면)는 보지 않는다. 사거리·화면은 잠복에 들어갈 때 이미 판정했다.
+- 그대로인 것: 출현 지점의 몸체 공간 검사와 주변 후보 보정, 원래 몸 위치와 출현 지점 사이의 닫힌 문 차단, 대상 사망·비활성화 때 원위치 복귀, 2초 체류·Space 취소.
+- 코드: `PlayerGlitch.TryGetEmergencePoint`가 `GlitchUtility.IsCandidate`와 `GlitchUtility.BarrierBetween`(공개로 바꿈)만 쓴다. 쓰지 않게 된 `GlitchUtility.ValidTarget`은 지웠다.
+
+### 테스트
+
+- `PlayerGlitchCombatTests`에 회귀 테스트 8개를 추가했다.
+  - 후딜레이 잠복: `BurrowDuringRecoveryStillEmergesOnALaterPress`, `UndergroundPressDuringRecoveryWaitsAsTheFollowUpThenEmerges`, `CancellingTheBurrowDropsTheEmergenceWaitingForRecovery`, `AttackPressedWithTheBurrowingGlitchEmergesOnTheNextStep`
+  - 보스 아래 출현: `EmergenceAtMarkerSurvivesTargetLeavingTheFloor`, `EmergenceAtMarkerSurvivesTargetMovingOutOfGlitchRange`, `AttackPressEmergesAtMarkerWhileTheTargetIsAirborne`, `ClosedGateBetweenParkedBodyAndEmergenceStillReturnsToOrigin`
