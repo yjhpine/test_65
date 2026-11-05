@@ -12,5 +12,7 @@ namespace ActionPlatformer.Units.Bosses
         public Vector2 Size;
         // false = still tracking its target, true = fixed in place (drawn in a different color).
         public bool Locked;
+        // 0 when the warning appears, 1 at the moment the hit lands; drives the danger zone's opacity.
+        public float Urgency;
     }
 }

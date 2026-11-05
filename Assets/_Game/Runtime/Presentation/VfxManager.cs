@@ -19,6 +19,7 @@ namespace ActionPlatformer.Presentation
             public IPlayerActionState Actions; public int Variant,Frame=-1; public bool BlockAttack;
             public ShapeRequest[] Requests=new ShapeRequest[3];
             public bool Shot,Charge,Vertical; public EnemyBeam Beam; public Vector2 Emitter; public float Progress;
+            public SpriteRenderer Zone; public ShapeRequest ZoneRequest; public int ZoneFrame=-1;
         }
         private EffectSessions<Bank> sessions;
         private readonly HashSet<Object> invalidProfiles=new HashSet<Object>();
@@ -49,6 +50,11 @@ namespace ActionPlatformer.Presentation
                         var go=new GameObject(new[]{"Energy shield","Scan progress","Attack telegraph"}[n]); go.transform.SetParent(root.transform,false);
                         var r=go.AddComponent<SpriteRenderer>(); r.sprite=e.ShapeSprite; r.sharedMaterial=source.sharedMaterial; r.sortingOrder=source.sortingOrder+2; r.enabled=false; bank.Shapes[n]=r;
                     }
+                } else if(profile is AttackZoneProfile z) {
+                    var go=new GameObject("Attack zone"); go.transform.SetParent(root.transform,false);
+                    // Tiled, not sliced: the glitch pixels repeat at art size instead of smearing across big zones.
+                    var r=go.AddComponent<SpriteRenderer>(); r.sprite=z.Sprite; r.drawMode=SpriteDrawMode.Tiled; r.tileMode=SpriteTileMode.Continuous; r.sharedMaterial=source.sharedMaterial;
+                    r.sortingLayerID=source.sortingLayerID; r.sortingOrder=source.sortingOrder+z.SortingOffset; r.enabled=false; bank.Zone=r;
                 }
             }
             bank.Root.SetActive(true); Sync(bank,owner); return bank;
@@ -57,9 +63,12 @@ namespace ActionPlatformer.Presentation
             => owner==null || profile==null || source==null || !Validate(profile) ? default : sessions.Add(owner,Allocate(owner,profile,source));
         public EffectOwnerHandle RegisterOwner(Transform owner,EnemyVfxProfile profile,SpriteRenderer source)
             => owner==null || profile==null || source==null || !Validate(profile) ? default : sessions.Add(owner,Allocate(owner,profile,source));
+        // One shared danger-zone renderer per monster; it shows only on frames it is requested.
+        public EffectOwnerHandle RegisterOwner(Transform owner,AttackZoneProfile profile,SpriteRenderer source)
+            => owner==null || profile==null || source==null || !Validate(profile) ? default : sessions.Add(owner,Allocate(owner,profile,source));
         private bool Validate(Object profile)
         {
-            bool valid=profile is PlayerVfxProfile p?EffectProfileValidation.Valid(p):EffectProfileValidation.Valid((EnemyVfxProfile)profile);
+            bool valid=profile is PlayerVfxProfile p?EffectProfileValidation.Valid(p):profile is AttackZoneProfile z?EffectProfileValidation.Valid(z):EffectProfileValidation.Valid((EnemyVfxProfile)profile);
             if(!valid && invalidProfiles.Add(profile))Debug.LogWarning("Invalid VFX profile; presentation skipped: "+profile.name,profile);
             return valid;
         }
@@ -94,6 +103,15 @@ namespace ActionPlatformer.Presentation
             var b=Get(h); if(b?.Laser==null || !b.Laser.IsConfigured)return false;
             b.Frame=Time.frameCount; b.Shot=shot; b.Charge=!shot; b.Beam=beam; b.Emitter=emitter; b.Vertical=vertical; b.Progress=progress; return true;
         }
+        // World-space center and size of the attack area; urgency 0 = warning appears, 1 = the attack lands.
+        public void ShowAttackZone(EffectOwnerHandle h,Vector2 center,Vector2 size,float angle,float urgency)
+        {
+            var b=Get(h); if(b?.Zone==null)return;
+            b.ZoneFrame=Time.frameCount;
+            b.ZoneRequest=new ShapeRequest { Visible=true,Position=center,Size=size,Angle=angle,Color=new Color(1,1,1,((AttackZoneProfile)b.Profile).Alpha(urgency)) };
+        }
+        public void HideAttackZone(EffectOwnerHandle h)
+        { var s=sessions.Get(h); if(s?.Value.Zone==null)return; s.Value.ZoneFrame=-1; s.Value.Zone.enabled=false; }
         public void HideEnemy(EffectOwnerHandle h)
         { var b=Get(h); if(b==null)return; BeginEnemyFrame(h); b.Laser?.Hide(); if(b.Shapes!=null)foreach(var r in b.Shapes)r.enabled=false; }
         private void LateUpdate()
@@ -107,6 +125,7 @@ namespace ActionPlatformer.Presentation
                     if(b.Frame==Time.frameCount)b.Action.Tick(b.Actions,Time.unscaledDeltaTime,b.Variant,b.BlockAttack);
                     else b.Action.Reset(b.Actions?.GlitchPresentation.Version??0);
                 }
+                if(b.Zone!=null) { RenderZone(b); continue; }
                 if(b.Shapes==null)continue;
                 b.Laser.Hide();
                 for(int i=0;i<3;i++) {
@@ -120,12 +139,28 @@ namespace ActionPlatformer.Presentation
                 else if(b.Charge)b.Laser.ShowCharge(b.Beam,b.Emitter,b.Vertical,b.Progress);
             }
         }
+        private static void RenderZone(Bank b)
+        {
+            var r=b.Zone; var q=b.ZoneRequest; r.enabled=b.ZoneFrame==Time.frameCount && q.Visible && r.sprite!=null;
+            if(!r.enabled)return;
+            // Game time: the bug flickers with the world and stops when it is paused.
+            r.sprite=((AttackZoneProfile)b.Profile).FrameAt(Time.timeAsDouble);
+            r.color=q.Color; r.transform.SetPositionAndRotation(new Vector3(q.Position.x,q.Position.y,b.Root.transform.position.z),Quaternion.Euler(0,0,q.Angle));
+            // Cancel the owner's scale (a boss visual may be stretched): the tile keeps its art-pixel size and
+            // the zone covers exactly the requested world-space area.
+            var scale=b.Root.transform.lossyScale;
+            r.transform.localScale=new Vector3(Inverse(scale.x),Inverse(scale.y),1f);
+            r.size=new Vector2(Mathf.Abs(q.Size.x),Mathf.Abs(q.Size.y));
+        }
+        private static float Inverse(float scale) => Mathf.Abs(scale)<1e-4f ? 1f : 1f/scale;
         public void ResetOwner(EffectOwnerHandle h,uint glitchVersion=0)
         { var s=sessions.Get(h); if(s!=null)Reset(s.Value,glitchVersion); }
         private static void Reset(Bank b,uint version)
         {
             b.Action?.Reset(version); b.Contact?.Reset(); b.Movement?.Reset(); b.Laser?.Hide();
             if(b.Shapes!=null)foreach(var r in b.Shapes)r.enabled=false;
+            if(b.Zone!=null) { b.Zone.enabled=false; b.ZoneRequest=default; }
+            b.ZoneFrame=-1;
             b.Actions=null; b.Frame=-1; b.Shot=b.Charge=false;
             for(int i=0;i<3;i++)b.Requests[i]=default;
         }

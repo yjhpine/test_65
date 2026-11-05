@@ -641,7 +641,7 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - **피격 반응**: 살아 있는 방패병이 유효한 띄우기·내려찍기(끊는 타격)를 맞으면 하던 공격을 취소하고 `Reacting`(방패·공격 꺼짐, Hit 자세 유지)으로 간다. 강제 이동이 끝나고 착지하면 방어를 다시 켜고 Idle로 돌아가며, 취소된 공격은 이어 가지 않는다.
 - **돌진형(`ShieldSoldier`, `Shield Attack = Rush`)**: 예고 때 고정한 방향으로 최대 5.5까지 18.9/초 직선 돌진(약 0.29초), 벽·발판 끝에서 짧아지고 플레이어 위치에서 멈추지 않는다. 접촉 피해는 돌진당 1회이고 맞혀도 계속 간다. 회복 0.65초, 도착 자리에 머문다.
 - **전면형(`ShieldFront`, `Shield Attack = Strike`)**: `ShieldSoldier` 프리팹의 변형(같은 몸·원화·방패), `ShieldFrontDefinition`(enemy.shieldfront)·`ShieldFrontFsm`. 플레이어가 수평 2.9 이내면 예고 0.4초 → 몸 앞면부터 2.3 범위를 한 번 판정(플레이어 몸·지형 시야 확인, 피해 14) → `Strike` 0.12초(공격 클립) → 회복 0.5초. 자리를 옮기지 않는다.
-- **외형**: 예고 중 공격 범위(전면 타격 거리 또는 돌진 경로)를 바닥의 주황색 선으로 표시한다(캐릭터를 가리지 않도록 몸 높이 상자 대신 선). 방패 막대는 방패가 켜져 있을 때만 그린다.
+- **외형**: 예고 중 공격 범위(전면 타격 거리 또는 돌진 경로)를 표시한다. 2026-11-05부터는 바닥 주황 선 대신 몸 높이 전체를 덮는 공용 빨간 위험구역이다(아래 같은 날 절). 방패 막대는 방패가 켜져 있을 때만 그린다.
 - **배치**: CoreLoopStage 4웨이브 방패병은 돌진형 그대로다. MovementLab `Enemy Pattern Samples`에 전면형 1마리를 (-5, 0.82)에 추가했다.
 - 바뀐 필드: `EnemyFsmDefinition`에서 걷기·회전·돌진 최소 거리·지나침·옛 방패 높이 값(`approachDistance/Speed`, `turnDuration`, `dashMinDistance`, `dashOvershoot`, `guardFrontThreshold`, `guardHeight`)을 없애고 `shieldAttack`, `recognitionDelay`, `attackInterval`, `strikeTriggerDistance`, `strikeReach`, `strikeDuration`, `guardDirectBand`를 추가했다.
 
@@ -672,9 +672,9 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 
 ### 공중 도약 내려찍기와 하수인 소환 (2026-11-04, 사용자 요청)
 
-- `BossLeapSlamPattern`(메뉴 `Leap Slam`): 지상에서 `telegraphTime`(0.3) 웅크린 뒤 `BeginAirborne`으로 몸체를 Kinematic으로 바꾸고 `riseTime`(0.4)에 `jumpHeight`(5)만큼 올라간다(천장이 가까우면 그 아래에서 멈춘다). 이어 `aimTime`(0.6) 동안 착지 X가 플레이어 X를 따라가고(그 아래에 지면이 있는 X만 받아들이며 벽은 `ClampHorizontal`로 넘지 못한다) 보스는 `airSpeed`(10)로 그 위로 이동한다. 조준이 끝나면 착지 X가 고정되고(예고 상자 색이 붉게 바뀐다) 고정 후 정확히 `landDelay`(1)초에 착지한다. 마지막 `dropTime`(높이 ÷ `dropSpeed` 30) 동안 수직 하강하며, 착지하면 `EndAirborne` 후 반경 `shockwaveRadius`(3)의 원형 충격파로 `damage`(15)를 한 번 준다. 끝나고 `landingTime`(0.15) 뒤에 실행이 끝난다. 시작 조건은 보스가 지상에 있고 대상이 있을 때다. 취소·사망·비활성화는 `EndAirborne`으로 물리를 복원해 보스가 중력으로 떨어진다.
+- `BossLeapSlamPattern`(메뉴 `Leap Slam`): 지상에서 `telegraphTime`(0.3) 웅크린 뒤 `BeginAirborne`으로 몸체를 Kinematic으로 바꾸고 `riseTime`(0.4)에 `jumpHeight`(5)만큼 올라간다(천장이 가까우면 그 아래에서 멈춘다). 이어 `aimTime`(0.6) 동안 착지 X가 플레이어 X를 따라가고(그 아래에 지면이 있는 X만 받아들이며 벽은 `ClampHorizontal`로 넘지 못한다) 보스는 `airSpeed`(10)로 그 위로 이동한다. 조준이 끝나면 착지 X가 고정되고(2026-11-05부터 색은 바뀌지 않고 위험구역이 착지 순간까지 점점 진해진다) 고정 후 정확히 `landDelay`(1)초에 착지한다. 마지막 `dropTime`(높이 ÷ `dropSpeed` 30) 동안 수직 하강하며, 착지하면 `EndAirborne` 후 반경 `shockwaveRadius`(3)의 원형 충격파로 `damage`(15)를 한 번 준다. 끝나고 `landingTime`(0.15) 뒤에 실행이 끝난다. 시작 조건은 보스가 지상에 있고 대상이 있을 때다. 취소·사망·비활성화는 `EndAirborne`으로 물리를 복원해 보스가 중력으로 떨어진다.
 - `BossSummonPattern`(메뉴 `Summon`): 하수인을 `minionPrefab`(Inspector에서 어떤 프리팹이든 지정, 루트에 `Unit`+`UnitHealth` 필요)로 `spawnOffsets`(보스 몸체 중심 기준, 기본 (-2.5,0)·(2.5,0), 보스 방향과 무관)마다 한 마리씩 소환한다. 살아 있는 하수인이 `maxAlive`(2)에 이르면 시작하지 않고, 일부만 죽었으면 모자란 만큼만 만든다. 벽 앞 0.6에서 멈추고 아래 지면이 없는 칸은 건너뛴다. 소환된 하수인은 보스와 같은 씬의 최상위 오브젝트이며 스테이지 적 루트에 속하지 않는다. `despawnWithBoss`(기본 true)이면 보스 사망 때 하수인이 같이 죽고(각자 사망 연출) 보스 전투가 멈추면(비활성화·FSM 정지) 하수인 오브젝트를 제거한다.
-- 공용 변경: `BossTelegraph.Locked`(예고가 고정되었는지, `BossVisual2D.lockedTelegraphColor`로 다른 색 표시), `BossCombat2D.HitCircle`·`TryFindGround`·`ClampHorizontal`·`ClampVertical`·`RayClampX`, `IBossMover.BeginAirborne/SetAirbornePosition/EndAirborne/IsAirborne`, `BossPatternRun.OnBossDied/OnBossStopped`(브레인이 캐시된 모든 Run에 부름), `BossContext.RunOf`(패턴 정의의 `CanStart`가 자기 Run을 읽는 길).
+- 공용 변경: `BossTelegraph.Locked`(예고가 고정되었는지. 11-05부터 표시 색에는 쓰지 않고, 투명도는 `BossTelegraph.Urgency`가 정한다), `BossCombat2D.HitCircle`·`TryFindGround`·`ClampHorizontal`·`ClampVertical`·`RayClampX`, `IBossMover.BeginAirborne/SetAirbornePosition/EndAirborne/IsAirborne`, `BossPatternRun.OnBossDied/OnBossStopped`(브레인이 캐시된 모든 Run에 부름), `BossContext.RunOf`(패턴 정의의 `CanStart`가 자기 Run을 읽는 길).
 - 하수인 프리팹을 바꾸려면 `Data/Bosses/TestBoss/Patterns/TestBossSummon.asset`(또는 새 Summon 에셋)의 `Minion Prefab`에 프리팹을 끌어 놓는다. 임시로 `Prefabs/Enemies/PatrolEnemy.prefab`이 지정되어 있다.
 
 ### 새 패턴을 추가하는 순서
@@ -682,7 +682,7 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 1. `BossPatternDefinition`을 상속한 ScriptableObject를 만들고 `[CreateAssetMenu(menuName = "Action Platformer/Bosses/Patterns/...")]`를 붙인다. 자기 수치는 `[SerializeField] private`로 두고 `TryValidate`를 재정의해 잘못된 값을 거부한다.
 2. `BossPatternRun`을 상속한 중첩 클래스를 만들고 `CreateRun`에서 돌려준다. 수명은 `BeginTelegraph` → `TickTelegraph`(끝나면 true) → `BeginExecute` → `TickExecute`(끝나면 true) → `End`/`Cancel`이다. 패턴이 쓸 수 있는 것은 `BossContext`(이동 어댑터, `BossCombat2D`, 블랙보드)뿐이다.
 3. 실행 중 상태(타이머·타격 기록)는 Run 객체에 둔다. 공유 에셋에는 쓰지 않는다. Run은 보스 한 개체당 패턴마다 하나만 만들어 매 실행에 재사용하므로, 실행마다 초기화할 값은 생성자가 아니라 `BeginTelegraph`/`BeginExecute`에서 초기화한다.
-4. 예고 표시가 필요하면 `Telegraph`를 재정의해 상자 중심·크기를 돌려준다. 방패 같은 방어는 `BlocksDamage`로 알린다.
+4. 예고 표시가 필요하면 `Telegraph`를 재정의해 상자 중심·크기와 `Urgency`(예고가 뜰 때 0, 실제 타격 순간 1)를 돌려준다. 공용 빨간 위험구역이 그 상자를 덮는다. 방패 같은 방어는 `BlocksDamage`로 알린다.
 5. 시작 조건이 있으면 `CanStart`를 재정의한다.
 6. Project 창 `Create > Action Platformer > Bosses > Patterns`에서 에셋을 만들고 선택 트리의 잎(패턴 노드)에 연결한다.
 
@@ -691,7 +691,7 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 1. 패턴 에셋을 만들고(위) `Create > Action Platformer > Bosses > Pattern Selector`로 선택 트리를 만든다.
 2. `Create > Action Platformer > Bosses > Boss FSM Definition`을 만들고 `selector`와 수치·체력 구간 경계·애니메이션 이름을 정한다. Inspector 아래에 잘못된 값이 오류로 표시된다.
 3. `UnitDefinition`을 만든다(Kind Monster, MaxHealth, `fsm` = 위 FSM, `allowForcedMovement` false 권장).
-4. 프리팹: 루트 레이어 2, Rigidbody2D(회전 고정)·BoxCollider2D·`Unit`·`UnitHealth`(Deactivate On Death 끔)·`BossCombat2D`·`GroundMovement2D`(Ignore Knockback). 자식 Visual에 SpriteRenderer·Animator(Float `ActionTime`, Root Motion 끔, FSM·패턴이 부르는 상태 이름 모두 필요)·`BossVisual2D`(`stateSource` = 루트 `BossCombat2D`)·`UnitDamageFlash`, 예고용 SpriteRenderer를 `telegraphRenderer`에 연결한다. 애니메이터에 없는 상태 이름은 경고를 한 번 남기고 현재 모션을 유지한다.
+4. 프리팹: 루트 레이어 2, Rigidbody2D(회전 고정)·BoxCollider2D·`Unit`·`UnitHealth`(Deactivate On Death 끔)·`BossCombat2D`·`GroundMovement2D`(Ignore Knockback). 자식 Visual에 SpriteRenderer·Animator(Float `ActionTime`, Root Motion 끔, FSM·패턴이 부르는 상태 이름 모두 필요)·`BossVisual2D`(`stateSource` = 루트 `BossCombat2D`)·`UnitDamageFlash`, `BossVisual2D.attackZone`에 공용 `Data/Presentation/AttackZone.asset`을 연결한다(예고 렌더러는 VfxManager가 만든다). 애니메이터에 없는 상태 이름은 경고를 한 번 남기고 현재 모션을 유지한다.
 5. 기존 `Assets/_Game/Prefabs/Bosses/TestBoss.prefab`과 `Data/Bosses/TestBoss`를 복제해 시작하면 편하다.
 
 ### 선택 트리 편집
@@ -819,3 +819,35 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - `PlayerGlitchCombatTests`에 회귀 테스트 8개를 추가했다.
   - 후딜레이 잠복: `BurrowDuringRecoveryStillEmergesOnALaterPress`, `UndergroundPressDuringRecoveryWaitsAsTheFollowUpThenEmerges`, `CancellingTheBurrowDropsTheEmergenceWaitingForRecovery`, `AttackPressedWithTheBurrowingGlitchEmergesOnTheNextStep`
   - 보스 아래 출현: `EmergenceAtMarkerSurvivesTargetLeavingTheFloor`, `EmergenceAtMarkerSurvivesTargetMovingOutOfGlitchRange`, `AttackPressEmergesAtMarkerWhileTheTargetIsAirborne`, `ClosedGateBetweenParkedBodyAndEmergenceStillReturnsToOrigin`
+
+## 2026-11-05 — 공격 위험구역 통일 (모든 몬스터 공용 빨간 글리치 사각형)
+
+사용자 요청: 몬스터들의 공격 예고 표시를 PixelFX로 만든 빨간 반투명 사각형 하나로 통일하고, 몬스터마다 늘려서 재사용한다. 기준은 보스가 쓰던 공격 범위 상자이며, 공격 임박은 투명도로 알린다. 같은 날 후속 요청으로 단색 사각형을 "컴퓨터 세상 속 버그" 느낌의 글리치 무늬로 다시 만들었다(빨강 계열만, 청록 없음).
+
+### 동작
+
+- 예고가 뜨면 공격 범위 위에 빨간 사각형이 옅게(알파 0.2) 나타나고, 실제 공격 순간까지 점점 진해진다(알파 0.7). 색은 바뀌지 않는다. 조준 고정(Locked)도 색을 바꾸지 않고 투명도만 계속 올라간다.
+- 모양: 깨진 데이터처럼 보이는 빨간 타일이 반복된다. 한 줄씩 내려가는 스캔라인, 빠진 픽셀(구멍)과 번쩍이는 죽은 픽셀, 옆으로 밀린 데이터 블록과 그 옆의 진홍색 잔상, 가끔 옆으로 찢기는 가로줄, 군데군데 끊기는 1픽셀 테두리. 8프레임을 게임 시간 12fps로 반복하므로 일시정지 중에는 멈추고 슬로 중에는 느려진다.
+- 늘리는 방식: Tiled(테두리 1px). 안쪽 무늬를 잡아 늘리지 않고 원화 픽셀 크기 그대로 반복해 깔기 때문에, 구역 크기와 몬스터 Transform 스케일에 상관없이 글리치 픽셀 크기가 같다(보스처럼 Visual이 늘어난 몬스터도 구역의 실제 스케일은 1). 몬스터 스프라이트보다 Sorting Order +2 위에 그려지므로, 구역 안의 캐릭터도 덮인다.
+- 몬스터별 구역:
+
+| 몬스터 | 구역 | 진해지는 기준 |
+|---|---|---|
+| 보스 | 패턴의 `BossTelegraph` 상자(근접 상자·돌진 경로·도약 착지 띠) | `BossTelegraph.Urgency`. 근접·돌진은 예고 진행, 도약 내려찍기는 착지 순간(상승+조준+착지 지연)까지 |
+| 전면 방패병 | 앞쪽 타격 범위(`Strike Reach` 2.3 × 몸 높이) | 준비 0.4초 |
+| 돌진 방패병 | 돌진 경로(`Dash Max Distance` 5.5 × 몸 높이). 벽·발판 끝으로 짧아지는 실제 돌진보다 길 수 있다 | 준비 0.4초 |
+| 포탑·드론 | 실제 판정과 같은 `EnemyBeam`을 따라 늘린 띠(벽에서 잘림, 폭은 광선 폭). 레이저 충전 연출은 그대로 | 준비 + 조준 고정 0.4초 전체를 한 번에 |
+| 순찰 돼지 | 몸 중심에서 바라보는 쪽으로 `Attack Range`(1.2) × 몸 높이. 실제 판정은 중심 거리라 근사 상자 | 선딜레이 0.2초 |
+
+- 공격이 시작되거나(돌진·타격·발사) 취소·피격·사망하면 바로 사라진다. 쏘는 중의 광선은 기존 레이저가 그린다.
+- 바뀌지 않은 것: 모든 공격 판정·타이밍·수치, 포탑 스캔 막대, 방패 막대, 레이저. 원형 범위 표시는 없다(도약 내려찍기도 지금처럼 착지 띠).
+- 없어진 것: 방패병 바닥 주황 선, 포탑·드론의 황색/적색 예고선, 보스 `Telegraph` 자식 렌더러와 주황/빨강 잠금 색.
+
+### 구성 위치
+
+- 에셋: PixelFX 소스 `Tools/PixelFx/effects/attack-zone.mjs`(32×32, 8프레임 12fps 루프, 팔레트 `#2a050c`·`#5c0f1a`·`#9c1b2e`·`#c42c42`·`#ff6b7d`·`#ffd7dd`, seed 11). 안쪽 30px는 타일로 반복되므로 무늬는 30px 주기이거나 타일 안에 머문다. 결과물 `Art/Effects/PixelFxAttackZone/attack-zone-000~007.png`(18 PPU, 중앙 피벗, Border 1px, Full Rect, Point, 무압축).
+- 설정: `Data/Presentation/AttackZone.asset`(`AttackZoneProfile`: Frames 8, Fps 12, Start Alpha 0.2, Impact Alpha 0.7, Sorting Offset 2). 투명도 범위와 깜빡이는 속도는 여기서 조절한다.
+- 다시 만들기: `node Tools/PixelFx/pipeline.mjs render custom/attack-zone` 후 `Game > Effects > Import Generated Attack Zone`(프레임 목록과 fps만 교체하고 투명도·정렬 값은 유지. 예전 프레임 PNG는 먼저 지운다).
+- 코드: 렌더러는 `VfxManager`가 만든다(`RegisterOwner(Transform, AttackZoneProfile, SpriteRenderer)`, `ShowAttackZone(handle, center, size, angle, urgency)`, `HideAttackZone`). 요청한 프레임에만 보인다. 각 외형은 `AttackZoneOwner`를 하나 들고 위치·크기·각도·긴급도만 넘긴다: `EnemyVisual2D`(방패병·포탑·드론), `BossVisual2D`, `UnitVisual2D`(돼지, 지상 FSM이 있을 때만). 프리팹은 각 외형의 `Attack Zone` 칸에 같은 에셋을 연결했다(ShieldFront는 ShieldSoldier에서 물려받음, Guide NPC는 비어 있음).
+- 새 몬스터: 외형의 `Attack Zone`에 `AttackZone.asset`을 연결하고, 예고 중 매 프레임 `AttackZoneOwner.Show`를 부른다. 보스 패턴은 `Telegraph`에 상자와 `Urgency`(0→1)만 돌려주면 된다.
+- 테스트: EditMode `AttackZoneAssetTests` 3개(에셋 형식·빨강 계열만·프레임마다 다름, 프레임 순환, 모든 몬스터 연결), PlayMode `AttackZoneTests` 3개(방패병 범위·투명도, 포탑·드론 띠·조준 고정까지 한 번에 진해짐, 비활성화 시 숨김), `UnitCombatFsmTests.AttackWindupShowsTheDangerZoneInFrontUntilImpact`, `BossVisualTests`의 위험구역 검사 2개(기존 상자·잠금 색 검사 대체, 늘어난 Visual에서도 구역 스케일 1).

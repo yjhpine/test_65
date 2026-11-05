@@ -45,6 +45,43 @@ namespace ActionPlatformer.Editor
             Debug.Log("Contact burst VFX imported into PlayerVfx; combat settings unchanged.");
         }
 
+        [Serializable] private sealed class LoopManifest { public float fps; }
+
+        // The shared enemy danger zone: a looping red glitch tile on the player's 18 px grid, put into Data/Presentation/AttackZone.
+        // Only the frames and their fps are replaced; the opacity ramp and sorting already in the profile are kept.
+        [MenuItem("Game/Effects/Import Generated Attack Zone")]
+        public static void ImportAttackZone()
+        {
+            const string id = "custom/attack-zone", destination = "Assets/_Game/Art/Effects/PixelFxAttackZone";
+            const string profilePath = "Assets/_Game/Data/Presentation/AttackZone.asset", missing = "Generate attack-zone with Tools/PixelFx first.";
+            string manifest = $"Library/PixelFxPipeline/output/{id}/manifest.json";
+            if (!File.Exists(manifest)) throw new InvalidOperationException(missing);
+            string text = File.ReadAllText(manifest);
+            var pivot = JsonUtility.FromJson<Manifest>(text).unityPivot;
+            float fps = JsonUtility.FromJson<LoopManifest>(text).fps;
+            // A shorter loop must not leave stale frames behind (they would sort into the array).
+            if (Directory.Exists(destination))
+                foreach (string old in Directory.GetFiles(destination, "*.png")) AssetDatabase.DeleteAsset(old.Replace('\\', '/'));
+            var frames = ImportFrames(id, destination, 18, new Vector2(pivot[0], pivot[1]), missing);
+            // A 1 px border, drawn Tiled: the rim stays one art pixel wide and the glitch noise keeps its pixel size.
+            for (int i = 0; i < frames.Length; i++)
+            {
+                string path = AssetDatabase.GetAssetPath(frames[i]);
+                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                importer.spriteBorder = new Vector4(1, 1, 1, 1);
+                importer.SaveAndReimport();
+                frames[i] = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+            var profile = AssetDatabase.LoadAssetAtPath<AttackZoneProfile>(profilePath);
+            if (profile == null) { profile = ScriptableObject.CreateInstance<AttackZoneProfile>(); AssetDatabase.CreateAsset(profile, profilePath); }
+            var data = new SerializedObject(profile);
+            Assign(data.FindProperty("frames"), frames);
+            if (fps > 0f) data.FindProperty("fps").floatValue = fps;
+            data.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"Attack zone imported into Data/Presentation/AttackZone ({frames.Length} frames, {fps} fps); enemy attacks unchanged.");
+        }
+
         private static void ImportOnPlayerGrid(params (string name, string destination, string field)[] effects)
         {
             var data = new SerializedObject(AssetDatabase.LoadAssetAtPath<PlayerVfxProfile>(ProfilePath));

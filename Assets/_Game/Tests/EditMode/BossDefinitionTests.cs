@@ -51,7 +51,9 @@ namespace ActionPlatformer.Tests
             Assert.AreEqual(prefab.transform.position.x + body.offset.x, drawn.center.x, .01f);
             Assert.AreEqual(prefab.transform.position.y + body.offset.y, drawn.center.y, .01f);
             var so = new SerializedObject(visual);
-            Assert.IsNotNull(so.FindProperty("telegraphRenderer").objectReferenceValue);
+            // The telegraph is the shared danger zone drawn by VfxManager; the old child renderer is gone.
+            Assert.AreSame(AssetDatabase.LoadAssetAtPath<Object>("Assets/_Game/Data/Presentation/AttackZone.asset"), so.FindProperty("attackZone").objectReferenceValue);
+            Assert.IsNull(prefab.transform.Find("Telegraph"));
             Assert.AreSame(prefab.GetComponent<BossCombat2D>(), so.FindProperty("stateSource").objectReferenceValue);
         }
 

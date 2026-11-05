@@ -164,7 +164,9 @@ namespace ActionPlatformer.Units.Bosses
                 Visible = true,
                 Center = new Vector2(landingX, surfaceY + .15f),
                 Size = new Vector2(owner.shockwaveRadius * 2f, .3f),
-                Locked = locked
+                Locked = locked,
+                // The zone lands with the boss: touchdown is rise + aim + land delay into the leap.
+                Urgency = Mathf.Clamp01(clock / Mathf.Max(.0001f, owner.riseTime + owner.aimTime + owner.landDelay))
             } : default;
         }
     }

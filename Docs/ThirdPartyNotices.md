@@ -201,3 +201,4 @@ Archive SHA-256:
 - Project-authored effect: Tools/PixelFx/effects/glitch-triple-slash.mjs and glitch-slash-1/2/3.mjs. Cyan/red procedural crescents and pixel fragments rendered using PixelFX core.
 - Imported frames: Assets/_Game/Art/Effects/PixelFxGlitchCombo/Strike1, Strike2, Strike3. Each includes the upstream LICENSE and NOTICE.md plus a reproducibility manifest.
 - Patch Pixel gallery font is not imported. Original gameplay timing and hit-stop data are not imported from PixelFX.
+- Attack zone (2026-11-05): project-authored Tools/PixelFx/effects/attack-zone.mjs, a looping 32x32, 8-frame red glitch tile (scanlines, missing pixels, displaced blocks, broken rim; reds only) rendered with the same pinned PixelFX core. Imported to Assets/_Game/Art/Effects/PixelFxAttackZone with the upstream LICENSE, NOTICE.md and manifest.

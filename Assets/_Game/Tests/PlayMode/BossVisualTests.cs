@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using ActionPlatformer.Presentation;
 using ActionPlatformer.Units;
 using ActionPlatformer.Units.Bosses;
 using ActionPlatformer.Units.Features;
@@ -7,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Text.RegularExpressions;
+using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -31,7 +33,7 @@ namespace ActionPlatformer.Tests
         }
 
         readonly List<Object> created = new List<Object>();
-        FakeState fake; BossVisual2D visual; Animator animator; SpriteRenderer sprite, box; Rigidbody2D body; GameObject boxHolder;
+        FakeState fake; BossVisual2D visual; Animator animator; SpriteRenderer sprite; Rigidbody2D body; AttackZoneProfile zoneProfile;
         static readonly MethodInfo LateUpdate = typeof(BossVisual2D).GetMethod("LateUpdate", BindingFlags.Instance | BindingFlags.NonPublic);
 
         T Track<T>(T o) where T : Object { created.Add(o); return o; }
@@ -62,15 +64,17 @@ namespace ActionPlatformer.Tests
             var child = new GameObject("Visual"); child.transform.SetParent(root.transform, false); child.transform.localScale = new Vector3(2f, 4f, 1f);
             sprite = child.AddComponent<SpriteRenderer>(); animator = child.AddComponent<Animator>();
             animator.runtimeAnimatorController = controller; animator.applyRootMotion = false;
-            boxHolder = new GameObject("Telegraph box"); boxHolder.transform.SetParent(child.transform, false);
-            box = boxHolder.AddComponent<SpriteRenderer>(); boxHolder.transform.position = new Vector3(0, 0, 3f);
             visual = child.AddComponent<BossVisual2D>();
-            BossTestRig.Set(visual, "stateSource", combat); BossTestRig.Set(visual, "telegraphRenderer", box);
+            zoneProfile = AssetDatabase.LoadAssetAtPath<AttackZoneProfile>("Assets/_Game/Data/Presentation/AttackZone.asset");
+            BossTestRig.Set(visual, "stateSource", combat); BossTestRig.Set(visual, "attackZone", zoneProfile);
             parent.SetActive(true);
             yield return null;
         }
 
-        void Tick(float dt = 0f) { LateUpdate.Invoke(visual, null); animator.Update(dt); }
+        void Tick(float dt = 0f) { LateUpdate.Invoke(visual, null); animator.Update(dt); EffectsRuntime.Vfx.SendMessage("LateUpdate"); }
+        // The danger zone renderer belongs to VfxManager; null until the boss first shows a telegraph.
+        SpriteRenderer Zone => visual.AttackZoneRoot == null ? null : visual.AttackZoneRoot.Find("Attack zone").GetComponent<SpriteRenderer>();
+        bool ZoneShown => Zone != null && Zone.enabled;
         float Time01 => animator.GetCurrentAnimatorStateInfo(0).normalizedTime;
         bool InState(string name) => animator.GetCurrentAnimatorStateInfo(0).IsName(name);
 
@@ -103,36 +107,41 @@ namespace ActionPlatformer.Tests
         }
 
         [UnityTest]
-        public IEnumerator FlipsWithFacingAndShowsTelegraphBoxOnlyWhenVisible()
+        public IEnumerator FlipsWithFacingAndShowsTheSharedAttackZoneOnlyWhenVisible()
         {
             yield return Build();
             fake.Facing = 1f; Tick(); Assert.That(sprite.flipX, Is.False);
             fake.Facing = -1f; Tick(); Assert.That(sprite.flipX, Is.True);
-            Assert.That(box.enabled, Is.False);
+            Assert.That(ZoneShown, Is.False);
             fake.Telegraph = new BossTelegraph { Visible = true, Center = new Vector2(5f, 2f), Size = new Vector2(3f, 1.5f) };
             Tick();
-            Assert.That(box.enabled, Is.True);
-            Assert.That((Vector2)boxHolder.transform.position, Is.EqualTo(new Vector2(5f, 2f)).Using(Vector2EqualityComparer.Instance));
-            Assert.That(boxHolder.transform.position.z, Is.EqualTo(3f).Within(1e-4f));
-            Assert.That(boxHolder.transform.lossyScale.x, Is.EqualTo(3f).Within(1e-3f));
-            Assert.That(boxHolder.transform.lossyScale.y, Is.EqualTo(1.5f).Within(1e-3f));
-            Assert.That(box.color.r, Is.EqualTo(1f).Within(1e-3f)); Assert.That(box.color.a, Is.EqualTo(.35f).Within(1e-3f));
-            fake.Telegraph = default; Tick(); Assert.That(box.enabled, Is.False);
+            Assert.That(ZoneShown, Is.True);
+            Assert.That(zoneProfile.Frames, Has.Member(Zone.sprite));
+            Assert.That(Zone.drawMode, Is.EqualTo(SpriteDrawMode.Tiled));
+            // World-sized even under the Visual's (2, 4) scale.
+            Assert.That((Vector2)Zone.bounds.center, Is.EqualTo(new Vector2(5f, 2f)).Using(new Vector2EqualityComparer(1e-3f)));
+            Assert.That(Zone.bounds.size.x, Is.EqualTo(3f).Within(1e-3f));
+            Assert.That(Zone.bounds.size.y, Is.EqualTo(1.5f).Within(1e-3f));
+            // The glitch tile keeps its art-pixel size: no stretch from the Visual's scale.
+            Assert.That(Zone.transform.lossyScale.x, Is.EqualTo(1f).Within(1e-3f));
+            Assert.That(Zone.transform.lossyScale.y, Is.EqualTo(1f).Within(1e-3f));
+            Assert.That(Zone.sortingOrder, Is.EqualTo(sprite.sortingOrder + zoneProfile.SortingOffset));
+            fake.Telegraph = default; Tick(); Assert.That(ZoneShown, Is.False);
         }
 
         [UnityTest]
-        public IEnumerator LockedTelegraphUsesTheLockedColor()
+        public IEnumerator ZoneOpacityFollowsUrgencyAndIgnoresTheLock()
         {
             yield return Build();
-            fake.Telegraph = new BossTelegraph { Visible = true, Center = Vector2.zero, Size = Vector2.one, Locked = false };
-            Tick(); var tracking = box.color;
-            fake.Telegraph = new BossTelegraph { Visible = true, Center = Vector2.zero, Size = Vector2.one, Locked = true };
-            Tick();
-            Assert.That(box.color, Is.Not.EqualTo(tracking));
-            Assert.That(box.color.r, Is.EqualTo(1f).Within(1e-3f)); Assert.That(box.color.g, Is.EqualTo(.25f).Within(1e-3f));
-            Assert.That(box.color.b, Is.EqualTo(.2f).Within(1e-3f)); Assert.That(box.color.a, Is.EqualTo(.35f).Within(1e-3f));
-            fake.Telegraph = new BossTelegraph { Visible = true, Center = Vector2.zero, Size = Vector2.one };
-            Tick(); Assert.That(box.color, Is.EqualTo(tracking), "unlocked goes back to the tracking color");
+            foreach (float urgency in new[] { 0f, .5f, 1f })
+            {
+                fake.Telegraph = new BossTelegraph { Visible = true, Center = Vector2.zero, Size = Vector2.one, Urgency = urgency };
+                Tick(); var tracking = Zone.color;
+                Assert.That(tracking.a, Is.EqualTo(Mathf.Lerp(.2f, .7f, urgency)).Within(1e-3f), "urgency " + urgency);
+                Assert.That(tracking.r, Is.EqualTo(1f).Within(1e-3f)); Assert.That(tracking.g, Is.EqualTo(1f).Within(1e-3f));
+                fake.Telegraph = new BossTelegraph { Visible = true, Center = Vector2.zero, Size = Vector2.one, Urgency = urgency, Locked = true };
+                Tick(); Assert.That(Zone.color, Is.EqualTo(tracking), "locking changes nothing but what the pattern does");
+            }
         }
 
         [UnityTest]

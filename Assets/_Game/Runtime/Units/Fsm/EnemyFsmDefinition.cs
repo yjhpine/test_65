@@ -61,6 +61,7 @@ namespace ActionPlatformer.Units.Fsm
         public float GuardDirectBand => guardDirectBand;
         public float StrikeReach => strikeReach;
         public float DashMaxDistance => dashMaxDistance;
+        public float LockDuration => lockDuration;
         public bool TryValidate(out string error)
         {
             float[] positive = { detectionRange, firstPreparation, preparation, detectionHeight, approachHeight,

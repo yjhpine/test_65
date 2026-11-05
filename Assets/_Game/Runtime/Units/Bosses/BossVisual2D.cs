@@ -1,17 +1,19 @@
 using System.Collections.Generic;
 using UnityEngine;
+using ActionPlatformer.Presentation;
 
 namespace ActionPlatformer.Units.Bosses
 {
-    // Reads the boss brain's state and picks animator states, facing and the telegraph box. It never changes gameplay.
+    // Reads the boss brain's state and picks animator states, facing and the attack danger zone. It never changes gameplay.
     [DisallowMultipleComponent, RequireComponent(typeof(SpriteRenderer), typeof(Animator))]
     public sealed class BossVisual2D : MonoBehaviour
     {
         [SerializeField] private BossCombat2D stateSource;
         [SerializeField] private bool spriteFacesRight = true;
-        [SerializeField] private SpriteRenderer telegraphRenderer;
-        [SerializeField] private Color telegraphColor = new Color(1f, .54f, .16f, .35f);
-        [SerializeField] private Color lockedTelegraphColor = new Color(1f, .25f, .2f, .35f);
+        [Tooltip("Shared red danger zone stretched over the pattern's telegraph box (Data/Presentation/AttackZone).")]
+        [SerializeField] private AttackZoneProfile attackZone;
+        private readonly AttackZoneOwner zone = new AttackZoneOwner();
+        public Transform AttackZoneRoot => zone.SessionRoot;
         private static readonly int ActionTime = Animator.StringToHash("ActionTime");
         private readonly HashSet<string> warned = new HashSet<string>();
         private SpriteRenderer spriteRenderer;
@@ -30,7 +32,7 @@ namespace ActionPlatformer.Units.Bosses
         private void LateUpdate()
         {
             var state = stateSource == null ? null : stateSource.State;
-            if (state == null || state.Settings == null) { HideTelegraph(); return; }
+            if (state == null || state.Settings == null) { zone.Hide(); return; }
             if (body == null) body = stateSource.GetComponent<Rigidbody2D>();
             spriteRenderer.flipX = (state.Facing > 0f) != spriteFacesRight;
             string desired = DesiredAnimation(state);
@@ -72,21 +74,15 @@ namespace ActionPlatformer.Units.Bosses
             animator.Play(hash, 0, 0f);
         }
 
+        // Tracking and locked look the same; only the opacity rises with the pattern's urgency (0 -> 1 at the hit).
         private void DrawTelegraph(BossTelegraph telegraph)
         {
-            if (telegraphRenderer == null) return;
-            telegraphRenderer.enabled = telegraph.Visible;
+            zone.Hide();
             if (!telegraph.Visible) return;
-            var t = telegraphRenderer.transform;
-            t.position = new Vector3(telegraph.Center.x, telegraph.Center.y, t.position.z);
-            // Assumes a 1-unit sprite; compensate for the parent's scale so the box is world-sized.
-            var parent = t.parent == null ? Vector3.one : t.parent.lossyScale;
-            t.localScale = new Vector3(Safe(telegraph.Size.x, parent.x), Safe(telegraph.Size.y, parent.y), t.localScale.z);
-            telegraphRenderer.color = telegraph.Locked ? lockedTelegraphColor : telegraphColor;
+            zone.Ensure(transform, attackZone, spriteRenderer);
+            zone.Show(telegraph.Center, telegraph.Size, 0f, telegraph.Urgency);
         }
 
-        private static float Safe(float size, float scale) => Mathf.Abs(scale) < 1e-4f ? size : size / scale;
-
-        private void HideTelegraph() { if (telegraphRenderer != null) telegraphRenderer.enabled = false; }
+        private void OnDisable() => zone.Release();
     }
 }

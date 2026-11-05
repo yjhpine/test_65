@@ -32,6 +32,7 @@ namespace ActionPlatformer.Units.Fsm
         public float MoveSpeed => moveSpeed;
         public float PatrolDistance => patrolDistance;
         public float WaitDuration => waitDuration;
+        public float AttackRange => attackRange;
 
         public bool TryValidate(out string error)
         {

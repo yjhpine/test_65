@@ -52,6 +52,7 @@ MonoBehaviour:
   attackImpactNormalizedTime: 0.4
   attackRecoveryDuration: 0.3
   spriteFacesRight: 0
+  attackZone: {fileID: 11400000, guid: b4d2f719d68bf914e85ae2c6bc04526d, type: 2}
 --- !u!212 &5310154408156685181
 SpriteRenderer:
   serializedVersion: 2
@@ -286,6 +287,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   stopAtLedges: 1
+  ignoreKnockback: 0
   arrivalTolerance: 0.02
   groundProbeDistance: 0.3
 --- !u!114 &6693532166446117632

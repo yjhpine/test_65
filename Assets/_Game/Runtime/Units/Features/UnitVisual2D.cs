@@ -1,4 +1,6 @@
 using UnityEngine;
+using ActionPlatformer.Presentation;
+using ActionPlatformer.Units.Fsm;
 
 namespace ActionPlatformer.Units.Features
 {
@@ -15,6 +17,11 @@ namespace ActionPlatformer.Units.Features
         [Tooltip("Seconds from impact to the end of the Attack clip.")]
         [SerializeField, Min(0.01f)] private float attackRecoveryDuration = 0.3f;
         [SerializeField] private bool spriteFacesRight;
+        [Tooltip("Optional shared red danger zone shown in front during the attack windup. Needs a ground FSM on State Source.")]
+        [SerializeField] private AttackZoneProfile attackZone;
+        private readonly AttackZoneOwner zone = new AttackZoneOwner();
+        private Collider2D bodyCollider;
+        public Transform AttackZoneRoot => zone.SessionRoot;
         private static readonly int Moving = Animator.StringToHash("Moving");
         private static readonly int ActionTime = Animator.StringToHash("ActionTime");
         private static readonly int Idle = Animator.StringToHash("Base Layer.Idle");
@@ -118,6 +125,25 @@ namespace ActionPlatformer.Units.Features
             if (animation != UnitAnimation.Locomotion) animator.SetFloat(ActionTime, Mathf.Clamp01(progress));
             previousState = state;
             previousVersion = state?.AnimationVersion ?? 0;
+            ShowAttackZone(state);
         }
+
+        // During the windup, the reach in front (the FSM's Attack Range from the unit's position) at body height.
+        private void ShowAttackZone(IUnitAnimationState state)
+        {
+            zone.Hide();
+            if (attackZone == null || state == null || state.Animation != UnitAnimation.Attack ||
+                !(state.AnimationDuration > 0f) || state.AnimationElapsed >= state.AnimationDuration) return;
+            if (!(stateSource.Definition.Fsm is GroundUnitFsmDefinition settings)) return;
+            zone.Ensure(transform, attackZone, spriteRenderer);
+            if (bodyCollider == null) bodyCollider = stateSource.GetComponent<Collider2D>();
+            float facing = Mathf.Abs(state.FacingDirection) > .01f ? Mathf.Sign(state.FacingDirection) : spriteRenderer.flipX == spriteFacesRight ? 1f : -1f;
+            Vector2 origin = stateSource.transform.position;
+            var bounds = bodyCollider != null ? bodyCollider.bounds : new Bounds(origin, Vector3.one);
+            zone.Show(new Vector2(origin.x + facing * settings.AttackRange * .5f, bounds.center.y),
+                new Vector2(settings.AttackRange, bounds.size.y), 0f, state.AnimationElapsed / state.AnimationDuration);
+        }
+
+        private void OnDisable() => zone.Release();
     }
 }

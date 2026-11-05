@@ -133,6 +133,7 @@ MonoBehaviour:
   spriteFacesRight: 0
   vfxProfile: {fileID: 11400000, guid: 72b1f8db65a37d6409bae0a39187c143, type: 2}
   sfxProfile: {fileID: 11400000, guid: 0728a1a1c40389b499aa10ef614b72f7, type: 2}
+  attackZone: {fileID: 11400000, guid: b4d2f719d68bf914e85ae2c6bc04526d, type: 2}
 --- !u!114 &6776591724286171343
 MonoBehaviour:
   m_ObjectHideFlags: 0

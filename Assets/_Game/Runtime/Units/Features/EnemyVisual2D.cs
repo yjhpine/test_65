@@ -1,5 +1,6 @@
 using UnityEngine;
 using ActionPlatformer.Presentation;
+using ActionPlatformer.Units.Fsm;
 
 namespace ActionPlatformer.Units.Features
 {
@@ -16,6 +17,11 @@ namespace ActionPlatformer.Units.Features
         public VfxManager Effects => effects;
         [SerializeField] private ActionPlatformer.Presentation.EnemyVfxProfile vfxProfile;
         [SerializeField] private ActionPlatformer.Presentation.EnemySfxProfile sfxProfile;
+        [Tooltip("Shared red danger zone stretched over the coming attack (Data/Presentation/AttackZone).")]
+        [SerializeField] private AttackZoneProfile attackZone;
+        private readonly AttackZoneOwner zone = new AttackZoneOwner();
+        public Transform AttackZoneRoot => zone.SessionRoot;
+        private float preparationSeen;
         private SpriteRenderer spriteRenderer;
         private Animator animator;
         private UnitHealth health;
@@ -56,6 +62,22 @@ namespace ActionPlatformer.Units.Features
                 audio=EffectsRuntime.Sfx;
                 if(audio!=null)audioOwner=audio.RegisterOwner(transform,sfxProfile);
             }
+            zone.Ensure(transform,attackZone,spriteRenderer);
+        }
+        // One ramp over the whole warning: preparation, then (ranged enemies) the aim lock that follows it.
+        private float Urgency(IEnemyActionState state, EnemyFsmDefinition settings)
+        {
+            float lockTime = settings.Pattern == EnemyPattern.Shield ? 0f : settings.LockDuration;
+            if (state.Phase == EnemyPhase.Preparing)
+            {
+                // The preparation's length is read back from the state (elapsed / progress) so each wind-up uses its own.
+                float preparation = state.Progress > 0f ? state.Elapsed / state.Progress : preparationSeen;
+                if (state.Progress > 0f && state.Progress < 1f) preparationSeen = preparation;
+                return preparation <= 0f ? 0f : Mathf.Clamp01(state.Elapsed / (preparation + lockTime));
+            }
+            // Locked without a seen preparation (bound straight into the lock) starts the second half of the ramp.
+            float before = preparationSeen > 0f ? preparationSeen : lockTime;
+            return before + lockTime <= 0f ? 1f : Mathf.Clamp01((before + state.Elapsed) / (before + lockTime));
         }
         private void LateUpdate()
         {
@@ -112,12 +134,11 @@ namespace ActionPlatformer.Units.Features
                 if (stateSource.Guarding)
                     Draw(EnemyEffectShape.Shield, center + Vector2.right * state.Facing * .58f, new Vector2(.09f, 1.5f), 0,
                         Time.time < blockUntil ? Color.white : warning ? Color.Lerp(Color.cyan, new Color(1f,.35f,.05f), state.Progress) : new Color(.12f,.6f,1f,.8f));
-                // The telegraph marks what is coming as a thin line on the floor: the strike reach or the fixed rush path.
+                // The danger zone covers what is coming: the strike reach or the fixed rush path.
                 if (state.Phase == EnemyPhase.Preparing)
                 {
                     stateSource.ShieldAttackArea(state.Facing, out var area, out var size);
-                    Draw(EnemyEffectShape.Beam, new Vector2(area.x, area.y - size.y * .5f + .04f), new Vector2(size.x, .08f), 0,
-                        new Color(1f, .35f + .45f * (1f - state.Progress), .1f, .45f + .45f * state.Progress));
+                    zone.Show(area, size, 0f, Urgency(state, settings));
                 }
             }
             if (settings.Pattern == EnemyPattern.Surveillance && state.Phase == EnemyPhase.Preparing)
@@ -131,10 +152,10 @@ namespace ActionPlatformer.Units.Features
             {
                 var preview = stateSource.CalculateBeam(state.Aim, state.Vertical);
                 bool locked = state.Phase == EnemyPhase.Locked;
-                Color color = laserVisual != null && laserVisual.IsConfigured ? laserVisual.TelegraphColor :
-                    locked ? new Color(1f,.2f,.12f) : new Color(1f,.8f,.15f);
-                color.a = locked ? .75f : .28f;
-                DrawBeam(preview, color);
+                // The danger zone is the beam's own strip (same EnemyBeam the hit uses), so it ends where the beam is clipped.
+                Vector2 delta = preview.End - preview.Start;
+                zone.Show((preview.Start + preview.End) * .5f, new Vector2(delta.magnitude, preview.Width),
+                    Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg, Urgency(state, settings));
                 laserVisual?.ShowCharge(preview, stateSource.Center, state.Vertical, locked ? 1 : state.Progress);
             }
         }
@@ -145,13 +166,14 @@ namespace ActionPlatformer.Units.Features
         }
         private void Draw(EnemyEffectShape shape,Vector2 position,Vector2 size,float angle,Color color)
             => effects?.SubmitShape(effectOwner,shape,position,size,angle,color);
-        private void Hide() => effects?.HideEnemy(effectOwner);
+        private void Hide() { effects?.HideEnemy(effectOwner); zone.Hide(); }
         private void OnDisable()
         {
             audio?.ReleaseOwner(audioOwner); audioOwner=default;
             droneHitAt = double.NegativeInfinity;
             transform.localRotation = restingRotation;
             Hide(); effects?.ReleaseOwner(effectOwner); effectOwner=default; blockUntil = shotUntil = 0f; animationName = null;
+            zone.Release(); preparationSeen = 0f;
             if (stateSource != null) { blockVersion = stateSource.BlockVersion; shotVersion = stateSource.ShotVersion; }
             if (health != null) damageVersion = health.DamageVersion;
             if (shieldVisual != null) shieldVisual.ResetPresentation(damageVersion, blockVersion);

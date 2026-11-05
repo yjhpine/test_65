@@ -71,7 +71,7 @@ namespace ActionPlatformer.Units.Bosses
             public override void Cancel() { telegraphing = false; }
             public override float Progress => telegraphing ? Mathf.Clamp01(elapsed / Mathf.Max(.0001f, owner.telegraphTime))
                 : Mathf.Clamp01(elapsed / Mathf.Max(.0001f, owner.ExecuteDuration));
-            public override BossTelegraph Telegraph => telegraphing ? new BossTelegraph { Visible = true, Center = BoxCenter, Size = owner.boxSize } : default;
+            public override BossTelegraph Telegraph => telegraphing ? new BossTelegraph { Visible = true, Center = BoxCenter, Size = owner.boxSize, Urgency = Progress } : default;
         }
     }
 }

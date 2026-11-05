@@ -1000,3 +1000,18 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
   - GREEN: `PlayerGlitchCombatTests` 137/137. BossTest 재확인에서 잠복 75번이 모두 출현했고 실패는 0건이었다. 확인용 파일은 지웠다.
   - 전체 실행(열린 Editor): EditMode 109/109, PlayMode 405/405(기존 401 + 새 4).
 - 한계: 실제 물리 키보드·마우스 입력과 스탠드얼론 빌드는 확인하지 않았다.
+
+## 2026-11-05: 공격 위험구역 통일 (PixelFX 빨간 사각형)
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 에셋: `node Tools/PixelFx/pipeline.mjs render custom/attack-zone` → 1 frame, 16×16, deterministic. Node는 `C:\Users\yjhpi\AppData\Local\OpenAI\Codex\runtimes\cua_node\9c26d707817e90a7\bin\node.exe`(v24.22.1, 11-02에 쓴 경로는 없어짐). `Import Generated Attack Zone`을 일회용 스크립트에서 실행해 18 PPU·Border 1·Full Rect를 확인했고, 프리팹 5개(ShieldSoldier·SurveillanceTurret·FlyingDrone·PatrolEnemy·TestBoss)에 연결했다. ShieldFront는 상속을 확인했고, TestBoss의 `Telegraph` 자식을 지웠다(BossTest 씬에 관련 오버라이드 없음).
+- 테스트(열린 Editor, Unity CLI): 새 테스트 `AttackZoneAssetTests` 2/2, `AttackZoneTests` 3/3(첫 실행 1/3: 같은 프레임에 단계를 바꾸면 이전 요청이 남음 → 외형이 매 LateUpdate 시작에 구역을 먼저 숨기도록 수정), `BossVisualTests` 5/5, `UnitCombatFsmTests` 14/14, `EnemyLaserVisualTests` 2/2, `EnemyPatternTests` 28/28.
+- 전체 실행: EditMode 111/111(109 + 새 2). PlayMode 408/409(405 + 새 4, 보스 상자 검사 2개는 위험구역 검사 2개로 교체). 실패 1개는 알려진 간헐 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`이며 클래스 재실행에서도 18/19로 같은 테스트만 실패했다(입력·대화만 다루는 테스트로 위험구역과 무관하다고 판단, 원인 미확정). Console 오류는 의도된 6건, 컴파일 오류 0.
+- 실제 화면(열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림, 씬 저장 없음): MovementLab에서 전면 방패병 2.30×1.60, 돌진 방패병 5.50×1.60, 포탑·드론 광선 띠(벽까지), 임시로 생성한 순찰 돼지 앞쪽 1.20×1.00. BossTest에서 도약 내려찍기 착지 띠 6.00×0.30, 돌진 경로 상자. 측정한 알파는 0.20~0.70이다. 돼지는 선딜레이가 0.2초라 백그라운드 Editor 프레임 간격에서 최대 0.50까지만 관측됐다(중간값 0.45는 PlayMode 테스트가 확인). 캡처 `Library/PrototypeValidation/AttackZone/*.png`.
+- 한계: 실제 입력·스탠드얼론 빌드·CoreLoopStage 전체 플레이는 확인하지 않았다. 위험구역이 캐릭터 위에 그려져 구역 안의 플레이어도 붉게 보인다(정렬 +2, 기존 보스 상자와 같은 위치).
+- 같은 날 글리치 모양으로 다시 제작(사용자 요청: 글리치 느낌, 청록 없이, 컴퓨터 세상 속 버그):
+  - 에셋: `render custom/attack-zone` → 8 frames, 32×32, 12 fps, deterministic. `Import Generated Attack Zone`이 예전 1프레임 PNG를 지우고 8프레임(Border 1, 18 PPU)과 fps 12를 프로필에 넣었다. 그리기는 Sliced → Tiled.
+  - 실제 화면에서 찾은 문제: BossTest에서 보스 Visual의 Transform 스케일이 구역에 곱해져 글리치 픽셀이 커지고 비율이 어긋났다. `VfxManager`가 구역 렌더러에서 소유자 스케일을 상쇄하도록 고쳤고(실제 스케일 1), `BossVisualTests`에 늘어난 Visual에서도 스케일 1인지 보는 검사를 추가했다. 다시 찍은 캡처에서 보스·방패병·포탑·드론 구역의 픽셀 크기가 같았다.
+  - 테스트: `AttackZoneAssetTests` 3/3(빨강 계열만: 모든 불투명 픽셀에서 R ≥ G, R ≥ B / 구멍은 0보다 많고 10% 미만 / 8프레임이 모두 다름 / 프레임 순환), `AttackZoneTests` 3/3, `BossVisualTests` 5/5, `UnitCombatFsmTests` 14/14, `EnemyLaserVisualTests` 2/2, `BossDefinitionTests` 10/10.
+  - 전체 실행: EditMode 112/112(새 프레임 순환 테스트 1 포함), PlayMode 409/409(간헐 VirtualKeyboard도 통과), 324초.
+  - 캡처: `Library/PrototypeValidation/AttackZone/MovementLab-glitch-*.png`, `BossTest-glitch-*.png`(돼지는 단색 때 캡처만 있다).

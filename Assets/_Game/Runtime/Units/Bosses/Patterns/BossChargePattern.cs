@@ -72,7 +72,8 @@ namespace ActionPlatformer.Units.Bosses
                 Visible = true,
                 Center = Context.Combat.Center + Vector2.right * Context.Facing * owner.distance * .5f,
                 // Same box HitSweep uses over the full travel: the body at both ends.
-                Size = new Vector2(owner.distance + Context.Combat.BodySize.x, Context.Combat.BodySize.y)
+                Size = new Vector2(owner.distance + Context.Combat.BodySize.x, Context.Combat.BodySize.y),
+                Urgency = Progress
             } : default;
         }
     }
