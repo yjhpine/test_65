@@ -12,6 +12,12 @@ namespace ActionPlatformer.Player
         private readonly float slashSize, sparkSize, sparkFps, sparkSpacing, sparkInterval;
         private readonly SpriteRenderer slash;
         private readonly SpriteRenderer[] sparks = new SpriteRenderer[MaxGlitchSparks];
+        // The straight streak between the endpoints (PixelFX tile, left-edge pivot, +x = travel). Without its frames
+        // the older row of small sparks fills the path instead.
+        private readonly Sprite[] streakFrames;
+        private readonly float streakFps, streakDrawTime, streakRetract;
+        private readonly SpriteRenderer streak;
+        private bool Streaking => HasFrames(streakFrames);
         private Vector2 glitchFrom, glitchTo;
         private float glitchAge;
         private int sparkCount;
@@ -37,6 +43,18 @@ namespace ActionPlatformer.Player
             this.sparkInterval = Mathf.Max(.001f, sparkInterval);
             slash = Create("Basic attack slash", source, effectMaterial);
             for (int i = 0; i < sparks.Length; i++) sparks[i] = Create("Glitch spark " + i, source, effectMaterial);
+            streakFrames = profile?.GlitchStreakFrames;
+            streakFps = Mathf.Max(1f, profile != null ? profile.GlitchStreakFps : 30f);
+            streakDrawTime = Mathf.Max(0f, profile != null ? profile.GlitchStreakDrawTime : 0f);
+            streakRetract = Mathf.Clamp01(profile != null ? profile.GlitchStreakRetractStart : .6f);
+            streak = Create("Glitch streak", source, effectMaterial);
+            // Tiled at art-pixel size along the path, under the endpoint bursts.
+            streak.drawMode = SpriteDrawMode.Tiled; streak.tileMode = SpriteTileMode.Continuous;
+            streak.sortingOrder = source.sortingOrder + 2;
+            // Authored teal/red pixels carry their own palette: neutralize the shared material's tint on this renderer only.
+            var block = new MaterialPropertyBlock();
+            streak.GetPropertyBlock(block); block.SetColor("_PrimaryColor", Color.white); block.SetColor("_AccentColor", Color.white);
+            streak.SetPropertyBlock(block);
             for (int i = 0; i < transferSparks.Length; i++)
             {
                 transferSparks[i] = Create("Transfer spark " + i, source, effectMaterial);
@@ -111,9 +129,11 @@ namespace ActionPlatformer.Player
             {
                 var spark = sparks[i];
                 if (i >= sparkCount) { spark.enabled = false; continue; }
-                // Keep the original departure/arrival bursts immediate. Smaller sparks pop along the path in order.
+                // The departure bursts at once. With the streak, the arrival bursts as the line reaches it; without it,
+                // the arrival is immediate too and smaller sparks pop along the path in order.
                 bool endpoint = i == 0 || i == sparkCount - 1;
-                float age = glitchAge - (endpoint ? 0 : i * sparkInterval);
+                float delay = !endpoint ? i * sparkInterval : Streaking && i > 0 ? streakDrawTime : 0f;
+                float age = glitchAge - delay;
                 int frame = Mathf.FloorToInt(age * sparkFps);
                 spark.enabled = frame >= 0 && frame < sparkFrames.Length;
                 if (!spark.enabled) continue;
@@ -121,13 +141,42 @@ namespace ActionPlatformer.Player
                 float along = sparkCount == 1 ? 0 : (float)i / (sparkCount - 1);
                 Place(spark, Vector2.Lerp(glitchFrom, glitchTo, along), sparkSize * (endpoint ? 1f : .5f));
             }
+            RenderStreak();
         }
+
+        // Shoots from the departure to the arrival in the draw time (fast start), plays its frames, and once
+        // RetractStart of them has passed pulls its tail in from the departure side until it is gone.
+        private void RenderStreak()
+        {
+            float distance = Vector2.Distance(glitchFrom, glitchTo);
+            float life = Streaking ? streakFrames.Length / streakFps : 0f;
+            streak.enabled = Streaking && glitchStartedFrame >= 0 && distance > .001f && glitchAge < life;
+            if (!streak.enabled) return;
+            streak.sprite = streakFrames[Mathf.Min(streakFrames.Length - 1, Mathf.FloorToInt(glitchAge * streakFps))];
+            float head = streakDrawTime <= 0f ? 1f : Mathf.Clamp01(glitchAge / streakDrawTime);
+            head = 1f - (1f - head) * (1f - head);
+            float retractFrom = life * streakRetract;
+            float tail = life <= retractFrom ? 0f : Mathf.Clamp01((glitchAge - retractFrom) / (life - retractFrom));
+            float length = (head - tail) * distance;
+            if (length <= .001f) { streak.enabled = false; return; }
+            Vector2 direction = (glitchTo - glitchFrom) / distance, start = glitchFrom + direction * (tail * distance);
+            var t = streak.transform;
+            t.SetPositionAndRotation(new Vector3(start.x, start.y, owner.position.z),
+                Quaternion.Euler(0, 0, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg));
+            // Cancel the owner's scale so the tile keeps its art-pixel size and the streak is exactly the path long.
+            var scale = owner.lossyScale;
+            t.localScale = new Vector3(Inverse(scale.x), Inverse(scale.y), 1f);
+            streak.size = new Vector2(length, streak.sprite.bounds.size.y);
+        }
+
+        private static float Inverse(float scale) => Mathf.Abs(scale) < 1e-4f ? 1f : 1f / Mathf.Abs(scale);
 
         public void PlayGlitch(PlayerGlitchPresentation glitch)
         {
             glitchFrom=glitch.From; glitchTo=glitch.To; glitchAge=0; glitchStartedFrame=Time.frameCount;
             float distance=Vector2.Distance(glitchFrom,glitchTo);
-            sparkCount=!HasFrames(sparkFrames)?0:distance<.001f?1:Mathf.Clamp(Mathf.CeilToInt(distance/sparkSpacing)+1,2,sparks.Length);
+            // With the streak only the two endpoint bursts remain; the line itself fills the path.
+            sparkCount=!HasFrames(sparkFrames)?0:distance<.001f?1:Streaking?2:Mathf.Clamp(Mathf.CeilToInt(distance/sparkSpacing)+1,2,sparks.Length);
         }
 
         public void Reset(uint glitchVersion)
@@ -135,6 +184,7 @@ namespace ActionPlatformer.Player
             glitchStartedFrame = -1;
             slash.enabled = false;
             foreach (var spark in sparks) spark.enabled = false;
+            streak.enabled = false;
             glitchAge = 0;
             sparkCount = 0;
             for (int i = 0; i < transferSparks.Length; i++)

@@ -36,6 +36,18 @@ namespace ActionPlatformer.Editor
             Debug.Log("Glitch marker VFX imported into PlayerVfx; glitch rules unchanged.");
         }
 
+        // The straight glitch streak between departure and arrival: left-edge pivot, tiled along the path at its own size.
+        [MenuItem("Game/Effects/Import Generated Glitch Streak")]
+        public static void ImportGlitchStreak()
+        {
+            const string destination = "Assets/_Game/Art/Effects/PixelFxGlitchStreak";
+            // A shorter render must not leave stale frames behind (they would sort into the array).
+            if (Directory.Exists(destination))
+                foreach (string old in Directory.GetFiles(destination, "*.png")) AssetDatabase.DeleteAsset(old.Replace('\\', '/'));
+            ImportOnPlayerGrid(("glitch-streak", destination, "glitchStreakFrames"));
+            Debug.Log("Glitch streak imported into PlayerVfx; glitch rules unchanged.");
+        }
+
         // Hit debris (pivot on the contact point) and the kill burst (pivot on the body center), on the player's grid.
         [MenuItem("Game/Effects/Import Generated Contact Bursts")]
         public static void ImportContactBursts()

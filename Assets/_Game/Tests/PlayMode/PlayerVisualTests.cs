@@ -104,7 +104,67 @@ namespace ActionPlatformer.Tests
             yield return RenderFrame(); Assert.That(slash.enabled, Is.False);
         }
 
-        [UnityTest] public IEnumerator GlitchSparksBurstAtEndpointsThenAlongOneWorldSpaceRowAndReset()
+        // The straight PixelFX streak joins the two endpoint bursts: it shoots from the departure, the arrival bursts when
+        // it gets there, and it pulls in from the departure side before vanishing. Tile pixels keep their art size.
+        [UnityTest] public IEnumerator GlitchStreakJoinsTheEndpointBurstsThenPullsInFromTheDeparture()
+        {
+            var state = new State(); var visual = Visual(state);
+            yield return RenderFrame();
+            var root = visual.EffectsRoot;
+            var streak = root.Find("Glitch streak").GetComponent<SpriteRenderer>();
+            var sparks = new List<SpriteRenderer>();
+            foreach (var renderer in root.GetComponentsInChildren<SpriteRenderer>(true))
+                if (renderer.name.StartsWith("Glitch spark ")) sparks.Add(renderer);
+            Assert.That(streak.enabled, Is.False);
+            Assert.That(streak.drawMode, Is.EqualTo(SpriteDrawMode.Tiled));
+            state.IsUnderground = true;
+            visual.transform.parent.position = new Vector3(20, 10, 0);
+            visual.transform.parent.localScale = Vector3.one * 1.25f;
+            visual.transform.parent.rotation = Quaternion.Euler(0, 0, 17);
+            var from = new Vector2(-3, 2); var to = new Vector2(3, 4.5f);
+            float distance = Vector2.Distance(from, to); Vector2 direction = (to - from) / distance;
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 1, From = from, To = to };
+            visual.SendMessage("LateUpdate"); ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate");
+            Assert.That(sparks[0].enabled, Is.True, "The departure bursts at once.");
+            Assert.That(Vector2.Distance(sparks[0].transform.position, from), Is.LessThan(.001f));
+            Assert.That(sparks[1].enabled, Is.False, "The arrival waits for the streak to reach it.");
+            float lastTail = -1f; bool reachedArrival = false, pulledIn = false;
+            float until = Time.realtimeSinceStartup + .6f;
+            while (Time.realtimeSinceStartup < until)
+            {
+                yield return null;
+                for (int i = 2; i < sparks.Count; i++) Assert.That(sparks[i].enabled, Is.False, "No small sparks along the path.");
+                if (!streak.enabled) continue;
+                Assert.That(streak.sprite.name, Does.StartWith("glitch-streak-"));
+                Assert.That(Mathf.DeltaAngle(streak.transform.eulerAngles.z, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg), Is.EqualTo(0f).Within(.05f));
+                Assert.That(streak.transform.lossyScale.x, Is.EqualTo(1f).Within(1e-3f), "art-pixel size under the scaled, turned owner");
+                Assert.That(streak.transform.lossyScale.y, Is.EqualTo(1f).Within(1e-3f));
+                Assert.That(streak.size.y, Is.EqualTo(16f / 18f).Within(1e-3f));
+                Vector2 start = streak.transform.position, end = start + direction * streak.size.x;
+                float tail = Vector2.Dot(start - from, direction) / distance;
+                Assert.That(tail, Is.GreaterThanOrEqualTo(lastTail - 1e-4f), "the tail only moves toward the arrival");
+                lastTail = tail;
+                if (Vector2.Distance(end, to) < .01f) reachedArrival = true;
+                if (tail > .05f) pulledIn = true;
+                if (reachedArrival && sparks[1].enabled) Assert.That(Vector2.Distance(sparks[1].transform.position, to), Is.LessThan(.001f));
+            }
+            Assert.That(reachedArrival, Is.True, "The streak reaches the arrival.");
+            Assert.That(pulledIn, Is.True, "It pulls in from the departure before vanishing.");
+            Assert.That(streak.enabled, Is.False, "Gone after its frames.");
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 2, From = from, To = from };
+            visual.SendMessage("LateUpdate"); ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate");
+            yield return RenderFrame();
+            Assert.That(streak.enabled, Is.False, "A zero-length teleport has no streak.");
+            state.GlitchPresentation = new PlayerGlitchPresentation { Version = 3, From = from, To = to };
+            yield return new WaitForSecondsRealtime(.03f); yield return RenderFrame();
+            Assert.That(streak.enabled, Is.True);
+            visual.gameObject.SetActive(false); visual.gameObject.SetActive(true);
+            yield return RenderFrame();
+            Assert.That(streak.enabled, Is.False, "Disabling the visual clears the streak.");
+        }
+
+        // Without streak frames the older look stays: a row of small sparks pops along the path between the endpoints.
+        [UnityTest] public IEnumerator GlitchSparksFillThePathWhenThereIsNoStreak()
         {
             var state = new State(); var visual = Visual(state);
             // Separate the bursts enough to observe their order even at a low Editor frame rate.
@@ -115,6 +175,7 @@ namespace ActionPlatformer.Tests
             settings.ApplyModifiedPropertiesWithoutUndo();
             var profileData=new SerializedObject(profile);
             profileData.FindProperty("glitchTrailInterval").floatValue=.06f;
+            profileData.FindProperty("glitchStreakFrames").arraySize=0;
             profileData.ApplyModifiedPropertiesWithoutUndo();
             yield return RenderFrame();
             Assert.That(visual.transform.Find("Glitch teleport line"), Is.Null);

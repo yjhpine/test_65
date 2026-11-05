@@ -1024,3 +1024,12 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 클래스 실행: `PlayerVisualAssetTests` 4/4, `PlayerGlitchCombatTests` 140/140(새 3 포함).
 - 전체 실행: EditMode 113/113, PlayMode 411/412, 311초. 실패 1개는 간헐 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`이며 `CutsceneTests` 클래스 재실행 두 번은 19/19로 통과했다. Console 오류는 의도된 6건, 컴파일 오류 0.
 - 확인하지 않은 것: 실제 키보드·마우스로 공격 중 Shift를 누르는 수동 플레이, 스탠드얼론 빌드.
+
+## 2026-11-05: 글리치 일직선 줄기 (PixelFX)
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 에셋: `render custom/glitch-streak` → 8 frames, 32×16, 30 fps, deterministic(처음 루프 끔 설정에서 끝 프레임이 하나 더 붙은 9프레임이 나와 루프 설정으로 8프레임에 맞춤). `Import Generated Glitch Streak`을 일회용 스크립트에서 실행해 18 PPU·피벗 (0, 8)·Full Rect를 확인했고, PlayerVfx diff는 새 필드 12줄뿐이다.
+- 실제 화면(MovementLab, 열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림, 씬 저장 없음): X=0에서 포탑 왼쪽(6.03, 0.84)으로 글리치. 줄기는 0.034초에 5.05, 0.087초에 경로 전체 6.03(캡처 때문에 프레임이 한 번 끊김), 프레임 0→2→3→4로 바뀌고 0.164초부터 출발 쪽이 당겨져 0.270초에 길이 0.05로 끝났다. 캡처 `Library/PrototypeValidation/GlitchStreak/MovementLab-streak-1.png`(뻗은 직후)·`-2.png`(흔들리며 당겨지는 중).
+- 테스트: `PlayerVisualAssetTests` 5/5, `PlayerVisualTests` 11/11(새 줄기 테스트 1, 기존 spark 열 테스트는 프레임 없음 대체 동작으로 유지), `CombatPresentationTests` 4/4.
+- 전체 실행: EditMode 114/114, PlayMode 412/413, 312초. 실패 1개는 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(288줄, 가상 Enter 뒤 대사 전부 표시가 False)이며 클래스 재실행 두 번에서도 같은 테스트만 실패했다. 입력·대화만 다루는 테스트이고 이번 변경은 효과 렌더링뿐이라 무관하다고 판단하지만, 수정 전 코드로 같은 조건에서 돌려 보지는 않았다(11-02·11-03에도 클래스 재실행 실패 기록이 있음, 원인 미확정). Console 오류는 의도된 6건, 컴파일 오류 0.
+- 확인하지 않은 것: 실제 Shift 입력으로의 수동 플레이, 빠른 연속 순간이동에서의 겹침, 스탠드얼론 빌드.

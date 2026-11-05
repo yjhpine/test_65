@@ -242,6 +242,18 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 56ff26e58880df845927e713ca402ab5, type: 3}
   - {fileID: 21300000, guid: 52a4c166d4fc3a0478deecfdd4d2180b, type: 3}
   glitchMarkerFps: 30
+  glitchStreakFrames:
+  - {fileID: 21300000, guid: 6158d4e927cda4e4ab61e88e84d64c32, type: 3}
+  - {fileID: 21300000, guid: 1a482d0c1e304884babe7d57b90bb83d, type: 3}
+  - {fileID: 21300000, guid: 9e2e7fbae71469246822abebc4d46f06, type: 3}
+  - {fileID: 21300000, guid: 2f2630ff22d479148815e67445fe2e3f, type: 3}
+  - {fileID: 21300000, guid: 4ffb946fe088f2241a8695c604bccbad, type: 3}
+  - {fileID: 21300000, guid: ccee0c49e329db042ac8e1ba20e1f2de, type: 3}
+  - {fileID: 21300000, guid: 4473e902f4a8b644090a39b2e6e5f571, type: 3}
+  - {fileID: 21300000, guid: 7f81f076cf1e9ef48947cf60e3ff84be, type: 3}
+  glitchStreakFps: 30
+  glitchStreakDrawTime: 0.05
+  glitchStreakRetractStart: 0.6
   dustFootOffset: {x: 0, y: -0.83}
   actionEffectMaterial: {fileID: 2100000, guid: b3eaeace8aea28b4fa1750ee5e110d59, type: 2}
   basicAttackEffectSize: 5

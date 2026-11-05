@@ -45,6 +45,45 @@ namespace ActionPlatformer.Tests
             Assert.That(AssetDatabase.GetAssetPath(sounds.Hurt), Is.EqualTo("Assets/_Game/Audio/Combat/Hurt.wav"));
             Assert.That(sounds.Hurt.length, Is.InRange(.2f, .5f));
         }
+        [Test] public void GlitchStreakIsAnEightFrameTealAndRedTileOnThePlayerGrid()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Prefabs/Player.prefab");
+            var profile = (ActionPlatformer.Presentation.PlayerVfxProfile)new SerializedObject(prefab.GetComponentInChildren<PlayerVisual>())
+                .FindProperty("vfxProfile").objectReferenceValue;
+            Assert.That(profile.GlitchStreakFrames, Has.Length.EqualTo(8));
+            Assert.That(profile.GlitchStreakFps, Is.EqualTo(30f).Within(1e-4f));
+            Assert.That(profile.GlitchStreakDrawTime, Is.EqualTo(.05f).Within(1e-4f));
+            var looks = new System.Collections.Generic.HashSet<string>();
+            int teal = 0, red = 0;
+            foreach (var frame in profile.GlitchStreakFrames)
+            {
+                string path = AssetDatabase.GetAssetPath(frame);
+                Assert.That(path, Does.StartWith("Assets/_Game/Art/Effects/PixelFxGlitchStreak/"));
+                Assert.That(frame.rect.size, Is.EqualTo(new Vector2(32, 16)), path);
+                Assert.That(frame.pixelsPerUnit, Is.EqualTo(18f), path);
+                Assert.That(frame.pivot, Is.EqualTo(new Vector2(0, 8)), path + ": left edge = the departure side");
+                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                var settings = new TextureImporterSettings(); importer.ReadTextureSettings(settings);
+                Assert.That(settings.spriteMeshType, Is.EqualTo(SpriteMeshType.FullRect), "Tiled drawing needs a full-rect mesh.");
+                Assert.That(importer.filterMode, Is.EqualTo(FilterMode.Point));
+                var art = new Texture2D(2, 2);
+                try
+                {
+                    Assert.That(art.LoadImage(System.IO.File.ReadAllBytes(path)), Is.True);
+                    foreach (var pixel in art.GetPixels())
+                    {
+                        if (pixel.a < .5f) continue;
+                        if (pixel.b > pixel.r + .2f) teal++;
+                        else if (pixel.r > pixel.b + .2f) red++;
+                    }
+                    looks.Add(System.Convert.ToBase64String(art.EncodeToPNG()));
+                }
+                finally { Object.DestroyImmediate(art); }
+            }
+            Assert.That(teal, Is.GreaterThan(0)); Assert.That(red, Is.GreaterThan(0), "the glitch teal/red pair");
+            Assert.That(looks.Count, Is.EqualTo(8), "every frame differs");
+        }
+
         // Design v0.3: the player and the slammed enemy fall at one speed (user decision 2026-11-05: 36).
         [Test] public void SlamDescentAndKnockdownShareOneSpeed()
         {

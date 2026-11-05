@@ -861,3 +861,25 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 안내 문구: 순간이동 불가 이유 문구(OUT OF RANGE 등)는 스테이지 HUD가 있는 씬, 즉 `StageLayout`이 GameManager에 등록된 CoreLoopStage에서만 보인다. MovementLab·BossTest에는 빨간 표시만 있다.
 - 코드: `PlayerUnit`(`bufferedGlitch`·`bufferedGlitchRequest`, 입력 수집 때 저장, FixedUpdate에서 `CanReposition`이 되면 실행). `PlayerCombatTuning.slamSpeed` 기본값 36.
 - 테스트: PlayMode `PlayerGlitchCombatTests.GlitchPressedMidSwingIsKeptAndRunsAtRecovery`·`HitDropsAGlitchKeptDuringTheSwing`·`ZeroAttackBufferTimeKeepsNoGlitchEither`, EditMode `PlayerVisualAssetTests.SlamDescentAndKnockdownShareOneSpeed`.
+
+## 2026-11-05 — 글리치 일직선 줄기 (PixelFX)
+
+사용자 요청: 순간이동 효과를 PixelFX로 새로 만든다. 출발·도착 지점에는 기존 spark를 그대로 두고, 두 지점을 일직선으로 잇는, 글리치 느낌과 속도감이 나는 효과를 추가한다. 중간에 한 줄로 터지던 작은 spark는 새 줄기와 겹치므로 없앴다(사용자 확인). 10-25에 지운 "연속 선"과는 다른, 픽셀 아트 글리치 효과다.
+
+### 동작 (실제 시간 약 0.27초, 히트스톱·일시정지에도 끝까지 재생)
+
+- 0~0.05초: 출발 spark가 터지고, 밝은 청록 줄기가 출발점에서 도착점까지 빠르게(처음이 가장 빠르게) 뻗는다. 줄기가 닿는 순간 도착 spark가 터진다.
+- 프레임 0~1: 밝은 2픽셀 선과 앞으로 흐르는 속도선, 빨간 잔상 점.
+- 프레임 2~4: 글리치 흔들림. 선의 블록이 위아래로 1픽셀씩 밀리고, 빨강·청록 채널이 위아래로 갈라지며, 픽셀이 빠지고 밝은 조각이 튄다.
+- 프레임 5~7: 조각나며 흩어짐. 프레임의 60%(약 0.16초)가 지나면 출발점 쪽 끝이 도착점 쪽으로 당겨져 들어가 0.27초에 사라진다.
+- 길이와 각도는 매번의 경로에 맞추고, 원화 픽셀 크기 그대로 반복해 깐다(Tiled). 그래서 짧은 이동과 긴 이동 모두 같은 픽셀 크기이고, 플레이어 Transform 스케일·회전과 상관없이 실제 경로 길이를 덮는다.
+- 거리 0인 순간이동(같은 자리)에는 줄기가 없고 spark 하나만 터진다. 피격·사망·비활성화는 줄기도 지운다.
+
+### 구성 위치
+
+- PixelFX 소스: `Tools/PixelFx/effects/glitch-streak.mjs`(32×16, 8프레임 30fps, 왼쪽 가운데 피벗 = 출발 쪽, +x = 진행 방향, 청록 `#79d9df` 계열·빨강 `#d84255` 계열). 모든 무늬는 32px 주기라 타일 이음새가 없다.
+- 결과물: `Art/Effects/PixelFxGlitchStreak/glitch-streak-000~007.png`(18 PPU, Full Rect, Point, 무압축).
+- 다시 만들기: `node Tools/PixelFx/pipeline.mjs render custom/glitch-streak` 후 `Game > Effects > Import Generated Glitch Streak`(예전 PNG를 지우고 PlayerVfx의 `Glitch Streak Frames`만 교체).
+- 설정: `Data/Presentation/PlayerVfx.asset`의 `Glitch Streak Frames`(8), `Glitch Streak Fps`(30), `Glitch Streak Draw Time`(0.05, 뻗는 시간 = 도착 spark 지연), `Glitch Streak Retract Start`(0.6). 프레임 배열을 비우면 예전처럼 0.6 간격의 작은 spark 열로 돌아간다.
+- 코드: `PlayerActionEffects`의 `Glitch streak` 렌더러(VfxManager의 플레이어 세션 소유, Sorting Order +2로 spark +3 아래, 공용 효과 재질의 색조는 이 렌더러에서만 흰색으로 꺼서 원화 색 그대로). `PlayGlitch`는 줄기가 있으면 spark를 양 끝 2개만 쓴다.
+- 테스트: PlayMode `PlayerVisualTests.GlitchStreakJoinsTheEndpointBurstsThenPullsInFromTheDeparture`(출발 즉시·도착은 줄기 도달 뒤, 중간 spark 없음, 경로 각도·끝점, 스케일·회전된 소유자 아래 실제 크기 1, 꼬리는 도착 쪽으로만 이동, 끝나면 숨김, 거리 0·비활성화), `GlitchSparksFillThePathWhenThereIsNoStreak`(기존 spark 열 테스트를 프레임 없음 대체 동작으로 유지), EditMode `PlayerVisualAssetTests.GlitchStreakIsAnEightFrameTealAndRedTileOnThePlayerGrid`.

@@ -38,6 +38,18 @@ namespace ActionPlatformer.Presentation
         public Sprite[] GlitchMarkerBlockedFrames => glitchMarkerBlockedFrames;
         [SerializeField, Min(1f)] private float glitchMarkerFps = 30f;
         public float GlitchMarkerFps => glitchMarkerFps;
+        // Straight teal/red streak between a glitch's departure and arrival, tiled at the sprites' own size along the
+        // path (left-edge pivot, +x = travel). Empty keeps the older row of small sparks between the endpoints.
+        [SerializeField] private Sprite[] glitchStreakFrames;
+        public Sprite[] GlitchStreakFrames => glitchStreakFrames;
+        [SerializeField, Min(1f)] private float glitchStreakFps = 30f;
+        public float GlitchStreakFps => glitchStreakFps;
+        [Tooltip("Real seconds for the streak to shoot from the departure to the arrival (the arrival burst waits for it).")]
+        [SerializeField, Min(0f)] private float glitchStreakDrawTime = .05f;
+        public float GlitchStreakDrawTime => glitchStreakDrawTime;
+        [Tooltip("Share of the streak's frames after which its tail pulls in from the departure side.")]
+        [SerializeField, Range(0f, 1f)] private float glitchStreakRetractStart = .6f;
+        public float GlitchStreakRetractStart => glitchStreakRetractStart;
         [SerializeField] private Vector2 dustFootOffset = new Vector2(0, -.83f);
         public Vector2 DustFootOffset => dustFootOffset;
         [SerializeField] private Material actionEffectMaterial;
