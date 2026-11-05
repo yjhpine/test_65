@@ -124,14 +124,17 @@ namespace ActionPlatformer.Tests
             }
         }
 
+        // EnemyTest gathers every enemy: the 7 new samples and the 5 earlier ones (no boss).
         [Test] public void TestSceneHoldsOneOfEachAndStaysOutOfTheBuild()
         {
-            const string path = "Assets/_Game/Scenes/RangedEnemyTest.unity";
+            const string path = "Assets/_Game/Scenes/EnemyTest.unity";
             Assert.That(AssetDatabase.LoadAssetAtPath<SceneAsset>(path), Is.Not.Null);
             foreach (var scene in EditorBuildSettings.scenes) Assert.That(scene.path, Is.Not.EqualTo(path));
             string text = System.IO.File.ReadAllText(path);
             foreach (var (name, _) in Kinds)
                 StringAssert.Contains(AssetDatabase.AssetPathToGUID("Assets/_Game/Prefabs/Enemies/Ranged/" + name + ".prefab"), text, name);
+            foreach (var name in new[] { "PatrolEnemy", "ShieldSoldier", "ShieldFront", "SurveillanceTurret", "FlyingDrone" })
+                StringAssert.Contains(AssetDatabase.AssetPathToGUID("Assets/_Game/Prefabs/Enemies/" + name + ".prefab"), text, name);
             StringAssert.DoesNotContain(AssetDatabase.AssetPathToGUID("Assets/_Game/Prefabs/Bosses/TestBoss.prefab"), text);
         }
     }

@@ -1,0 +1,42 @@
+0.00s SEGMENT RangedStraight
+1.92s JUMP over shot
+2.65s ATTACK Side
+2.95s ATTACK Side
+3.25s ATTACK Side
+3.27s ENEMY DOWN RangedStraight
+4.32s SEGMENT RangedShotgun
+4.77s GLITCH
+5.05s ATTACK Side
+5.33s ATTACK Side
+5.63s ATTACK Side
+5.65s ENEMY DOWN RangedShotgun
+6.72s SEGMENT RangedHeavy
+10.23s JUMP over shot
+10.95s ATTACK Side
+11.25s ATTACK Side
+11.57s ATTACK Side
+11.58s ENEMY DOWN RangedHeavy
+12.63s SEGMENT RangedMortar
+14.70s ATTACK Air
+14.70s GLITCH
+14.97s ATTACK Air
+15.27s ATTACK Side
+15.28s ENEMY DOWN RangedMortar
+16.35s SEGMENT SweepLaser
+16.90s GLITCH
+17.38s ATTACK Side
+17.70s ATTACK Side
+17.98s ATTACK Side
+18.02s ENEMY DOWN SweepLaser
+19.07s SEGMENT DomainFixed
+20.22s ATTACK Side
+20.52s ATTACK Side
+20.83s ATTACK Side
+20.85s ENEMY DOWN DomainFixed
+21.92s SEGMENT DomainSelf
+25.35s ATTACK Side
+25.65s ATTACK Side
+26.37s GLITCH into active domain
+26.40s GLITCH
+26.40s PLAYER HIT light=False hp=0
+26.40s PLAYER DIED
