@@ -27,7 +27,11 @@ namespace ActionPlatformer.Player
         public Vector2 GroundMarkerPosition { get; private set; }
         public uint SuccessVersion { get; private set; }
         public PlayerGlitchPresentation Presentation { get; private set; }
-        public float CooldownRemaining(double now) => tuning.Cooldown == 0f ? 0f : (float)System.Math.Max(0, nextUseAt - now);
+        public float CooldownRemaining(double now) => (float)System.Math.Max(0, System.Math.Max(
+            tuning.Cooldown == 0f ? 0 : nextUseAt - now, blockedUntil - now));
+        private double blockedUntil;
+        // A light hit keeps the next glitch waiting a moment (shown as the cooldown), on top of the normal cooldown.
+        public void BlockFor(double now, float seconds) { if (seconds > 0f) blockedUntil = System.Math.Max(blockedUntil, now + seconds); }
 
         public PlayerGlitch(Unit owner, UnitHealth health, CharacterMotor2D motor, CapsuleCollider2D body, GlitchTuning tuning)
         {
@@ -144,6 +148,9 @@ namespace ActionPlatformer.Player
             return free && !GlitchUtility.BarrierBetween(motor.Position, destination, tuning.ObstacleMask, hits);
         }
 
+        // Whether TryEmerge would succeed now (the nearby search included), without changing anything.
+        public bool WouldEmerge() => TryGetEmergencePoint(out _, true);
+
         public bool TryEmerge()
         {
             if (!IsUnderground) return false;
@@ -183,7 +190,7 @@ namespace ActionPlatformer.Player
         public void Reset()
         {
             CancelUnderground();
-            nextUseAt = 0;
+            nextUseAt = 0; blockedUntil = 0;
         }
     }
 }

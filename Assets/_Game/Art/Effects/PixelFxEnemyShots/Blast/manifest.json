@@ -1,0 +1,24 @@
+{
+  "id": "custom/enemy-blast",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "1d1a5fb543f491a3530f1dd8f7b627f83d5316c64363d38330c55412e3b961c3",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 4,
+  "frameSize": [
+    47,
+    47
+  ],
+  "duration": 0.13333333333333333,
+  "loop": true,
+  "unityPivot": [
+    0.48936170212765956,
+    0.5106382978723405
+  ],
+  "rgbaSha256": "5d6b52e54ef02821fa620924abb0f50f7fe73cb58625905a256596b7a199348b",
+  "deterministic": true,
+  "edgePixels": 4,
+  "lastFrameEmpty": false
+}

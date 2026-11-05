@@ -102,6 +102,18 @@ namespace ActionPlatformer.Tests
             }
         }
 
+        // Barrage shots outlive their shooter, but the group's last kill clears whatever they left flying.
+        [UnityTest] public IEnumerator ClearingARoomRemovesLeftoverEnemyShots()
+        {
+            var shots = EnemyProjectiles.Instance;
+            shots.Spawn(1, new ProjectileSpec { Kind = ProjectileKind.Bolt, Origin = new Vector2(30f, 40f), Velocity = Vector2.right * .1f,
+                Radius = .3f, Lifetime = 6f, Damage = 10, TargetMask = 4, ObstacleMask = 1, LandingY = float.NaN });
+            yield return new WaitForFixedUpdate();
+            Assert.That(shots.Shots.Count, Is.EqualTo(1), "still flying while the room fights");
+            KillRoom(); yield return Until(EncounterPhase.TransferPending);
+            Assert.That(shots.Shots.Count, Is.Zero);
+        }
+
         [UnityTest] public IEnumerator WholeCycleHealsOnceActivatesNextRoomAndCompletes()
         {
             Assert.That(flow.UsesEncounters, Is.True); Assert.That(flow.RemainingEnemies, Is.EqualTo(2));

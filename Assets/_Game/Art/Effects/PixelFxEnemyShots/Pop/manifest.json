@@ -1,0 +1,24 @@
+{
+  "id": "custom/enemy-shot-pop",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "2b693ed8a9a91480e56a62976a6e2a49cc1f4ece0eaa6fa970921fc61df5c305",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 4,
+  "frameSize": [
+    11,
+    11
+  ],
+  "duration": 0.13333333333333333,
+  "loop": true,
+  "unityPivot": [
+    0.45454545454545453,
+    0.5454545454545454
+  ],
+  "rgbaSha256": "0a8513fb17d5a919ba716dd10de9f579476564f8decbee66d3a99a24aa02ec6d",
+  "deterministic": true,
+  "edgePixels": 2,
+  "lastFrameEmpty": false
+}

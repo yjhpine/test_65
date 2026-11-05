@@ -895,3 +895,17 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 코드: `PlayerImpactFeedback.ApplySlowScale`이 배율 0이면 물리 간격(`fixedDeltaTime`)을 건드리지 않고(히트스톱과 같음), 복귀 중에는 물리 간격을 평소의 5% 아래로 줄이지 않는다. 끝나면 시간 배율과 물리 간격을 원래 값으로 되돌린다. `PlayerCombatTuning` 검증이 0을 허용한다.
 - 테스트: `PlayerImpactFeedbackTests.DamageFreezeStopsTimeThenEasesBackAndRestoresThePhysicsStep`(새), `DamageSlowScaleValidationAndInstantRecovery`(0은 이제 유효), EditMode `PlayerVisualAssetTests`의 에셋 값(0/0.35/0.1), `PlayerDamageResponseTests`의 무적 종료 시점(정지 시간만큼 늦춤). `PlayerGlitchCombatTests.ActualDamageFreezesMovingPlayer…`(이전 `ActualDamageSlows…`: 정지 중 위치 그대로·물리 간격 유지, 풀린 뒤 이동)과 `AirSwingJumpRelease…`(피격 반응은 정지 중 바로 확인), `PauseTests.PausingDuringHitStop…`(물리 간격을 줄이는 슬로 경로는 처치 슬로로 확인하고, 피격 정지 중 일시정지도 확인)을 바꿨다.
 - 피격 자세: 피격 반응 표시는 실제 0.12초라 정지 0.35초 안에 Hit 모션이 재생되고, 정지가 끝날 때까지 마지막 프레임에 멈춰 있다가 이어진다.
+
+## 2026-11-05 — 원거리·영역 적 7종 (탄막병·레이저병·영역 전개형 기획서 v1.0)
+
+설계·결정: `Docs/superpowers/specs/2026-11-05-ranged-enemy-family-design.md`. 사용자 결정은 체력 30(일반 공격 10×3)·피해 10, 직선·샷건만 '약한 피격'(무적 1.5초 유지), 임시 도형 몸체, 새 테스트 씬이다. 길이는 1유닛=47.5px로 환산했다.
+
+- 구성: `RangedFsmDefinition`(종류 `RangedAttack`) + `RangedCombat2D` + `RangedVisual2D`. 기존 방패병·포탑·드론(`EnemyFsmDefinition`)은 그대로다. 프리팹 `Prefabs/Enemies/Ranged/{RangedStraight, RangedShotgun, RangedHeavy, RangedMortar, SweepLaser, DomainSelf, DomainFixed}`, 정의 `Data/Units/*Definition`, FSM `Data/Fsm/*Fsm`(값은 여기서 조절).
+- 공통: 인식(생존·거리 13.05·지형 시야·플레이어 화면 안, 잠복 중도 대상 유지) → 최초 0.2초(한 번만) → 예고 0.4초(조준·낙하지점·영역 고정, 인식을 잃으면 취소) → 행동. 재공격은 이전 예고 시작 후 5초 + 자기 탄·영역이 모두 사라진 뒤. 일반 타격은 체력만 깎고, 띄우기·내려찍기·출현·충격파는 예고·훑기를 취소하고 착지·복귀할 때까지 새 예고가 없다. 사망 0.6초 뒤 비활성화.
+- 탄: 직선 4.42/반지름 .295(약한 피격), 샷건 ±12° 3발 .21(약한 피격), 큰 탄 2.21/.505, 투하 7.58/.379(예고 때 정한 아래 지면에서 반지름 1.26·0.12초 폭발, 몸에 직접 맞으면 폭발 없음). 수명 6초, 벽·지형에서 사라지고 일방 발판은 통과. 무적 중에 닿아도 탄은 사라진다. 발사자가 죽어도 남고, 구역 마지막 적이 죽으면(`StageProgress`) 모두 지운다. 씬마다 생기는 `EnemyProjectiles`가 고정 단계로 처리하고 `EnemyProjectileView`가 그린다.
+- 공중 투하병: 놓인 높이에서 플레이어 X를 3.79/초로 따라가고, 가로 차이 1.26 이내에서 멈춰 예고한다(`FlyingMovement2D.Follow/Hover`, 내려찍히면 떨어졌다가 원래 높이로 돌아오는 동안 사격 없음).
+- 훑기 레이저: 조준 ±30°를 화면 기준 시계 방향으로 0.8초에 한 번 훑고(지형에서 길이가 잘림, 최대 13.05·두께 .21), 0.15초 잔상은 피해 없음. 실제로 체력이 줄었을 때만 그 훑기의 1회를 쓴다(무적 중 접촉은 안 셈).
+- 영역: 5.05×4.21 사각형, 예고 0.4초 → 활성 2초. 자기 중심형은 주인을 따라가고 특정 구역형은 인스턴스의 `domainCenter`(월드 좌표)에 고정. 활성 중 순간이동·출현의 출발점(몸 중심)이 안이면 이동 없이, 도착점이 안이면 예약 공격 전에 즉사한다(무적 무시). 경로·걷기·점프는 검사하지 않는다. 조준 중 해당 순간이동은 빨간 마커와 `LETHAL ZONE` 문구로 알리지만 막지는 않는다(`GlitchPreview.Lethal`, 문구는 스테이지 씬에서만). 띄우기 등으로 활성 영역은 사라지지 않고, 주인이 죽으면 즉시 사라진다.
+- 약한 피격(직선·샷건): 넉백·피격 정지·피격 자세·공격/콤보 취소가 없고 다음 순간이동만 0.2초 막는다(`PlayerCombatTuning.Light Hit Glitch Delay`, 코드 기본값). 피격 무적·깜빡임·피격음·작은 흔들림은 그대로다.
+- 외형: 모든 예고는 공용 빨간 공격 위험구역(탄 경로 띠, 샷건 3줄, 투하 기둥+폭발 반원, 레이저 7줄 부채꼴, 영역 사각형). 활성 영역은 보라 빗금 타일 `Data/Presentation/DomainField.asset`, 레이저는 드론의 빨간 ARCBIT 레이저, 탄·폭발·소멸은 `Data/Presentation/EnemyProjectiles.asset`. PixelFX 원본은 `Tools/PixelFx/effects/{enemy-shot, enemy-bolt, enemy-pellet, enemy-heavy, enemy-shell, enemy-blast, enemy-shot-pop, domain-field}.mjs`, 다시 만들 때는 render 후 `Game > Effects > Import Generated Ranged Enemy Effects`. 몸체는 Block.png 색 도형(원화 받으면 Visual만 교체).
+- 테스트 씬: `Scenes/RangedEnemyTest.unity`(빌드 미포함, BossTest 복사본에서 보스를 빼고 바닥 X -14~126, 카메라 X 추적). X=10/28/46/64(높이 5)/82/100/118에 7종 하나씩, 특정 구역형 영역 중심은 (111, 2.1). CoreLoopStage·MovementLab에는 배치하지 않았다.

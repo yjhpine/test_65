@@ -245,6 +245,13 @@ namespace ActionPlatformer.Player
             while (pendingDamageFeedback.Count > 0)
             {
                 visualDamage = pendingDamageFeedback.Dequeue();
+                // A light hit shows the damage screen and sound but no hit pose or freeze; the action goes on.
+                if (visualDamage.Light && !visualDamage.Killed)
+                {
+                    Feedback?.PlayLightDamage(visualDamage.Direction, Time.unscaledTimeAsDouble);
+                    visual?.NotifyDamage();
+                    continue;
+                }
                 hitVisualStartedAt = Time.unscaledTimeAsDouble;
                 Feedback?.PlayDamage(visualDamage.Direction, Time.unscaledTimeAsDouble);
                 visual?.NotifyDamage();
@@ -291,6 +298,9 @@ namespace ActionPlatformer.Player
                         var preview = Glitch.Preview(selection, Time.timeAsDouble);
                         if (preview.CanExecute && (!CanReposition(Time.timeAsDouble) || health.DamageVersion != observedDamage))
                         { preview.CanExecute = false; preview.Reason = GlitchBlockReason.Busy; }
+                        // Not a barrier: a usable glitch out of or into an active domain is marked lethal and still runs.
+                        if (preview.CanExecute && GlitchHazards.Count > 0)
+                            preview.Lethal = GlitchHazards.Contains(BodyCenter) || GlitchHazards.Contains(preview.Bounds.center);
                         GlitchPreview = preview;
                         if (command.GlitchPressed && !pendingGlitch && CanReposition(Time.timeAsDouble))
                         {
@@ -318,6 +328,16 @@ namespace ActionPlatformer.Player
         }
 
         private bool CanReposition(double now) => Combat == null || Combat.CanReposition(now);
+        private Vector2 BodyCenter => GetComponent<CapsuleCollider2D>().bounds.center;
+
+        // A glitch started or ended inside an active domain kills outright; invulnerability and remaining health do not matter.
+        private void DieInGlitchHazard()
+        {
+            pendingGlitch = pendingAttack = pendingCancel = bufferedGlitch = false;
+            glitchRequest = default;
+            Combat?.ClearBufferedAttack();
+            if (health != null && health.IsAlive) health.ApplyDamage(health.CurrentHealth);
+        }
 
         private bool RefreshAimFacing()
         {
@@ -384,6 +404,14 @@ namespace ActionPlatformer.Player
                     Combat?.Tick(now);
                     bool emerge = pendingAttack;
                     if (Combat != null && Combat.ConsumeBufferedAttack(now)) emerge = true;
+                    // An emergence is a glitch too: from the burrow marker to the surface, checked at both points.
+                    if (emerge && (Combat == null || Combat.CanAttack(now)) && GlitchHazards.Count > 0 &&
+                        GlitchHazards.Contains(Glitch.GroundMarkerPosition) && Glitch.WouldEmerge())
+                    {
+                        Glitch.CancelUnderground();
+                        DieInGlitchHazard();
+                        return;
+                    }
                     if (emerge && (Combat == null || Combat.CanAttack(now)) && Glitch.TryEmerge())
                     {
                         unchecked { RepositionVersion++; }
@@ -391,6 +419,8 @@ namespace ActionPlatformer.Player
                         ClearRecoil();
                         FaceArrival();
                         Motor.RefreshContacts();
+                        // Arriving inside a field kills before the emergence attack can reach its owner.
+                        if (GlitchHazards.Count > 0 && GlitchHazards.Contains(Glitch.Presentation.To)) { DieInGlitchHazard(); return; }
                         Combat?.ExtendCombo(now);
                         if (Combat != null) RefreshAimFacing();
                         Combat?.TryAttack(Glitch.ArrivalTarget, facing, true, now, Motor.IsGrounded);
@@ -410,6 +440,14 @@ namespace ActionPlatformer.Player
                     bufferedGlitch = false;
                 }
                 else if (bufferedGlitch && (Combat == null || !Combat.IsAttacking)) bufferedGlitch = false;
+                // Active domains: a glitch that would run is checked at its start (no movement at all) and at its arrival
+                // (before any kept attack). Only the two points count, never the path.
+                if (pendingGlitch && Glitch != null && CanReposition(now) && GlitchHazards.Count > 0 &&
+                    GlitchHazards.Contains(BodyCenter) && Glitch.Preview(glitchRequest, now).CanExecute)
+                {
+                    DieInGlitchHazard();
+                    return;
+                }
                 if (pendingGlitch && Glitch != null && CanReposition(now) && Glitch.TryExecute(glitchRequest, now))
                 {
                     // Repositioning never shortens the attack interval; a follow-up waits for Ready.
@@ -419,6 +457,7 @@ namespace ActionPlatformer.Player
                     ClearRecoil();
                     ClearJumpState();
                     FaceArrival();
+                    if (GlitchHazards.Count > 0 && GlitchHazards.Contains(Glitch.Presentation.To)) { DieInGlitchHazard(); return; }
                 }
                 if (pendingAttack && !IsUnderground && Combat != null && Combat.CanAttack(now))
                 {
@@ -542,6 +581,13 @@ namespace ActionPlatformer.Player
             if (observedDamage != health.DamageVersion)
             {
                 observedDamage = health.DamageVersion;
+                // A light hit (straight/shotgun shot) keeps the attack, combo, walking and jumping; only the next glitch waits.
+                if (health.LastDamage.Light)
+                {
+                    PresentDamage();
+                    Glitch?.BlockFor(now, combatTuning != null ? combatTuning.LightHitGlitchDelay : .2f);
+                    return true;
+                }
                 if (Combat != null && (Combat.IsDescending || Combat.IsPreparingSlam)) Motor.StopSlam();
                 Combat?.Interrupt(now);
                 Feedback?.Reset();

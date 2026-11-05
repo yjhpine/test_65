@@ -1049,3 +1049,12 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 수정 후 전체 실행: EditMode 114/114, PlayMode 414/414(간헐 VirtualKeyboard도 통과), 311초. Console 오류는 의도된 6건, 컴파일 오류 0.
 - 확인하지 않은 것: 실제 입력으로의 수동 플레이 체감, CoreLoopStage 전체 플레이, 스탠드얼론 빌드.
 - 같은 날 정지 시간 0.2 → 0.35초(사용자 요청, `damageSlowDuration`만 변경, 복귀 0.1초 그대로). 전체 실행 EditMode 114/114, PlayMode 413/414: `PlayerDamageResponseTests.InvulnerabilityClockStopsWhileThePauseHoldsTime`이 맞고 0.3초 뒤 일시정지하는데, 정지가 0.35초로 늘어 그때까지 무적 시간이 하나도 세어지지 않았다(규칙대로 동작). 일시정지 시점을 "정지 시간 + 0.3초"로 옮겼다. 이후 클래스 재실행 `PlayerDamageResponseTests` 5/5, `PauseTests` 13/13, `CutsceneTests` 19/19. 테스트만 바꾼 뒤라 전체는 다시 돌리지 않았다.
+
+## 2026-11-05 — 원거리·영역 적 7종
+
+- 범위: 사용자 요청으로 관련 테스트만 실행(전체 실행 안 함). 열린 Editor, Unity CLI `test run`.
+- EditMode `RangedEnemyAssetTests` 4/4: 7종 정의·FSM·프리팹 연결, px 환산 값, PixelFX 프레임 크기·청록 없음, 테스트 씬 구성과 빌드 미포함.
+- PlayMode `RangedEnemyTests` 16/16: 최초 인식 1회·고정 조준, 샷건 3발 ±12°와 재공격 조건, 접촉·무적·잠복 시 탄 처리, 큰 탄, 발사자 사망 후 탄 유지·벽 소멸, 인식 상실 취소·화면 밖, 띄우기 취소, 훑기 방향·1회 피해·잔상, 무적 접촉 미소모, 지형 차단, 투하병 추적·지면 폭발 1회·직접 명중, 영역 자기 중심/고정·종료·사망 제거, 위험구역·레이저·영역 표시.
+- PlayMode `PlayerGlitchCombatTests` 146/146(새 영역 즉사 5·약한 피격 1), `RestCycleTests` 20/20(구역 클리어 시 탄 정리 1).
+- 실제 동작: `Scenes/RangedEnemyTest.unity` Play Mode에서 플레이어를 각 적 앞으로 옮겨 7종의 예고·발사·폭발·훑기·영역 활성을 Game 뷰 캡처로 확인했다. 투하병 기둥 띠가 늘린 몸체 스케일 때문에 찌그러진 것을 발견해 세션을 비스케일 루트로 옮겼고(위험구역 띠 스케일 1 검사는 테스트로 확인), 수정 후 재캡처는 하지 않았다.
+- 에셋: `render custom/{enemy-bolt, enemy-pellet, enemy-heavy, enemy-shell, enemy-blast, enemy-shot-pop, domain-field}` → 4/4/6/4/4/4/6 frames, `Import Generated Ranged Enemy Effects`로 18 PPU 가져오기, 영역 타일 Border 1.

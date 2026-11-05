@@ -149,7 +149,7 @@ namespace ActionPlatformer.Flow
         public void ShowGlitchHint(GlitchPreview preview, Camera camera)
         {
             if (glitchHint == null) return;
-            string text = preview.Visible && !preview.CanExecute ? HintText(preview.Reason) : null;
+            string text = !preview.Visible ? null : !preview.CanExecute ? HintText(preview.Reason) : preview.Lethal ? "LETHAL ZONE" : null;
             var layer = glitchHint.parent;
             float width = layer.contentRect.width, height = layer.contentRect.height;
             if (text == null || camera == null || glitchHint.panel == null || !(width > 32f) || !(height > 32f))

@@ -77,13 +77,13 @@ namespace ActionPlatformer.Units.Features
             => ApplyDamageCore(amount, Vector2.zero);
 
         // Direction is presentation-only. Keep the caller's existing guard policy unchanged.
-        public int ApplyDirectedDamage(int amount, Vector2 direction)
+        public int ApplyDirectedDamage(int amount, Vector2 direction, bool light = false)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
-            return Invulnerable ? 0 : ApplyDamageCore(amount, direction);
+            return Invulnerable ? 0 : ApplyDamageCore(amount, direction, false, light);
         }
 
-        private int ApplyDamageCore(int amount, Vector2 direction, bool interruptsAttack = false)
+        private int ApplyDamageCore(int amount, Vector2 direction, bool interruptsAttack = false, bool light = false)
         {
             if (amount < 0) throw new System.ArgumentOutOfRangeException(nameof(amount));
             if (amount == 0 || !CanReceiveDamage) return 0;
@@ -91,7 +91,7 @@ namespace ActionPlatformer.Units.Features
             if (!preserveHealthOnDamage) CurrentHealth -= applied;
             unchecked { DamageVersion++; if (interruptsAttack) InterruptVersion++; }
             LastDamage = new UnitDamageResult(this, DamageVersion, applied, preserveHealthOnDamage ? 0 : applied,
-                !IsAlive, direction);
+                !IsAlive, direction, light);
             DamageApplied?.Invoke(LastDamage);
             if (!IsAlive && deactivateOnDeath) gameObject.SetActive(false);
             return applied;

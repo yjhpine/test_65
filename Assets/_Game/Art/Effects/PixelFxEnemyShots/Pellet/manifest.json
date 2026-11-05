@@ -1,0 +1,24 @@
+{
+  "id": "custom/enemy-pellet",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "cdb4a3f7e594bc828bd74cd5f29c510d52133d696951b93aecdb77cebbb26fca",
+  "seed": 7,
+  "fps": 12,
+  "options": {},
+  "frames": 4,
+  "frameSize": [
+    9,
+    9
+  ],
+  "duration": 0.3333333333333333,
+  "loop": true,
+  "unityPivot": [
+    0.4444444444444444,
+    0.5555555555555556
+  ],
+  "rgbaSha256": "21e0f85dd866b0a45291e3807cc27625f84fd37cc2aeafbdc0b2201d813008ed",
+  "deterministic": true,
+  "edgePixels": 48,
+  "lastFrameEmpty": false
+}

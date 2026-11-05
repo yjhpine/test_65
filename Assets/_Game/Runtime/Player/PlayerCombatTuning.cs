@@ -50,6 +50,8 @@ namespace ActionPlatformer.Player
         [SerializeField, Min(0f)] private float damageKnockbackDuration = .25f;
         [Tooltip("Upward speed of the small hop that starts the knockback.")]
         [SerializeField, Min(0f)] private float damageKnockbackLift = 7f;
+        [Tooltip("A light hit (straight/shotgun shot) keeps the attack, combo and movement; only the next glitch waits this long (game time).")]
+        [SerializeField, Min(0f)] private float lightHitGlitchDelay = .2f;
         [Header("Attack recoil (a landed basic swing pushes the player back; 0 disables)")]
         [Tooltip("Starting speed away from the struck side; it falls linearly to zero over the duration.")]
         [SerializeField, Min(0f)] private float recoilSpeed = 4f;
@@ -126,6 +128,7 @@ namespace ActionPlatformer.Player
         public float DamageKnockbackSpeed => damageKnockbackSpeed;
         public float DamageKnockbackDuration => damageKnockbackDuration;
         public float DamageKnockbackLift => damageKnockbackLift;
+        public float LightHitGlitchDelay => lightHitGlitchDelay;
         public float AttackBufferTime => attackBufferTime;
         public float RecoilSpeed => recoilSpeed;
         public float RecoilDuration => recoilDuration;
@@ -166,7 +169,7 @@ namespace ActionPlatformer.Player
             Positive(shockwaveDuration) && Positive(slamTimeout) && NonNegative(emergenceSpeed) &&
             Positive(forcedDuration) && NonNegative(hitStun) && NonNegative(attackBufferTime) &&
             NonNegative(damageInvulnerability) && NonNegative(damageKnockbackSpeed) && NonNegative(damageKnockbackDuration) &&
-            NonNegative(damageKnockbackLift) &&
+            NonNegative(damageKnockbackLift) && NonNegative(lightHitGlitchDelay) &&
             NonNegative(recoilSpeed) && NonNegative(recoilDuration) && NonNegative(finisherRecoilSpeed) &&
             NonNegative(finisherRecoilDuration) && NonNegative(airRecoilMultiplier) && airRecoilMultiplier <= 1f &&
             NonNegative(hitStopDuration) && NonNegative(heavyHitStopDuration) && NonNegative(slamHitStopDuration) &&

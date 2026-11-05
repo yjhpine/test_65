@@ -77,8 +77,105 @@ namespace ActionPlatformer.Tests
 
         [TearDown] public void Cleanup()
         {
+            foreach (var hazard in hazards) GlitchHazards.Remove(hazard);
+            hazards.Clear();
             for (int i = created.Count - 1; i >= 0; i--) if (created[i] != null) Object.DestroyImmediate(created[i]);
             created.Clear();
+        }
+
+        // A stand-in active domain: a world rectangle, edges inside.
+        private sealed class BoxHazard : IGlitchHazard
+        {
+            public Rect Area;
+            public bool ContainsPoint(Vector2 p) => p.x >= Area.xMin && p.x <= Area.xMax && p.y >= Area.yMin && p.y <= Area.yMax;
+        }
+        private readonly List<IGlitchHazard> hazards = new List<IGlitchHazard>();
+        private void Domain(Vector2 center, Vector2 size)
+        {
+            var hazard = new BoxHazard { Area = new Rect(center - size * .5f, size) };
+            hazards.Add(hazard); GlitchHazards.Add(hazard);
+        }
+        private Vector2 BodyCenter => player.GetComponent<CapsuleCollider2D>().bounds.center;
+        // Aims at the enemy's right side (arrival about one unit right of it) and presses glitch, optionally with attack.
+        private IEnumerator PressGlitchRight(bool attack = false)
+        {
+            input.Command = new PlayerCommand { GlitchPressed = true, AttackPressed = attack, HasAim = true,
+                AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.right * .35f) };
+            yield return null; yield return Step; yield return null;
+        }
+
+        [UnityTest] public IEnumerator GlitchStartedInsideAnActiveDomainKillsWithoutMoving()
+        {
+            Vector2 start = player.Motor.Position;
+            Domain(BodyCenter, new Vector2(2f, 2f));
+            Health.SetInvulnerable(true);
+            yield return PressGlitchRight();
+            Assert.That(Health.IsAlive, Is.False, "invulnerability and remaining health do not matter");
+            Assert.That(Glitch.SuccessVersion, Is.Zero, "the glitch never runs");
+            Assert.That(Vector2.Distance(player.Motor.Position, start), Is.LessThan(.05f));
+        }
+
+        [UnityTest] public IEnumerator GlitchArrivingInsideAnActiveDomainKillsBeforeTheKeptAttack()
+        {
+            Domain(new Vector2(enemy.transform.position.x + 1f, BodyCenter.y), new Vector2(1.4f, 3f));
+            yield return PressGlitchRight(true);
+            Assert.That(Glitch.SuccessVersion, Is.EqualTo(1), "it arrives");
+            Assert.That(Health.IsAlive, Is.False);
+            yield return Step; yield return Step;
+            Assert.That(enemy.DamageVersion, Is.Zero, "the attack pressed with it never lands");
+        }
+
+        [UnityTest] public IEnumerator GlitchAcrossADomainBetweenTwoOutsidePointsIsSafe()
+        {
+            // Covers the path between the start (x -3) and the arrival (about x +1), neither endpoint.
+            Domain(new Vector2(-1.5f, BodyCenter.y), new Vector2(1.6f, 4f));
+            yield return PressGlitchRight();
+            Assert.That(Glitch.SuccessVersion, Is.EqualTo(1));
+            Assert.That(Health.IsAlive, Is.True, "only the two points are checked, never the path");
+        }
+
+        [UnityTest] public IEnumerator LethalGlitchIsMarkedButNotBlockedAndAFailedGlitchDoesNotKill()
+        {
+            Domain(new Vector2(enemy.transform.position.x + 1f, BodyCenter.y), new Vector2(1.4f, 3f));
+            input.Command = new PlayerCommand { HasAim = true, AimScreenPosition = camera.WorldToScreenPoint(enemy.transform.position + Vector3.right * .35f) };
+            yield return null;
+            Assert.That(player.GlitchPreview.CanExecute, Is.True, "a domain is no barrier");
+            Assert.That(player.GlitchPreview.Lethal, Is.True);
+            // Inside a field with nothing to glitch to: the key alone never kills.
+            Domain(BodyCenter, new Vector2(2f, 2f));
+            input.Command = new PlayerCommand { GlitchPressed = true, HasAim = true, AimScreenPosition = camera.WorldToScreenPoint(new Vector3(-8f, 66f)) };
+            yield return null; yield return Step; yield return null;
+            Assert.That(Health.IsAlive, Is.True);
+        }
+
+        [UnityTest] public IEnumerator EmergingInsideAnActiveDomainKillsBeforeTheEmergenceAttack()
+        {
+            EnterUnderground(Time.timeAsDouble);
+            Domain(new Vector2(enemy.transform.position.x, 61.3f), new Vector2(2f, 2f));
+            input.Command = new PlayerCommand { AttackPressed = true };
+            yield return null; yield return Step; yield return null;
+            Assert.That(Health.IsAlive, Is.False);
+            Assert.That(enemy.DamageVersion, Is.Zero);
+        }
+
+        // Straight and shotgun shots: damage without knockback, freeze or interrupting the swing; only the next glitch waits.
+        [UnityTest] public IEnumerator LightHitKeepsTheSwingAndComboButHoldsTheNextGlitch()
+        {
+            Set(combatSettings, "windup", .5f);
+            Assert.That(Combat.TryAttack(null, 1f, false, Time.timeAsDouble), Is.True);
+            yield return Step;
+            Health.ApplyDirectedDamage(10, Vector2.left, true);
+            yield return null; yield return Step;
+            Assert.That(Health.CurrentHealth, Is.EqualTo(90));
+            Assert.That(Combat.IsAttacking, Is.True, "the swing goes on");
+            Assert.That(Time.timeScale, Is.EqualTo(1f), "no hit freeze");
+            Assert.That(Mathf.Abs(player.Motor.Velocity.x), Is.LessThan(.01f), "no knockback");
+            Assert.That(Health.Invulnerable, Is.True, "the usual protection still follows the hit");
+            Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.None), "no hit pose");
+            Assert.That(Glitch.CooldownRemaining(Time.timeAsDouble), Is.GreaterThan(.1f).And.LessThanOrEqualTo(.2f));
+            float until = Time.time + .25f;
+            while (Time.time < until) yield return null;
+            Assert.That(Glitch.CooldownRemaining(Time.timeAsDouble), Is.Zero);
         }
 
         private static void Set(Object target, string name, Object value)

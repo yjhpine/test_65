@@ -118,6 +118,13 @@ namespace ActionPlatformer.Player
             QueueScreen(3, direction, tuning.DamageShakeAmplitude, tuning.DamageShakeDuration, unscaledNow);
         }
 
+        // A light hit (straight/shotgun shot): the damage screen and a smaller shake, without the freeze.
+        public void PlayLightDamage(Vector2 direction, double unscaledNow)
+        {
+            damageStartedAt = unscaledNow;
+            QueueScreen(3, direction, tuning.DamageShakeAmplitude * .5f, tuning.DamageShakeDuration, unscaledNow);
+        }
+
         private void StartShake(Vector2 direction, float amplitude, float duration, double now)
         {
             shakeStartedAt = now;

@@ -149,6 +149,8 @@ namespace ActionPlatformer.Flow
             }
             // The kill that clears the current group gets a short slow motion after its hit stop.
             if (RemainingEnemies > 0 && remaining == 0 && player != null) player.PresentFinalBlow();
+            // A cleared group takes the shots its shooters left behind with it.
+            if (RemainingEnemies > 0 && remaining == 0) EnemyProjectiles.ClearExisting();
             RemainingEnemies = remaining;
             goal.SetUnlocked(remaining == 0 && (!UsesEncounters || CurrentEncounterIndex == encounters.Length - 1));
             return true;

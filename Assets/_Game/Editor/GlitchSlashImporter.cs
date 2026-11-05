@@ -94,6 +94,63 @@ namespace ActionPlatformer.Editor
             Debug.Log($"Attack zone imported into Data/Presentation/AttackZone ({frames.Length} frames, {fps} fps); enemy attacks unchanged.");
         }
 
+        // Barrage shots, the mortar blast and the shot pop into Data/Presentation/EnemyProjectiles, and the active domain
+        // field (a looping violet tile, drawn Tiled like the attack zone) into Data/Presentation/DomainField.
+        // Only frames and fps are replaced; damage, motion and the profiles' other settings stay as they are.
+        [MenuItem("Game/Effects/Import Generated Ranged Enemy Effects")]
+        public static void ImportRangedEnemyEffects()
+        {
+            const string root = "Assets/_Game/Art/Effects/PixelFxEnemyShots", shotsPath = "Assets/_Game/Data/Presentation/EnemyProjectiles.asset";
+            var shots = AssetDatabase.LoadAssetAtPath<EnemyProjectileProfile>(shotsPath);
+            if (shots == null) { shots = ScriptableObject.CreateInstance<EnemyProjectileProfile>(); AssetDatabase.CreateAsset(shots, shotsPath); }
+            var data = new SerializedObject(shots);
+            foreach (var (name, folder, slot) in new[] { ("enemy-bolt", "Bolt", "boltFrames"), ("enemy-pellet", "Pellet", "pelletFrames"),
+                ("enemy-heavy", "Heavy", "heavyFrames"), ("enemy-shell", "Shell", "shellFrames"), ("enemy-blast", "Blast", "blastFrames"),
+                ("enemy-shot-pop", "Pop", "popFrames") })
+                Assign(data.FindProperty(slot), ImportFresh("custom/" + name, $"{root}/{folder}", $"Generate {name} with Tools/PixelFx first.", false, out _));
+            data.ApplyModifiedPropertiesWithoutUndo();
+            const string fieldPath = "Assets/_Game/Data/Presentation/DomainField.asset";
+            var frames = ImportFresh("custom/domain-field", "Assets/_Game/Art/Effects/PixelFxDomainField", "Generate domain-field with Tools/PixelFx first.", true, out float fps);
+            var profile = AssetDatabase.LoadAssetAtPath<AttackZoneProfile>(fieldPath);
+            bool created = profile == null;
+            if (created) { profile = ScriptableObject.CreateInstance<AttackZoneProfile>(); AssetDatabase.CreateAsset(profile, fieldPath); }
+            var field = new SerializedObject(profile);
+            Assign(field.FindProperty("frames"), frames);
+            if (fps > 0f) field.FindProperty("fps").floatValue = fps;
+            if (created)
+            {
+                // A steady field (no ramp), drawn just under the red attack zones.
+                field.FindProperty("startAlpha").floatValue = .55f; field.FindProperty("impactAlpha").floatValue = .55f;
+                field.FindProperty("sortingOffset").intValue = 1;
+            }
+            field.ApplyModifiedPropertiesWithoutUndo();
+            AssetDatabase.SaveAssets();
+            Debug.Log("Ranged enemy effects imported into Data/Presentation/EnemyProjectiles and DomainField; enemy rules unchanged.");
+        }
+
+        // Replaces the folder's frames (a shorter render leaves no stale ones) on the player's 18 px grid; tiles get a 1 px border.
+        private static Sprite[] ImportFresh(string id, string destination, string missing, bool tile, out float fps)
+        {
+            string manifest = $"Library/PixelFxPipeline/output/{id}/manifest.json";
+            if (!File.Exists(manifest)) throw new InvalidOperationException(missing);
+            string text = File.ReadAllText(manifest);
+            var pivot = JsonUtility.FromJson<Manifest>(text).unityPivot;
+            fps = JsonUtility.FromJson<LoopManifest>(text).fps;
+            if (Directory.Exists(destination))
+                foreach (string old in Directory.GetFiles(destination, "*.png")) AssetDatabase.DeleteAsset(old.Replace('\\', '/'));
+            var frames = ImportFrames(id, destination, 18, new Vector2(pivot[0], pivot[1]), missing);
+            if (!tile) return frames;
+            for (int i = 0; i < frames.Length; i++)
+            {
+                string path = AssetDatabase.GetAssetPath(frames[i]);
+                var importer = (TextureImporter)AssetImporter.GetAtPath(path);
+                importer.spriteBorder = new Vector4(1, 1, 1, 1);
+                importer.SaveAndReimport();
+                frames[i] = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            }
+            return frames;
+        }
+
         private static void ImportOnPlayerGrid(params (string name, string destination, string field)[] effects)
         {
             var data = new SerializedObject(AssetDatabase.LoadAssetAtPath<PlayerVfxProfile>(ProfilePath));

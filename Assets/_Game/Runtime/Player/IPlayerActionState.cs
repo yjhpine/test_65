@@ -57,6 +57,8 @@ namespace ActionPlatformer.Player
         public bool CanExecute;
         public GlitchBlockReason Reason;
         public bool IsUnderground;
+        // Usable, but the start or the arrival is inside an active domain: carrying it out kills the player.
+        public bool Lethal;
         public Vector2 Destination;
         public Bounds Bounds;
     }

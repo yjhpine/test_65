@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef05a0ffa6ca31840991c73a01676c28, type: 3}
+  m_Name: SweepLaserDefinition
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.UnitDefinition
+  unitId: enemy.laser.sweep
+  displayName: "\uD6D1\uAE30 \uB808\uC774\uC800\uBCD1"
+  kind: 2
+  maxHealth: 30
+  attackPower: 10
+  fsm: {fileID: 11400000, guid: a7faf72e4b5bafa4c9f4693a17124fe0, type: 2}
+  allowGlitchTarget: 1
+  allowForcedMovement: 1
