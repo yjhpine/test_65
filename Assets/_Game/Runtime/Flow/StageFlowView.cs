@@ -9,16 +9,27 @@ namespace ActionPlatformer.Flow
     [RequireComponent(typeof(UIDocument))]
     public sealed class StageFlowView : MonoBehaviour
     {
+        public enum ResultKind { None, Clear, FinalClear, Failed }
+        public const string ResultName = "stage-result";
         [SerializeField] private UIDocument document;
-        private VisualElement stageSection, completion;
+        [Tooltip("Needs Korean glyphs for the result screens; the default theme font has none.")]
+        [SerializeField] private Font font;
+        private VisualElement stageSection;
         private Label goalHint, glitchHint, comboReady;
         private VisualElement comboBar;
         private VisualElement[] comboPips = Array.Empty<VisualElement>();
-        private Button restart;
+        private ResultPanel result;
         private bool transferHintVisible;
+        private string transferKey = "SHIFT";
+        // 다시 플레이 (and the old RESTART): the current stage from its start.
         public event Action RestartRequested;
-        public bool IsConfigured => document != null && document.panelSettings != null && completion != null;
-        public bool IsCompletedVisible => completion != null && completion.style.display == DisplayStyle.Flex;
+        public event Action RetryRequested, NextRequested, StageSelectRequested, TitleRequested;
+        public bool IsConfigured => document != null && document.panelSettings != null && result != null;
+        public ResultKind Result { get; private set; }
+        public bool IsCompletedVisible => Result == ResultKind.Clear || Result == ResultKind.FinalClear;
+        public bool IsFailedVisible => Result == ResultKind.Failed;
+        public MenuEntry ResultItem(string name) => result?.Root.Q<MenuEntry>(name);
+        public string ResultHeading => result?.Heading;
         public bool IsTransferHintVisible => transferHintVisible;
         public bool IsGlitchHintVisible => glitchHint != null && glitchHint.style.display == DisplayStyle.Flex;
         public string GlitchHintText => glitchHint?.text;
@@ -85,30 +96,9 @@ namespace ActionPlatformer.Flow
             stageSection.Add(comboBar);
             comboPips = Array.Empty<VisualElement>();
 
-            completion = new VisualElement { name = "stage-complete" };
-            completion.style.position = Position.Absolute;
-            completion.style.left = completion.style.right = completion.style.top = completion.style.bottom = 0;
-            completion.style.alignItems = Align.Center;
-            completion.style.justifyContent = Justify.Center;
-            completion.style.backgroundColor = new Color(0.025f, 0.045f, 0.065f, 0.9f);
-            var title = new Label("STAGE CLEAR");
-            title.style.fontSize = 56;
-            title.style.unityFontStyleAndWeight = FontStyle.Bold;
-            title.style.color = new Color(0.2f, 0.94f, 0.82f);
-            title.style.marginBottom = 12;
-            completion.Add(title);
-            var subtitle = new Label("All enemies defeated. Destination reached.");
-            subtitle.style.fontSize = 20;
-            subtitle.style.color = Color.white;
-            subtitle.style.marginBottom = 32;
-            completion.Add(subtitle);
-            restart = new Button(RequestRestart) { name = "restart", text = "RESTART" };
-            restart.style.width = 220;
-            restart.style.height = 56;
-            restart.style.fontSize = 24;
-            completion.Add(restart);
-            stageSection.Add(completion);
-            completion.style.display = DisplayStyle.None;
+            result = new ResultPanel(this);
+            if (font != null) result.Root.style.unityFontDefinition = FontDefinition.FromFont(font);
+            stageSection.Add(result.Root);
             ShowGoalHint(false);
             ShowStage(false);
         }
@@ -125,8 +115,7 @@ namespace ActionPlatformer.Flow
             ShowGoalHint(false);
             if (glitchHint != null) glitchHint.style.display = DisplayStyle.None;
             ShowCombo(0, 0);
-            if (completion != null) completion.style.display = DisplayStyle.None;
-            SetRestartEnabled(true);
+            HideResult();
         }
 
         public void ShowGoalHint(bool show)
@@ -137,11 +126,20 @@ namespace ActionPlatformer.Flow
             goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
+        // The transfer key follows the player's key settings.
+        public void SetTransferKey(string key)
+        {
+            transferKey = string.IsNullOrEmpty(key) ? "SHIFT" : key.ToUpperInvariant();
+            if (transferHintVisible && goalHint != null) goalHint.text = "REST AREA OPEN  >  WALK OR " + transferKey;
+        }
+
+        public string GoalHintText => goalHint?.text;
+
         public void ShowTransferHint(bool show)
         {
             if (goalHint == null || (!show && !transferHintVisible)) return;
             transferHintVisible = show;
-            goalHint.text = "REST AREA OPEN  >  WALK OR SHIFT";
+            goalHint.text = "REST AREA OPEN  >  WALK OR " + transferKey;
             goalHint.style.display = show ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
@@ -217,19 +215,106 @@ namespace ActionPlatformer.Flow
             }
         }
 
-        public void ShowCompleted()
+        // Clear screen (planning doc 6.3) or the final clear screen (6.4). stageName may be null.
+        public void ShowCompleted(bool finalClear = false, string stageName = null, bool hasNext = false, bool hasStageSelect = false)
         {
             ShowGoalHint(false);
-            completion.style.display = DisplayStyle.Flex;
-            restart.Focus();
+            Result = finalClear ? ResultKind.FinalClear : ResultKind.Clear;
+            result.ShowClear(finalClear, stageName, hasNext, hasStageSelect);
         }
 
-        public void SetRestartEnabled(bool value) => restart?.SetEnabled(value);
-        private void RequestRestart() => RestartRequested?.Invoke();
-
-        private void OnDisable()
+        // Failure screen (planning doc 6.2): retry is selected first and needs no confirmation.
+        public void ShowFailed(string retryDetail)
         {
-            if (restart != null) restart.clicked -= RequestRestart;
+            ShowGoalHint(false);
+            Result = ResultKind.Failed;
+            result.ShowFailed(retryDetail);
+        }
+
+        public void HideResult()
+        {
+            Result = ResultKind.None;
+            result?.Hide();
+            SetRestartEnabled(true);
+        }
+
+        // While a save or scene change runs, the result buttons wait.
+        public void SetRestartEnabled(bool value) => result?.Root.SetEnabled(value);
+
+        private sealed class ResultPanel : MenuPanel
+        {
+            private readonly Label heading, subtitle;
+            private readonly MenuEntry next, again, select, title, retry, failTitle;
+            private MenuEntry first;
+            public string Heading => heading.text;
+
+            public ResultPanel(StageFlowView owner) : base(ResultName, new Color(0.025f, 0.045f, 0.065f, 0.9f))
+            {
+                heading = MenuKit.Label("", 56, MenuKit.Accent, "result-heading");
+                heading.style.unityFontStyleAndWeight = FontStyle.Bold;
+                heading.style.marginBottom = 10;
+                root.Add(heading);
+                subtitle = MenuKit.Label("", 20, Color.white, "result-subtitle");
+                subtitle.style.marginBottom = 26;
+                root.Add(subtitle);
+                retry = Add("fail-retry", "재도전", () => owner.RetryRequested?.Invoke());
+                next = Add("result-next", "다음 스테이지", () => owner.NextRequested?.Invoke());
+                again = Add("restart", "다시 플레이", () => owner.RestartRequested?.Invoke());
+                select = Add("result-select", "스테이지 선택", () => owner.StageSelectRequested?.Invoke());
+                title = Add("result-title", "타이틀로", () => owner.TitleRequested?.Invoke());
+                failTitle = Add("fail-title", "타이틀로", () => owner.TitleRequested?.Invoke());
+            }
+
+            private MenuEntry Add(string name, string text, Action action)
+            {
+                var item = new MenuEntry(name, text, action, 340);
+                root.Add(item);
+                return Track(item);
+            }
+
+            private static void Visible(VisualElement e, bool visible) => e.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+
+            public void ShowClear(bool finalClear, string stageName, bool hasNext, bool hasStageSelect)
+            {
+                heading.text = finalClear ? "ALL CLEAR" : "STAGE CLEAR";
+                heading.style.color = MenuKit.Accent;
+                subtitle.text = finalClear ? "모든 스테이지를 클리어했습니다" :
+                    string.IsNullOrEmpty(stageName) ? "스테이지를 클리어했습니다" : stageName + " 클리어";
+                again.Text = finalClear ? "마지막 스테이지 다시 플레이" : "다시 플레이";
+                Visible(retry, false); Visible(failTitle, false);
+                Visible(next, !finalClear && hasNext);
+                Visible(again, true); Visible(select, hasStageSelect); Visible(title, true);
+                Open(!finalClear && hasNext ? next : again);
+            }
+
+            public void ShowFailed(string retryDetail)
+            {
+                heading.text = "실패";
+                heading.style.color = MenuKit.AccentRed;
+                subtitle.text = "쓰러졌습니다";
+                retry.Detail = retryDetail;
+                Visible(retry, true); Visible(failTitle, true);
+                Visible(next, false); Visible(again, false); Visible(select, false); Visible(title, false);
+                Open(retry);
+            }
+
+            protected override MenuEntry DefaultFocus => first ?? FirstVisible();
+
+            private void Open(MenuEntry focus)
+            {
+                first = focus;
+                root.style.display = DisplayStyle.Flex;
+                IsOpen = true;
+                root.BringToFront();
+                FocusDefault(false);
+            }
+
+            public void Hide()
+            {
+                IsOpen = false;
+                root.style.display = DisplayStyle.None;
+                if (root.focusController?.focusedElement is VisualElement focused && root.Contains(focused)) focused.Blur();
+            }
         }
     }
 }

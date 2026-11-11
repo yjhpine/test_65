@@ -129,10 +129,11 @@ namespace ActionPlatformer.Player
                     slot.Dust ? new Vector2(1.4f, .3f) : imported ? Vector2.one * size : new Vector2(size * 1.35f, size * .7f),
                     slot.Dust ? 0 : Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg,
                     (1 - progress) * (slot.Dust ? .5f : 1f));
-                slot.Flash.enabled = !slot.Dust && age < .05f;
+                float flash = ActionPlatformer.Presentation.PresentationSettings.Flash;
+                slot.Flash.enabled = !slot.Dust && age < .05f && flash > 0f;
                 if (slot.Flash.enabled)
                     Place(slot.Flash, sequence[imported ? Mathf.Min(2, sequence.Length - 1) : 0], slot.Position,
-                        Vector2.one * size * .55f, 0, 1 - age / .05f);
+                        Vector2.one * size * .55f, 0, (1 - age / .05f) * flash);
             }
         }
         private void Place(SpriteRenderer renderer, Sprite frame, Vector2 point, Vector2 size, float rotation, float alpha)

@@ -9,8 +9,9 @@ using UnityEngine.SceneManagement;
 namespace ActionPlatformer.Flow
 {
     // Persistent owner of the stage flow and its HUD. Each scene's StageLayout registers its wiring here.
+    // The out-game half (title, saves, settings, scene changes) is in GameManager.OutGame.cs.
     [DisallowMultipleComponent]
-    public sealed class GameManager : MonoBehaviour
+    public sealed partial class GameManager : MonoBehaviour
     {
         public const string ResourcePath = "GameManager";
         public const string ConfigurationErrorMessage = "Stage flow needs a live player, unique initialized enemies, a configured goal/view, and a scene in Build Settings.";
@@ -23,6 +24,12 @@ namespace ActionPlatformer.Flow
         [SerializeField] private StageFlowView view;
         [SerializeField] private InputActionAsset controls;
         [SerializeField] private PauseMenuView pauseMenu;
+        [SerializeField] private StageCatalog catalog;
+        [SerializeField] private OutGameView outGame;
+        [Tooltip("The player's actions asset. Key settings are stored on it, so every player in every scene uses them.")]
+        [SerializeField] private InputActionAsset playerControls;
+        [Tooltip("Played when a volume changes so the new level can be heard, even while paused.")]
+        [SerializeField] private AudioClip previewClip;
         private StageLayout stage;
         private PlayerUnit player;
         private UnitHealth playerHealth;
@@ -119,6 +126,7 @@ namespace ActionPlatformer.Flow
             }
             pauseAction?.Enable();
             if (pauseMenu != null) pauseMenu.ContinueRequested += Resume;
+            EnableOutGame();
             SceneManager.sceneLoaded += OnSceneLoaded;
             SceneManager.activeSceneChanged += OnActiveSceneChanged;
         }
@@ -131,6 +139,7 @@ namespace ActionPlatformer.Flow
             Resume();
             pauseAction?.Disable();
             if (pauseMenu != null) pauseMenu.ContinueRequested -= Resume;
+            DisableOutGame();
             SceneManager.sceneLoaded -= OnSceneLoaded;
             SceneManager.activeSceneChanged -= OnActiveSceneChanged;
             if (stage != null) Unregister(stage);
@@ -141,6 +150,7 @@ namespace ActionPlatformer.Flow
             if (instance != this) return;
             if (stage != null) Unregister(stage);
             if (controlsInstance != null) Destroy(controlsInstance);
+            ReleaseOutGame();
             instance = null;
         }
 
@@ -149,7 +159,7 @@ namespace ActionPlatformer.Flow
         {
             if (IsPaused) return true;
             if (instance != this || !isActiveAndEnabled || cutsceneBusyAtLateUpdate || CutsceneBusy(true) ||
-                (stage != null && State != StageState.Playing)) return false;
+                (stage != null && State != StageState.Playing) || !OutGameAllowsPause) return false;
             pause.Pause();
             if (pauseMenu != null) pauseMenu.Show(true);
             return true;
@@ -159,6 +169,7 @@ namespace ActionPlatformer.Flow
         {
             if (!IsPaused) return;
             // A clear or death resolved under the pause owns time and input now; give back only the audio.
+            CloseMenusOverPause();
             pause.Resume(restoreTimeAndInput: stage == null || State == StageState.Playing);
             if (pauseMenu != null) pauseMenu.Show(false);
         }
@@ -168,6 +179,7 @@ namespace ActionPlatformer.Flow
         {
             Resume();
             CutsceneBusy(true);
+            OnSceneLoadedOutGame(scene, mode);
         }
 
         private void OnActiveSceneChanged(Scene previous, Scene next) => Resume();
@@ -213,17 +225,20 @@ namespace ActionPlatformer.Flow
                 playerHealth.MaxHealth <= 0 || layout.gameObject.scene.buildIndex < 0 ||
                 (bossArena != null && !bossArena.IsConfigured))
                 return Reject(layout);
+            var entry = TakeEntry(layout.gameObject.scene);
             progress = new StageProgress(player, playerHealth, playerBody, requiredEnemies, encounters, goal,
                 cinematics, view, layout.TransferTerrainMask, layout.gameObject.scene, layout, FailConfiguration);
-            if (!progress.TryInitialize()) return Reject(layout);
+            if (!progress.TryInitialize(entry.Checkpoint)) return Reject(layout);
             stage = layout;
             initialized = true;
-            view.RestartRequested += Restart;
+            SubscribeStageView(true);
             player.GlitchPressed += RequestTransfer;
+            progress.RestReached += OnRestReached;
             // A failure here has already unregistered the stage.
             if (!progress.UpdateObjective() || stage != layout) return false;
             StageVersion++;
             view.ShowStage(true);
+            OnStageEntered(entry);
             return true;
         }
 
@@ -242,6 +257,7 @@ namespace ActionPlatformer.Flow
         {
             Debug.LogError(ConfigurationErrorMessage, layout);
             Release();
+            transition?.FailPreparing(SceneTransition.PrepareFailedMessage);
             return false;
         }
 
@@ -259,15 +275,18 @@ namespace ActionPlatformer.Flow
             stage = null;
             progress?.ClearTransferRequest();
             if (player != null) player.GlitchPressed -= RequestTransfer;
+            if (progress != null) progress.RestReached -= OnRestReached;
             view?.ShowTransferHint(false);
             progress?.CancelTransfer();
             progress?.Dispose();
             if (cinematics != null) cinematics.CancelActive();
             if (initialized)
             {
-                if (view != null) view.RestartRequested -= Restart;
+                SubscribeStageView(false);
                 RestoreTime();
             }
+            stageId = null;
+            CloseStageMenus();
             initialized = false;
             progress = null;
             player = null; playerHealth = null; playerInput = null; playerBody = null;
@@ -281,11 +300,12 @@ namespace ActionPlatformer.Flow
             if (stage != null) ResolveStage();
             // The key is read after every Update and after the stage resolved, so a cutscene or clear that
             // began earlier this frame refuses the pause instead of starting under it.
-            if (instance == this && pauseAction != null && pauseAction.WasPressedThisFrame())
+            if (instance == this && pauseAction != null && pauseAction.WasPressedThisFrame() && !EscapeTakenByOutGame())
             {
                 if (IsPaused) Resume();
                 else TryPause();
             }
+            LateUpdateOutGame();
             // Read by the next frame's key: Esc also skips cutscenes, and the frame one ends still refuses.
             cutsceneBusyAtLateUpdate = CutsceneBusy(false);
         }
@@ -301,7 +321,7 @@ namespace ActionPlatformer.Flow
             bool canTransfer = CanRequestTransfer;
             if (!canTransfer) progress?.ClearTransferRequest();
             view?.ShowTransferHint(canTransfer);
-            if (!initialized || State == StageState.Restarting || State == StageState.Completed) return;
+            if (!initialized || State == StageState.Restarting || State == StageState.Completed || State == StageState.Failed) return;
             if (playerHealth == null || player == null) { FailConfiguration(); return; }
             if (!playerHealth.IsAlive)
             {
@@ -310,7 +330,8 @@ namespace ActionPlatformer.Flow
                 cinematics?.CancelActive();
                 State = StageState.Dying;
                 view.ShowGoalHint(false);
-                if (!player.gameObject.activeInHierarchy) Restart();
+                // After the death presentation the failure screen asks for a retry (planning doc 6.2).
+                if (!player.gameObject.activeInHierarchy) Fail();
                 return;
             }
             if (State != StageState.Playing || (cinematics != null && cinematics.IsBusy)) return;
@@ -359,16 +380,36 @@ namespace ActionPlatformer.Flow
             playerHealth.SetDamageEnabled(false);
             Time.fixedDeltaTime = initialFixedDeltaTime;
             Time.timeScale = 0f;
-            view.ShowCompleted();
+            ShowClearResult();
         }
 
+        private void Fail()
+        {
+            progress.CancelTransfer();
+            cinematics?.CancelActive();
+            State = StageState.Failed;
+            playerInput.DeactivateInput();
+            // The world stops behind the failure screen, as it does behind the clear screen.
+            Time.fixedDeltaTime = initialFixedDeltaTime;
+            Time.timeScale = 0f;
+            EnemyProjectiles.ClearExisting();
+            view.ShowFailed(RetryDetail());
+        }
+
+        // The current stage from its start (planning doc: 다시 플레이, and 현재 스테이지 재시작 from the pause menu).
         public void Restart()
         {
-            if (stage == null || !initialized || (State != StageState.Completed && State != StageState.Dying)) return;
-            State = StageState.Restarting;
-            view.SetRestartEnabled(false);
-            RestoreTime();
-            SceneManager.LoadSceneAsync(stage.gameObject.scene.buildIndex, LoadSceneMode.Single);
+            if (stage == null || !initialized) return;
+            bool pausedPlay = State == StageState.Playing && IsPaused;
+            if (State != StageState.Completed && State != StageState.Dying && State != StageState.Failed && !pausedPlay) return;
+            EnterStage(stageId, stage.gameObject.scene.name, ProgressData.NoCheckpoint, false, true);
+        }
+
+        // From the failure screen: the last rest area of this run, or the stage start.
+        public void Retry()
+        {
+            if (stage == null || !initialized || (State != StageState.Failed && State != StageState.Dying)) return;
+            EnterStage(stageId, stage.gameObject.scene.name, saves.RetryCheckpointFor(stageId), false, false);
         }
 
         private void RestoreTime()

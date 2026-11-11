@@ -225,7 +225,8 @@ namespace ActionPlatformer.Player
             }
             if (CameraEffectsSuppressed) { lastRenderedOffset = Vector3.zero; damageScreen.Hide(); return; }
             float damageAge = (float)(unscaledNow - damageStartedAt);
-            float vignette = Fade(damageAge, Mathf.Min(.16f, tuning.DamageScreenDuration)) * Mathf.Min(.12f, tuning.DamageVignetteOpacity);
+            float vignette = Fade(damageAge, Mathf.Min(.16f, tuning.DamageScreenDuration)) * Mathf.Min(.12f, tuning.DamageVignetteOpacity) *
+                ActionPlatformer.Presentation.PresentationSettings.Flash;
             if (camera == null) { damageScreen.Hide(); return; }
             float age = (float)(unscaledNow - shakeStartedAt);
             if (!reducedMotion && age >= 0f && age < activeShakeDuration)
@@ -233,7 +234,8 @@ namespace ActionPlatformer.Player
                 float envelope = 1f - age / activeShakeDuration;
                 // Starts on the same push as a kick, then rings back and forth at the shake frequency.
                 float wave = shakeOscillates ? Mathf.Cos(2f * Mathf.PI * tuning.ShakeFrequency * age) : 1f;
-                appliedOffset = shakeDirection * (ReferencePixelsToWorld(shakeAmplitude) * envelope * envelope * wave);
+                appliedOffset = shakeDirection * (ReferencePixelsToWorld(shakeAmplitude) * envelope * envelope * wave *
+                    ActionPlatformer.Presentation.PresentationSettings.Shake);
                 camera.transform.position += appliedOffset;
             }
             lastRenderedOffset = appliedOffset;
@@ -245,7 +247,8 @@ namespace ActionPlatformer.Player
         {
             float age = (float)(unscaledNow - glitchStartedAt), duration = tuning.FinisherGlitchDuration;
             if (reducedMotion || age < 0f || duration <= 0f || age >= duration) return 0f;
-            return age < duration * .5f ? 1f : 1f - (age - duration * .5f) / (duration * .5f);
+            float strength = age < duration * .5f ? 1f : 1f - (age - duration * .5f) / (duration * .5f);
+            return strength * ActionPlatformer.Presentation.PresentationSettings.Distortion;
         }
 
         // A new tear pattern every 1/30 s, independent of the frame rate.

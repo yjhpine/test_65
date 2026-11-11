@@ -111,11 +111,10 @@ namespace ActionPlatformer.Tests
             foreach (var gate in scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageGate>(true))) gate.SetLocked(false);
         }
 
-        private static Button MenuButton(GameManager game, string name) =>
-            game.PauseMenu.GetComponent<UIDocument>().rootVisualElement.Q<Button>(name);
+        private static MenuEntry MenuButton(GameManager game, string name) => game.PauseMenu.Item(name);
 
         // Navigation events go to the focused element, so move focus first as keyboard navigation would.
-        private static void Submit(Button button)
+        private static void Submit(VisualElement button)
         {
             button.Focus();
             Assert.That(button.focusController.focusedElement, Is.SameAs(button), button.name + " should take focus.");
@@ -220,7 +219,7 @@ namespace ActionPlatformer.Tests
             }
         }
 
-        [UnityTest] public IEnumerator ContinueButtonResumesAndOtherButtonsDoNothing()
+        [UnityTest] public IEnumerator ContinueButtonResumesAndTheMenuHasThePlanningDocButtons()
         {
             yield return LoadStage();
             var game = GameManager.Instance;
@@ -232,17 +231,26 @@ namespace ActionPlatformer.Tests
             Assert.That(menu.parent, Is.SameAs(root), "The menu is its own section under the shared root.");
             Assert.That(root.Q("stage-hud").parent, Is.SameAs(root), "The stage HUD section stays.");
             Assert.That(root.IndexOf(menu), Is.EqualTo(root.childCount - 1), "The menu draws above the stage HUD.");
-            var buttons = new[] { "pause-continue", "pause-options", "pause-save-quit" }.Select(name => MenuButton(game, name)).ToArray();
+            var buttons = new[] { "pause-continue", "pause-settings", "pause-controls", "pause-restart", "pause-title" }
+                .Select(name => MenuButton(game, name)).ToArray();
             Assert.That(buttons.All(b => b != null && b.parent != null && menu.Contains(b)), Is.True);
-            Assert.That(buttons.Select(b => b.text), Is.EqualTo(new[] { "계속하기", "옵션", "저장 후 종료" }));
+            Assert.That(buttons.Select(b => b.Text), Is.EqualTo(new[] { "계속하기", "설정", "조작 안내", "현재 스테이지 재시작", "타이틀로" }));
             yield return Until(() => root.panel.focusController.focusedElement == buttons[0], "계속하기 should take focus.", 2f);
             Assert.That(buttons.All(b => b.resolvedStyle.unityFontDefinition.font != null &&
                 b.resolvedStyle.unityFontDefinition.font.name == "NotoSansKR-Regular"), Is.True, "Korean labels need the Noto Sans KR font.");
 
+            // Sub-pages and confirmations open over the pause and close back into it.
             foreach (var button in buttons.Skip(1))
             {
                 Submit(button);
-                AssertPaused(game);
+                Assert.That(game.IsPaused, Is.True, button.name + " keeps the pause.");
+                Assert.That(Time.timeScale, Is.Zero);
+                Assert.That(AudioListener.pause, Is.True);
+                Assert.That(game.OutGame.HasOpenPanel, Is.True, button.name + " opens a page or a question.");
+                Assert.That(game.OutGame.HandleBack(), Is.True);
+                if (game.OutGame.HasOpenPanel) Assert.That(game.OutGame.HandleBack(), Is.True);
+                Assert.That(game.OutGame.HasOpenPanel, Is.False);
+                Assert.That(game.PauseMenu.IsVisible, Is.True, "Closing returns to the pause menu.");
             }
             yield return null;
             AssertPaused(game);
@@ -321,7 +329,10 @@ namespace ActionPlatformer.Tests
                 Assert.That(game.TryPause(), Is.False, "A dying player cannot pause.");
                 Assert.That(game.IsPaused, Is.False);
                 Assert.That(game.PauseMenu.IsVisible, Is.False);
+                yield return OutGameTestSupport.RetryAfterDeath(game);
+                Assert.That(game.TryPause(), Is.False, "The failure screen and the scene change refuse the pause.");
                 yield return Until(() => game.StageVersion > version, "The stage should reload after the death.");
+                yield return OutGameTestSupport.WaitForTransition(game);
                 yield return null;
                 DisableIntro();
 

@@ -111,6 +111,7 @@ namespace ActionPlatformer.Tests
             float deadline = Time.realtimeSinceStartup + 8f;
             while (flow.StageVersion <= previousVersion && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(flow.StageVersion, Is.EqualTo(previousVersion + 1), "Stage should reload once.");
+            yield return OutGameTestSupport.WaitForTransition(flow);
             yield return null;
             FindStage();
             Assert.That(flow.State, Is.EqualTo(StageState.Playing));
@@ -125,7 +126,8 @@ namespace ActionPlatformer.Tests
             Assert.That(Time.fixedDeltaTime, Is.EqualTo(savedFixed).Within(.00001f));
             Assert.That(view.IsCompletedVisible, Is.False);
             // The persistent HUD must not keep the previous run's clear screen or disabled button.
-            Assert.That(view.GetComponent<UIDocument>().rootVisualElement.Q<Button>("restart").enabledSelf, Is.True);
+            Assert.That(view.ResultItem("restart").enabledInHierarchy, Is.True);
+            Assert.That(view.IsFailedVisible, Is.False);
             Assert.That(enemies.All(e => e.IsAlive && e.CurrentHealth == e.MaxHealth), Is.True);
         }
 
@@ -235,6 +237,7 @@ namespace ActionPlatformer.Tests
                 Assert.That(flow.State, Is.EqualTo(StageState.Dying));
                 Assert.That(player.gameObject.activeInHierarchy, Is.True, "Keep the existing death presentation.");
                 Assert.That(player.ReactionPresentation.Kind, Is.EqualTo(PlayerReaction.Die));
+                yield return OutGameTestSupport.RetryAfterDeath(flow);
                 yield return AwaitReload(previous);
             }
         }
@@ -249,6 +252,8 @@ namespace ActionPlatformer.Tests
             yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Dying));
             Assert.That(view.IsCompletedVisible, Is.False);
+            yield return OutGameTestSupport.RetryAfterDeath(flow);
+            Assert.That(view.IsCompletedVisible, Is.False);
             yield return AwaitReload(previous);
         }
 
@@ -262,7 +267,7 @@ namespace ActionPlatformer.Tests
                 yield return null;
                 Assert.That(Time.timeScale, Is.Zero);
                 int previous = flow.StageVersion;
-                var button = view.GetComponent<UIDocument>().rootVisualElement.Q<Button>("restart");
+                var button = view.ResultItem("restart");
                 using (var submit = NavigationSubmitEvent.GetPooled()) button.SendEvent(submit);
                 Assert.That(flow.State, Is.EqualTo(StageState.Restarting));
                 flow.Restart();

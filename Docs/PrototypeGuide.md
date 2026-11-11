@@ -939,3 +939,35 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 지키는 테스트: EditMode `RenderOrderTests` — 적·보스·NPC 프리팹의 모든 렌더러가 같은 레이어이고 (순서 + 런타임 여유 2)가 플레이어보다 낮은지, 위험구역·영역 오프셋과 적 탄(+2)이 플레이어보다 낮은지 본다. 새 적·효과의 순서를 올리면 이 테스트가 실패한다.
 - 저장하면서 Player 프리팹에 PlayerVisual의 기본값 필드 3개(`showGlitchRange` false, `damageBlinkInterval` 0.08, `damageBlinkAlpha` 0.2)가 함께 기록됐다. 코드 기본값과 같아 동작은 그대로다.
 
+
+## 2026-11-11 — 아웃게임 (타이틀·저장·설정·일시정지 5버튼·실패/클리어 화면)
+
+근거: `치지직 아웃게임 기능 기획서 초안 v0.1`. 설계와 결정은 `Docs/superpowers/specs/2026-11-11-outgame-design.md`. 사용자 결정: 진행도 저장과 재도전 위치는 휴식 구역, 로고 `치지직`, 배경음 슬라이더는 BGM이 생길 때까지 숨김, 일시정지는 기획서 5버튼, 나머지는 계획의 권장안.
+
+### 흐름
+
+- 빌드는 `Title`(0번) → `CoreLoopStage`(1번) → `MovementLab`(2번). Editor에서 CoreLoopStage를 바로 열고 Play해도 예전처럼 시작한다.
+- 타이틀(`Scenes/Title.unity`, `TitleScreen` 표식): 새 게임 · 이어하기 · (스테이지 2개 이상일 때) 스테이지 선택 · 설정 · 조작 안내 · 게임 종료. 이어하기를 쓸 수 없으면 흐리게 보이고, 선택하면 이유를 아래에 표시한다(`이어할 진행 기록이 없습니다` / `모든 스테이지를 클리어했습니다` / `진행 기록을 읽을 수 없습니다`). 타이틀에서 Esc는 열린 창만 닫고 게임을 끄지 않는다.
+- 새 게임: 기록이 있으면 기획서 문구로 묻고 `취소`가 먼저 선택된다. 새 기록은 첫 스테이지에 들어간 뒤에 저장된다. 설정은 유지된다.
+- 휴식 구역에 들어가면(걸어서든 Shift 이동이든) 그 지점이 저장된다. 사망하면 사망 연출 뒤 `실패` 화면이 나오고 `재도전 · 휴식 구역 N부터`(없으면 `처음부터`)가 먼저 선택된다. 재도전과 이어하기는 그 휴식 구역 도착 지점에서, 앞 웨이브는 정리된 상태·회복은 사용한 상태로 시작한다. 보스전에서 죽으면 휴식 구역 2부터 웨이브 3을 다시 한다.
+- 일시정지(Esc): 계속하기 · 설정 · 조작 안내 · 현재 스테이지 재시작 · 타이틀로. 설정·조작 안내를 닫으면 일시정지로 돌아온다. 재시작은 스테이지 처음부터이며 그 스테이지의 저장된 휴식 구역 기록도 처음으로 돌아간다. 타이틀로는 무엇이 남고 무엇이 사라지는지 묻는다.
+- 클리어: 마지막 스테이지(지금은 CoreLoopStage)는 `ALL CLEAR` 화면(마지막 스테이지 다시 플레이 · 타이틀로). 다음 스테이지가 있으면 `STAGE CLEAR`에 `다음 스테이지`가 생긴다. 클리어는 한 번만 저장된다.
+- 씬이 바뀔 때는 검은 덮개 + `불러오는 중`(퍼센트 없음). 덮개가 걷힐 때까지 플레이 입력과 메뉴가 잠긴다. 불러오기에 실패하면 `다시 시도`/`타이틀로`를 묻는다.
+
+### 설정
+
+- 환경: 전체 음량(`AudioListener.volume`, 0이면 무음), 효과음 음량(`ShortSoundPool`에서 곱함), 배경음(숨김), 화면 모드(창/전체 화면)·해상도 → `화면 설정 적용` 뒤 15초 안에 `유지`하지 않으면 되돌림. 음량은 조절하는 동안 바로 들리고(`HitA` 미리 듣기, 일시정지 중에도 들림) 조절이 끝나거나 창을 닫을 때 저장된다.
+- 연출(0~100): 화면 흔들림(카메라 흔들림 전체), 글리치 화면 왜곡(강공격 찢김 오버레이), 섬광(피격 비네트·접촉 흰 번쩍임·무적 깜빡임 깊이, 0이면 깜빡임 대신 알파 0.6 고정). 위험구역·조준 마커·피격 흰 번쩍임과 글리치 판정은 바뀌지 않는다. 기존 `reducedMotion`은 그대로 함께 적용된다(`Runtime/Presentation/PresentationSettings.cs`).
+- 조작 키: 왼쪽·오른쪽 이동, 점프, 공격, 글리치의 주 키 1개씩. 누르면 `키를 누르세요 · ESC 취소`. 다른 행동이 쓰는 키면 바꾸지 않고 그 행동 이름을 알린다. 보조 키(방향키·오른쪽 Shift·J), 조준, 메뉴 키, Esc는 고정. 바꾼 키는 조작 안내와 휴식 구역 안내 문구(`WALK OR <키>`)에 반영된다.
+- 데이터(타이틀에서만): 진행도 삭제(기획서 문구로 확인, 설정은 유지). 각 탭에 `기본값 복원`이 있고 그 탭만 되돌린다.
+
+### 저장 파일
+
+- `C:/Users/<사용자>/AppData/LocalLow/DefaultCompany/test_65/Save/settings.json`, `progress.json`(Editor Play Mode도 같은 위치). 지우면 처음 상태로 돌아간다.
+- 테스트는 `OutGameTestSetup`(`[SetUpFixture]`)이 메모리 저장소를 쓰므로 이 파일을 건드리지 않는다.
+
+### 구성 위치
+
+- 코드: `Runtime/Flow/GameManager.OutGame.cs`, `Runtime/Flow/OutGame/*`(카탈로그·저장·전환·키·화면 설정), `Runtime/Flow/Menus/*`(메뉴 부품·패널·`OutGameView`), `PauseMenuView`, `StageFlowView`(결과 화면), `StageProgress.TryInitialize(checkpoint)`.
+- 에셋: `Data/Flow/StageCatalog.asset`(title `Title`, `stage1` = `스테이지 1` = CoreLoopStage), `Resources/GameManager.prefab`에 `OutGameView` 추가와 `catalog`·`outGame`·`playerControls`(PrototypeControls)·`previewClip`(HitA) 연결, `StageFlowView.font`.
+- 스테이지를 늘리려면 카탈로그에 항목을 추가하고 씬을 빌드 목록에 넣는다. 2개 이상이면 스테이지 선택이 나타나고 순서대로 해금된다.

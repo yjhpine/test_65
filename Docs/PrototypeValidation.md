@@ -1074,3 +1074,12 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 관련 클래스만 실행: EditMode `PlayerVisualAssetTests` 5/5, PlayMode `PlayerVisualTests` 11/11·`AttackZoneTests` 3/3. 전체 실행은 하지 않았다.
 - 실제 화면: CoreLoopStage Play Mode에서 적을 모두 멈추고 플레이어를 돌진 방패병·큰 탄 몸체에 겹쳐 플레이어가 위에 그려지는 것을 캡처했다(`Library/PrototypeValidation/CoreLoopRelayout/OverlapShield.png`, `OverlapHeavy.png`). 그때 렌더러 순서는 적 10~12, 플레이어 먼지 49, 플레이어 50. 콘솔 새 오류 0. 끝난 뒤 Play Mode 종료, runInBackground 복원, 씬 dirty=false.
 
+
+## 2026-11-11 — 아웃게임 (타이틀·휴식 구역 저장·설정·일시정지 5버튼·실패/클리어 화면)
+
+- 열린 Editor에서 Unity CLI `test run`으로 전체 실행: EditMode 138/138, PlayMode 463/464.
+- 새 테스트: EditMode `OutGameRulesTests` 18개(저장 시점 7.2, 설정 항목별 기본값, 파일 저장의 임시 파일 교체·읽기 실패 보존, 15초 화면 복원, 전환 중복·실패, 메뉴 스택·확인창 기본 취소, 키 슬롯·중복, 카탈로그·빌드 목록·프리팹·타이틀 씬). PlayMode `OutGameFlowTests` 15개(타이틀·새 게임 1회 진입·덮어쓰기 취소, 휴식 구역 저장과 재도전·이어하기 재개, 일시정지 재시작·타이틀 확인창, 최종 클리어, 설정 저장·탭별 복원, 진행도 삭제, 읽기 실패 보존, 저장 실패 안내, 키 변경·중복 거부·Esc 취소, 메뉴를 닫은 클릭이 공격이 되지 않음, 연출 0).
+- 고친 기존 테스트: 사망 뒤 자동 재로드를 기다리던 StageFlow 2·RestCycle 1·FinalWaveCutscene 1·Cutscene 1·Pause 1개는 실패 화면의 `재도전`을 누르고 전환이 끝나기를 기다린다. Pause의 메뉴 버튼 검사는 5버튼과 하위 화면 왕복으로 바꿨다.
+- 실패 1개: `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(290줄, 가상 Enter 뒤 대사 전체 표시가 안 됨). 클래스 재실행에서도 실패했다. 11-05 기록의 같은 줄 실패와 증상이 같다.
+- Play Mode 캡처(`Library/PrototypeValidation/OutGame/`): 타이틀, 일시정지 5버튼, 일시정지 위 설정, 조작 키 탭, 휴식 구역 1 재개, 실패 화면.
+- 확인하지 못한 것: 스탠드얼론 빌드에서의 화면 모드·해상도 15초 확인, 게임 종료·창 닫기 확인창, 실제 저장 파일로 재실행했을 때의 유지(Editor에서는 파일 저장·읽기만 확인).

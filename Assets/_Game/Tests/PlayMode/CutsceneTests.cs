@@ -263,7 +263,9 @@ namespace ActionPlatformer.Tests
             health.ApplyDamage(health.MaxHealth);
             yield return Until(() => !runner.IsRunning);
             Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
+            yield return OutGameTestSupport.RetryAfterDeath(stage);
             yield return Until(() => stage.StageVersion > previousVersion);
+            yield return OutGameTestSupport.WaitForTransition(stage);
             yield return null;
             var next = GameManager.Instance;
             Assert.That(next.HasStage, Is.True);

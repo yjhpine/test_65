@@ -34,6 +34,8 @@ namespace ActionPlatformer.Flow
         private int passedWaypoint;
         private Vector2 bodyOffset;
         private bool transferRequested;
+        // Encounters up to this index were cleared before a rest-area resume; their enemies are not objectives.
+        private int skippedThrough = -1;
 
         public StageProgress(PlayerUnit player, UnitHealth playerHealth, Collider2D playerBody,
             UnitHealth[] requiredEnemies, StageEncounter[] encounters, StageGoal goal,
@@ -52,6 +54,14 @@ namespace ActionPlatformer.Flow
         public int CurrentEncounterIndex { get; private set; }
         public StageRestArea CurrentRestArea => UsesEncounters ? encounters[CurrentEncounterIndex].FollowingRest : null;
         public IReadOnlyList<UnitHealth> ActiveEnemies => UsesEncounters ? encounters[CurrentEncounterIndex].Enemies : requiredEnemies;
+        // The encounter whose following rest area this run started in, or -1 for the stage start.
+        public int ResumedFrom { get; private set; } = -1;
+        // Raised once per rest area the player enters (walking or by transfer), with the cleared encounter's index.
+        public event Action<int> RestReached;
+
+        // A rest area that can hold a resume: it follows a cleared encounter and is not after the last one.
+        public static bool IsCheckpoint(StageEncounter[] encounters, int index) =>
+            encounters != null && index >= 0 && index < encounters.Length - 1;
 
         // ownerPlaying: the owner is initialized, active and in its Playing state.
         public bool CanRequestTransfer(bool ownerPlaying) => ownerPlaying && UsesEncounters &&
@@ -60,12 +70,15 @@ namespace ActionPlatformer.Flow
             player != null && player.isActiveAndEnabled && playerHealth != null && playerHealth.IsAlive &&
             !player.IsControlLocked && !(player.Feedback?.IsTimeEffectActive ?? false) && !(cinematics != null && cinematics.IsBusy);
 
-        public bool TryInitialize()
+        // resumeCheckpoint: start in the rest area after that encounter (planning doc: retry and continue at rest areas).
+        // An invalid or blocked checkpoint starts the stage from the beginning instead.
+        public bool TryInitialize(int resumeCheckpoint = -1)
         {
             if (UsesEncounters)
             {
                 playerCapsule = playerBody as CapsuleCollider2D;
                 if (playerCapsule == null || !InitializeEncounters()) return false;
+                if (resumeCheckpoint >= 0) Resume(resumeCheckpoint);
             }
             else
                 for (int i = 0; i < requiredEnemies.Length; i++)
@@ -116,6 +129,39 @@ namespace ActionPlatformer.Flow
             return EnemiesInitialized(encounters[0]);
         }
 
+        private void Resume(int index)
+        {
+            if (!IsCheckpoint(encounters, index) || !player.isActiveAndEnabled)
+            {
+                Debug.LogWarning($"Rest-area checkpoint {index} does not exist in this stage; it starts from the beginning.", logContext);
+                return;
+            }
+            var rest = encounters[index].FollowingRest;
+            if (!rest.TryArrival(playerCapsule, transferTerrainMask, overlaps, out var destination))
+            {
+                Debug.LogWarning($"Rest-area checkpoint {index} has no free arrival point; the stage starts from the beginning.", logContext);
+                return;
+            }
+            // The world as it stood when the player last entered this rest area: earlier rooms cleared and open,
+            // earlier rest entries closed behind, this rest's heal used and its next entry open.
+            for (int i = 0; i <= index; i++)
+            {
+                encounters[i].EnemyRoot.SetActive(false);
+                encounters[i].ExitGate.SetLocked(false);
+                encounters[i].FollowingRest.MarkVisited();
+                encounters[i].FollowingRest.NextEntry.SetLocked(i < index);
+            }
+            skippedThrough = index;
+            CurrentEncounterIndex = index;
+            RemainingEnemies = 0;
+            Phase = EncounterPhase.Rest;
+            ResumedFrom = index;
+            player.Motor.Teleport(destination);
+            // The camera snaps to the Transform before the first physics step publishes the body's pose.
+            var t = player.transform;
+            t.position = new Vector3(destination.x, destination.y, t.position.z);
+        }
+
         private static bool EnemiesInitialized(StageEncounter room)
         {
             foreach (var enemy in room.Enemies)
@@ -142,6 +188,12 @@ namespace ActionPlatformer.Flow
         public bool UpdateObjective()
         {
             int remaining = 0;
+            if (UsesEncounters && CurrentEncounterIndex <= skippedThrough)
+            {
+                RemainingEnemies = 0;
+                goal.SetUnlocked(false);
+                return true;
+            }
             foreach (var enemy in ActiveEnemies)
             {
                 // Destroying an objective is a setup error, never an implicit kill.
@@ -287,6 +339,7 @@ namespace ActionPlatformer.Flow
             transferRequested = false;
             view.ShowTransferHint(false);
             Phase = EncounterPhase.Rest;
+            RestReached?.Invoke(CurrentEncounterIndex);
         }
 
         public void CancelTransfer()

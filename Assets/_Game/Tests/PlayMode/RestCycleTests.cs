@@ -238,6 +238,7 @@ namespace ActionPlatformer.Tests
             int previous = flow.StageVersion; KillRoom(); health.ApplyDamage(int.MaxValue); yield return null; yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Dying)); Assert.That(rest.Visited, Is.False);
             Assert.That(health.RestoreToFull(), Is.Zero);
+            yield return OutGameTestSupport.RetryAfterDeath(flow);
             float deadline = Time.realtimeSinceStartup + 6;
             while (flow.StageVersion <= previous && Time.realtimeSinceStartup < deadline) yield return null;
             Assert.That(flow.StageVersion, Is.GreaterThan(previous)); yield return null;

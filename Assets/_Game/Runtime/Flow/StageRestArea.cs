@@ -32,6 +32,9 @@ namespace ActionPlatformer.Flow
                 StageTransferRoute.SpaceFree(body, position, terrainMask, overlaps);
         }
 
+        // A resumed run starts inside this rest area with its one-time heal already used.
+        public void MarkVisited() => Visited = true;
+
         public bool TryVisit(UnitHealth health, Collider2D body)
         {
             if (Visited || health == null || !health.IsAlive || body == null || !body.isActiveAndEnabled ||

@@ -174,9 +174,12 @@ namespace ActionPlatformer.Player
             // Reduced motion holds a steady dim instead of flickering. The death pose never blinks.
             if (reaction.Invulnerable && reaction.Kind != PlayerReaction.Die)
             {
-                bool dim = reducedMotion || (int)(Time.unscaledTime / damageBlinkInterval) % 2 == 1;
+                // The flash setting narrows the blink toward that steady dim; at 0 it holds still like reduced motion.
+                float depth = reducedMotion ? 0f : ActionPlatformer.Presentation.PresentationSettings.Flash;
+                float steady = Mathf.Lerp(damageBlinkAlpha, 1f, .5f);
+                bool dim = (int)(Time.unscaledTime / damageBlinkInterval) % 2 == 1;
                 var faded = originalColor;
-                faded.a *= reducedMotion ? Mathf.Lerp(damageBlinkAlpha, 1f, .5f) : dim ? damageBlinkAlpha : 1f;
+                faded.a *= Mathf.Lerp(steady, dim ? damageBlinkAlpha : 1f, depth);
                 spriteRenderer.color = faded;
             }
             bool hurt = reaction.Kind == PlayerReaction.Hit;

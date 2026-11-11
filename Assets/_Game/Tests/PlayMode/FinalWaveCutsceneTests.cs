@@ -136,7 +136,9 @@ namespace ActionPlatformer.Tests
             int previous = flow.StageVersion; KillAll(); player.GetComponent<UnitHealth>().ApplyDamage(int.MaxValue);
             yield return null; yield return null;
             Assert.That(flow.State, Is.EqualTo(StageState.Dying)); Assert.That(reveal.IsRunning, Is.False);
-            yield return Until(() => flow.StageVersion > previous); yield return null; FindStage();
+            yield return OutGameTestSupport.RetryAfterDeath(flow);
+            yield return Until(() => flow.StageVersion > previous); yield return OutGameTestSupport.WaitForTransition(flow);
+            yield return null; FindStage();
             Assert.That(reveal.IsRunning, Is.False); Assert.That(goal.IsUnlocked, Is.False);
             KillAll(); yield return Until(() => reveal.IsRunning);
         }
