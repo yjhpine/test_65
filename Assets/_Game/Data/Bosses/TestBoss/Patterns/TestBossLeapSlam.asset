@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b777337d6a1e0546b32d697980b36f7, type: 3}
+  m_Name: TestBossLeapSlam
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Bosses.BossLeapSlamPattern
+  displayName: 
+  cooldown: 5
+  recovery: 0.6
+  interruptibleDuringTelegraph: 1
+  interruptibleDuringExecute: 0
+  telegraphAnimation: LeapTelegraph
+  executeAnimation: LeapExecute
+  recoverAnimation: Recover
+  telegraphTime: 0.3
+  riseTime: 0.4
+  jumpHeight: 5
+  aimTime: 0.6
+  airSpeed: 10
+  landDelay: 1
+  dropSpeed: 30
+  shockwaveRadius: 3
+  damage: 15
+  landingTime: 0.15

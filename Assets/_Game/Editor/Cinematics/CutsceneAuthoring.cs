@@ -154,7 +154,7 @@ namespace ActionPlatformer.Editor
             var scene = UnityEngine.SceneManagement.SceneManager.GetSceneByPath("Assets/_Game/Scenes/CoreLoopStage.unity");
             if (!scene.IsValid() || !scene.isLoaded) throw new InvalidOperationException("Open CoreLoopStage first.");
             if (InScene<CutsceneCoordinator>(scene) != null) throw new InvalidOperationException("Stage already has cinematics.");
-            var flow = InScene<StageFlowController>(scene);
+            var flow = InScene<StageLayout>(scene);
             var player = InScene<PlayerUnit>(scene);
             var follow = InScene<StageCameraFollow>(scene);
             if (flow == null || player == null || follow == null) throw new InvalidOperationException("Stage dependencies missing.");
@@ -183,7 +183,7 @@ namespace ActionPlatformer.Editor
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, scene);
             Undo.RegisterCreatedObjectUndo(instance, "Install Intro Cutscene");
             var runner = instance.GetComponent<CutsceneRunner>();
-            Set(runner, "coordinator", coordinator); Set(runner, "player", player); Set(runner, "stage", flow);
+            Set(runner, "coordinator", coordinator); Set(runner, "player", player);
             runner.BindOutputs();
             PrefabUtility.RecordPrefabInstancePropertyModifications(runner.Director);
             if (!runner.TryValidate(out string error)) throw new InvalidOperationException(error);

@@ -1,0 +1,24 @@
+{
+  "id": "custom/enemy-shell",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "f3b6f79e83b21f8b6a1b743ed45354fcfa4451c14b785f501bca9f3ec204db2d",
+  "seed": 7,
+  "fps": 12,
+  "options": {},
+  "frames": 4,
+  "frameSize": [
+    13,
+    19
+  ],
+  "duration": 0.3333333333333333,
+  "loop": true,
+  "unityPivot": [
+    0.46153846153846156,
+    0.368421052631579
+  ],
+  "rgbaSha256": "94ed34730ff0ace4d64677c330d695bb09a0f031cc3b10e755347468242fc3e4",
+  "deterministic": true,
+  "edgePixels": 64,
+  "lastFrameEmpty": false
+}

@@ -1,0 +1,8 @@
+Source: https://pimen.itch.io/smoke-vfx-1
+Creator: pimen
+License permission from the asset page, retrieved 2026-10-29:
+
+You can use and modify this asset for personal and commercial purpose. Credit is not required but would be appreciated.
+You cannot resell or redistribute those sprites.
+
+Original PNG bytes preserved. Unity import, frame timing and runtime tint are project-authored.

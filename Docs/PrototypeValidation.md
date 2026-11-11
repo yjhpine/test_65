@@ -1,5 +1,57 @@
 # Movement Lab 검증 기록
 
+## 휴식 이동의 간헐적 출발점 복귀 수정 (2026-10-25)
+
+- 사용자 플레이 콘솔 619/620에서 도착 검증 실패를 확인했다. 첫 전투 전멸 후 (10,20)에서 0.24초 낙하하고 글리치 입력을 전달하는 PlayMode 검사로 수정 전 **2회 중 2회 실패**를 재현했다. 원본 결과는 `Library/PrototypeValidation/RestRollbackRepro.xml`, 계측 재현은 `RestRollbackInstrumentedRepro.xml`이다.
+- 원인은 물리 `Collider2D.bounds.center`에서 보간된 표시 `Transform.position`을 빼서 몸체 오프셋으로 사용한 것이다. 계측에서 물리 Y=17.99800, 표시 Y=18.26193으로 인해 도착 Y가 0.82000 대신 1.08393이 됐다. 실제 장애물 검사는 통과했지만 도착 후 위치 오차 0.26393이 허용값 0.05를 넘어 출발점 복귀/TransferBlocked로 진입했다. `RestRollbackProbe.json`에 증거를 보존했다.
+- `StageRestArea.TryArrival`과 `StageTransferRoute.SpaceFree`가 캡슐의 설정 오프셋을 `TransformVector`로 환산하도록 수정했다. 도착점 재검사·실제 장애물 차단·회복 1회·문 개방 순서·모터·전투·씬 배치는 유지했다. 임시 계측 로그는 검증 전에 제거했다.
+- Unity 6000.3.23f1 재컴파일 성공(errors=[]). PlayMode `RestCycleTests` **16/16 통과**, 39.97초(`RestRollbackFixedPlayMode.xml`): 신규 낙하/점프 출발, 전체 4웨이브/3휴식, 회복·다음 입장, 실제 목적지 차단, 일시정지·비활성화·사망·잠복·내려찍기·컷신을 검사했다. EditMode `StageTransferRouteTests` **5/5 통과**, 0.30초(`RestRollbackRouteEditMode.xml`).
+- 별도 실제 CoreLoopStage Play Mode에서 30/60/144 FPS 기준 `captureDeltaTime`으로 세 휴식 구역을 각각 순회해 **9/9 이동 성공**을 확인했다. 낙하/상승과 수평 이동 중 테스트 입력을 전달했고, 도착·HP 100·입구 개방·조작 잠금 해제·Dynamic/simulated 복원을 검사했다(`RestRollbackFrameStress.txt`). 적 처치는 검증용 피해로 진행했다. 직접 키보드 전투 플레이나 Player 빌드는 실행하지 않았다.
+- 임시 입력/시간/프레임 설정을 복원하고 Play Mode를 종료했다. CoreLoopStage dirty=false, timeScale=1을 확인했다. 콘솔의 오류 672/673은 기존 실제 장애물 검사에서 의도한 로그이며 추가 런타임 오류는 없다.
+
+## 마지막 웨이브 출구 컷신 (2026-10-25)
+
+- `StageFlowController.finalWaveCutscene`에 선택적 전용 Runner를 연결했다. 마지막 전멸 후 기존 사망 동작용 게임 시간 0.85초와 전투 시간 연출이 끝나면 한 번 재생한다. 출구에 이미 서 있어도 컷신을 먼저 처리하며, 사망·외부 일시정지·기존 컷신의 소유권을 존중한다. 구역이 없는 기존 단일 전투 흐름은 그대로다.
+- `FinalWaveExitReveal.playable`은 기존 Cinemachine/Timeline/말풍선 시스템을 사용한다. 문 확대 0.65초(Size 3.2), 문 유지 0.7초, 플레이어 복귀 0.65초(Size 4.5), 독백 2.75초, 평소 카메라 복귀 0.35초다. 문과 플레이어 카메라는 실제 Transform을 따라가며 대사는 `문이 열렸다. 어서 탈출하자.`다. 자동 진행과 기존 Esc/Start 스킵을 지원한다.
+- 기존 씬 오브젝트 ID 누락 0개, 새 씬 블록 16개. Timeline 3개 샷의 카메라 참조와 플레이어 화자 연결을 확인했고 `TryValidate=true`, Missing Script=0이다. 기존 인트로·적 배치·전투 수치·아트는 변경하지 않았다. 두 Runner를 구별하도록 관련 검사에서 인트로 Trigger의 부모 Runner를 명시적으로 선택했다.
+- PlayMode `CutsceneTests`(새 FinalWaveCutsceneTests 포함) **21/21 통과**, 56.39초(`ExitRevealCutscenePlayMode.xml`). `StageFlowTests` **12/12 통과**, 34.47초(`ExitRevealStageFlowPlayMode.xml`). 마지막 처치, 문 줌·플레이어 복귀·정확한 독백, 자동 종료, 출구 안에서의 종료 순서, 스킵·비활성화·일시정지·동시 사망·재시작과 기존 인트로를 검사했다.
+- 실제 첫 재생에서 사망 상태로 전환되기 전 월드가 일시정지돼 사체가 대기 자세로 남는 것을 확인했다. 기존 사망 시간(포탑/드론/방패병 0.6초, 돼지 0.8초)을 바꾸지 않고, 시작 대기를 0.85초로 보완했다. 전체 구역 통합 검사에는 컷신 시작 전에 마지막 적 전부가 비활성화됐는지 확인하는 조건을 추가했다.
+- 최종 보완 후 Unity 재컴파일 errors=[] 확인. `FinalWaveCutsceneTests` **5/5 통과**, 15.92초(`ExitRevealDeathDelayPlayMode.xml`), `RestCycleTests` **14/14 통과**, 33.64초(`ExitRevealFinalCyclePlayMode.xml`). 컷신 시작 전에 적 사망·비활성화가 완료되는 조건도 통과했다.
+- 실제 4웨이브까지 진행한 뒤 검증용 피해로 마지막 적을 처치하고 자동 컷신을 재생했다. 카메라는 문 X=215/Size=3.2 → 현재 플레이어 X=191/Size=4.5 → 기본 Size=6.5로 복원됐다. 대사 전체 문자열, 조작 잠금 해제, 입력 활성, timeScale=1을 확인했다(`ExitRevealRuntime.txt`). `ExitRevealDoor.png`, `ExitRevealMonologue.png`는 실제 Timeline 재생 중 캡처한 1920×1080 프레임이며 보완 후 사체가 남지 않는 것을 확인했다.
+- 검증 후 Play Mode 종료, CoreLoopStage dirty=false, timeScale=1. Console 오류는 의도한 막힌 도착지 검사 로그만 있으며 새 예외는 없다. 이번에는 플레이어 빌드와 기존 Timeline 편집기 미리보기 검사를 재실행하지 않았다.
+
+## 프로토타입 추천 배치로 4웨이브 확장 (2026-10-25)
+
+- 공개 프로토타입의 `app.js?v=keys61` 기본값 `layoutSource='course'`와 `combat-course.js?v=keys61`를 확인했다. 추천 코스의 적 수 2/3/4/5와 상대 위치·발판 높이를 적용했다. 원본 증거는 `Library/PrototypeValidation/FourWaveCourse.js`에 보관했다. 직선탄→포탑, 공중 포격→드론, 지상 근접→돼지로 대응하고 4웨이브 마지막 근접 적은 방패병을 사용했다. Unity의 기존 전투 수치와 적 행동은 변경하지 않았다.
+- `CoreLoopStage`에 적 14마리, 휴식 3개, 전투 4개를 연결했다. 기존 적 인스턴스 6개를 재배치하고 8개를 추가했다. 휴식 도착 X=66/116/168, 다음 전투 시작 X=72/122/174, 최종 출구 X=215, 카메라 경계 X=217이다. 첫 구역 인트로는 보존하고, 전멸 후 Shift 이동·첫 방문 회복·입구 통과 후 적 활성화를 유지한다.
+- Unity 6000.3.23f1 / 연결된 Pipeline CLI로 컴파일 성공(completed, failed=false, errors=[]). 씬 검사 결과 모든 적 14개에 프리팹 연결·유효한 정의가 있고, 뒤쪽 3개 적 그룹은 비활성, 휴식 3개 모두 설정 유효, Missing Script=0이다(`FourWaveAssetCheck.json`).
+- `RestCycleTests` **14/14 통과**, 32.78초(`FourWaveCyclePlayMode.xml`). 통합 검사는 실제 씬의 4개 전투/3개 휴식을 순서대로 진행하며 각 적 구성, 미래 적 미초기화/피해 불가, Shift 요청, 이동·회복·조작 복원, 각 휴식의 회복 1회, 마지막 구역에서만 출구 개방과 클리어를 확인한다.
+- 전체 PlayMode **263개 중 262개 통과**, 195.10초(`FourWaveRegressionPlayMode.xml`). 실패 1개는 `StageFlowTests.CameraFollowsEmergedBodyAfterUndergroundMovement`의 기존 테스트 출현 지점 X=26이 새 발판 X=25~28과 겹쳐 정상적인 가까운 출현 보정이 수행된 경우다. 카메라 추적 검사의 타깃만 빈 바닥 X=22로 옮겼다. 이후 `StageFlowTests` **12/12 통과**, 34.05초(`FourWaveStageFlowPlayMode.xml`). 게임 코드나 출현 보정 규칙은 변경하지 않았다. 전체 회귀의 전투·애니메이션·레이저·컷신 검사에는 실패가 없었다.
+- 실제 Play Mode에서 검증용 피해와 이동 요청으로 전투 1→휴식 1→전투 2→휴식 2→전투 3→휴식 3→전투 4를 실행했다. 각 휴식 도착 시 HP 80→100, simulated=true, 조작 잠금 해제, 마지막 적 5개 활성화를 기록했다(`FourWaveRuntimeTrace.txt`). 이는 직접 키보드로 모든 적을 처치한 플레이 기록은 아니다.
+- 마지막 구역 X=191에서 물리/카메라 갱신 후 검증용으로 일시정지해 1120×660, 1920×1080 화면을 확인했다(`FourWaveFinal1120.png`, `FourWaveFinal1920.png`). 지상 돼지·방패병, 높이가 다른 포탑 2개와 드론, 레이저 및 반복 배경을 확인했다. 검증 후 Play Mode를 종료했고 저장된 CoreLoopStage는 dirty=false다.
+- Console의 새 게임 오류는 없다. 막힌 도착지 2종 검사와 초기화 실패 2종의 오류 로그는 기존 `LogAssert.Expect` 검사에 해당한다. 이번 변경 파일은 씬, 관련 PlayMode 검사 2개, 가이드·검증 문서다. 공유 정의·프리팹·원본 아트·입력·프로젝트 설정·런타임 전투 코드는 수정하지 않았다.
+
+## 전멸 후 Shift 입력으로 휴식 이동 (2026-10-25)
+
+- 자동 출발을 제거했다. 기존 0.35초·컷신·시간 연출 대기 이후 기존 안내 영역에 `SHIFT > REST AREA`를 표시하고, 새 글리치 입력을 받으면 기존 경로 이동을 시작한다. 전투 중/준비 전 입력은 예약하지 않으며 도착 회복과 다음 전투는 유지한다.
+- Unity Pipeline 재컴파일 성공(completed, failed=false, errors=[]). PlayMode `RestCycleTests` **14/14**, `PlayerGlitchCombatTests` **120/120**, `StageFlowTests` **12/12** 통과. 이번 실행 결과는 `Library/PrototypeValidation/RestShiftPlayMode.xml`, `RestShiftGlitchCombatPlayMode.xml`, `RestShiftStageFlowPlayMode.xml`에 보관했다.
+- 추가 검사는 입력 전 1.2초 대기 중 위치·체력·조작 유지, 안내 표시, 새 입력 후 도착/회복, 전투 중 또는 너무 이른 입력 미예약을 확인한다. 기존 휴식 이동 취소·죽음·경계·회복 1회와 글리치 전투·클리어·재시작 검사도 통과했다. 입력은 테스트용 `IPlayerInputSource`로 전달했으며 실제 키보드 조작 영상은 별도로 촬영하지 않았다.
+- 검증 구간 Console 오류 2건은 막힌 목적지/이동 중 목적지 무효화를 의도적으로 유발하고 `LogAssert.Expect`로 확인한 로그다. 그 외 새 오류는 없다. 씬·프리팹·전투 설정은 이번 변경에서 수정하지 않았다.
+
+## 전투·휴식 구역 연결 (2026-10-25)
+
+- Unity 6000.3.23f1. Unity MCP 인스턴스 조회는 연결을 찾지 못해, 이미 연결된 Unity Pipeline CLI로 같은 프로젝트의 컴파일·테스트·Play Mode를 검증했다. 추가 패키지 설치는 없다.
+- 변경 범위: 구역 순서/전멸 판정, 자동 이동과 조작·물리 복원, 최초 도착 회복, 재사용 RestArea 프리팹, 다음 전투 활성화, 카메라 경계 104 확장. 기존 적 4개·발판·인트로 위치와 전투 설정은 보존했다. 변경 전 씬의 오브젝트 ID 누락은 0개다.
+- 컴파일: `recompile_status` completed, failed=false, errors=[] 확인.
+- 전체 PlayMode: **258/258 통과**, 14:56:04~14:58:50 KST, 166.10초. `Library/PrototypeValidation/RestCycleRegressionPlayMode.xml`. 전투·글리치·레이저·애니메이션·컷신·단일 목표 완료의 회귀를 포함한다. 기존 StageFlowTests는 sceneLoaded 시 구역 배열을 비워 지원 중인 단일 목표 경로를 명시적으로 검사하며, 실제 씬의 구역 순서는 RestCycleTests가 검사한다.
+- 최종 보강 후 RestCycleTests **12/12 통과**, 15:00:03~15:00:26 KST. `RestCycleFinalPlayMode.xml`. 전멸→이동→회복→입장→최종 완료, 미활성 적 초기화, 비활성 생존 적, 회복 1회/피해 이벤트 불변/부활 금지, 목적지 초기·이동 중 차단, 외부 일시정지, 비활성화와 이동 중 사망, 잠복 경계·종료, 공중 내려찍기·도착 후 점프, 양방향 경계문, 컷신과 이동의 독점 처리를 검사했다.
+- 최종 컷신 보강 회귀: CutsceneTests **16/16 통과**, 15:02:16~15:03:01 KST. `RestCycleCutscenePlayMode.xml`.
+- 전체 EditMode: **43/44 통과**. 경로 계산 5개는 전부 통과했다. 실패는 `CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership`의 53행(편집기 말풍선 표시)이다. 작업 시작 전 백업한 CoreLoopStage를 같은 경로에 일시 복원해 동일 검사를 실행했으며 같은 53행 실패를 재현했다(`RestCycleOriginalScenePreview.xml`). 이후 이번 씬을 복원하고 SHA256 일치를 확인했다. 이 기존 편집기 미리보기 실패는 수정하지 않았으며, 런타임 컷신 16개는 통과했다.
+- 초기 구현에서 시뮬레이션을 끈 Rigidbody2D의 Transform이 갱신되지 않아 도착 복원 시 출발 위치로 되돌아가는 문제를 재현했다. CharacterMotor2D에서 구역 이동 중에만 표시 좌표를 동기화하고 재활성화 후 도착 좌표를 보존하도록 수정했다. 관련 전체/최종 검사를 재실행해 통과했다.
+- 실제 Play Mode: 테스트 피해로 첫 구역 전멸을 유도한 뒤 자동 이동을 실행했다. 휴식 도착 X=66, 체력 80→100, Rest, 조작 잠금 해제, Dynamic/simulated=true, 살아 있는 활성 적 0, timeScale=1을 확인했다(`RestCycleRuntimeArrival.json`). 다음 입구 통과 후 Combat/구역 1/목표 2개, 적 활성·입구 잠금과 실제 적 공격을 확인했다.
+- 렌더 확인: `RestCycle1120.png`, `RestCycle1920.png`, `RestCycleNextCombat1120.png`, `RestCycleNextCombat1920.png`에서 1120×660/1920×1080의 안내 문구·민트 경계·지형·배경과 전투 재개를 직접 확인했다. 모든 결과는 `Library/PrototypeValidation/`에 있다.
+- 최종 상태: CoreLoopStage 저장 완료, Edit Mode, scene dirty=false. 새 기능의 런타임 검증은 완료. 기존 Timeline 편집 미리보기 검사 1개가 남아 있어 전체 검증 상태는 **Ready with limitations**다. 별도 플레이어 빌드는 이번 범위에서 실행하지 않았다.
+
 ## 공중 검격 상태와 이동 유지 (2026-09-30)
 
 - PlayerAttack.Air를 추가해 일반 공중 검격을 Side/Slam과 구분했다. PlayerCombat.BlocksMovement가 공중 검격에서만 수평 조작을 허용하며 착지 후에는 남은 공격 동안 지상 이동 제한을 적용한다. 중력과 점프 해제는 유지하고 공격 중 새 점프 입력은 예약하지 않는다. 지상 공격·출현·위쪽 글리치 후 내려찍기, 콤보·넉백 수치는 보존했다.
@@ -561,3 +613,473 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - Unity 컴파일 성공. 저장된 씬 정적 검사에서 네 종류 프리팹 인스턴스 각각 1개, 목표 참조 4개, 발판 3개, 카메라 오른쪽 경계 60을 확인했다. git diff --check 통과.
 - StageFlowTests + CutsceneTests 실행을 시작했으나 Unity 메인 스레드가 상태 조회와 포커스 요청에 60초 이상 응답하지 않았다. `Library/PrototypeValidation/CompactStagePlayMode.xml`이 생성되지 않아 이번 실행의 통과 여부는 미확인이다. 이전 223/223 기록을 이번 축소 맵의 통과 결과로 취급하지 않는다. 편집기 응답 복구 후 해당 두 테스트 클래스를 재실행해야 한다.
 - 변경 직전 씬과 Timeline 사본은 버전 관리 대상이 아닌 `Temp/CompactStageBackup/`에 보관했다. 맵 변경은 오류 발생 전에 저장 완료했다.
+
+
+## 2026-10-15 — Assets/Art 플레이어 외형 교체
+
+- Unity 6000.3.23f1 컴파일 성공. 런타임 C#과 게임 수치는 수정하지 않았다. Player.controller의 17개 Motion 참조, Player/Visual의 기본 Sprite·로컬 Y, 새 통합 클립 11개, 기존 외형 관련 테스트를 갱신했다.
+- 최종 플레이어 관련 PlayMode **154/154 통과**. 필터 `Player`, `Library/PrototypeValidation/PlayerArtPlayMode.xml`, **09:58:28–09:59:30 KST**. 실제 MovementLab 이동·좌우 반전·대기·상승·하강·착지, 지상/공중 콤보, 띄우기/출현, 내려찍기 준비/하강 반복/착지, 피격 재시작·사망, 잠복·중단·비활성화 후 외형 복원을 확인했다.
+- 첫 PlayMode는 150/154였다. 이전 Adventurer의 피격/사망 파일명과 Visual Y=-0.8을 하드코딩한 기대값 4건을 새 프레임과 실행 전 위치 복원 기준으로 갱신했다. 동작 검사를 제거하지 않았다. 첫 결과는 `PlayerArtPlayModeInitial.xml`에 보존했다.
+- 최종 전체 EditMode는 **34/35 통과**. `Library/PrototypeValidation/PlayerArtEditModeFinal.xml`. 플레이어 에셋·Missing Script·프레임 출처·반복/비반복·ActionTime·발 위치·NPC 기존 Idle 보존 검사는 통과했다.
+- 미해결: `CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership`, `CutsceneAuthoringTests.cs:53`에서 `IsBubbleVisible`이 false로 실패했다. 최초/재실행 동일하며 이번 외형 변경과의 인과관계는 확인하지 않았다. 컷신 코드/씬은 변경하지 않았다. 전체 EditMode 통과로 보고하지 않는다.
+- CoreLoopStage에서 실제 Play Mode로 새 Idle 프레임, 접지, Visual Y=0.0333333, Root Motion=false, 플레이어/Visual Missing Script 0을 확인했다. 화면에서 바닥과 발 위치 및 기존 안내 NPC의 외형을 확인했다. `Library/PrototypeValidation/PlayerArtCoreLoopStage.png`, 공격/피격 캡처 `PlayerArtAttacks.png`, `PlayerReactions.png`.
+- 콘솔의 `Player tuning is missing.` 1건은 Player 필터에 포함된 UnitLifecycleTests가 LogAssert.Expect로 검증한 의도된 오류다. 이후 현재 씬 플레이 검증에서 새 오류는 없었다.
+- 종료 상태: 원래 CoreLoopStage, 씬 dirty=false, Timeline preview=false, Play Mode 정지. 원본 Assets/Art, 물리 설정, 입력·전투 수치와 씬 배치를 유지했다. Player 빌드와 전체 PlayMode 어셈블리는 실행하지 않았다.
+- 일반 공격 원본은 한 종류여서 지상/공중 3타가 같은 프레임을 재사용한다. 별도 사망 원본이 없어 피격 1~4프레임 후 마지막 자세를 유지한다.
+
+## 2026-10-21 — 몬스터 1·2·3 외형 교체
+
+- Monster1 → SurveillanceTurret, Monster2 → FlyingDrone, Monster3 → ShieldSoldier. 원본 PNG 130장의 바이트 보존을 SHA-256으로 확인했다. 순찰 돼지, 런타임 C#, Animator Controller, FSM·정의 수치, 충돌체·물리 설정, 씬 배치는 변경하지 않았다.
+- 기존 12개 Idle/Run/Attack/Death 클립의 GUID와 ActionTime 연결을 유지했다. Sprite 곡선만 존재하고 Animation Event/Transform 곡선이 없으며 프레임 누락, Missing Script, Root Motion 활성화가 없음을 Unity API로 확인했다. 새 원본의 왼쪽 방향에 맞춰 기존 좌우 반전 설정을 연결했다.
+- EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 13:22:00–13:22:01 KST, `Library/PrototypeValidation/MonsterArtEditMode.xml`.
+- PlayMode `EnemyPatternTests` **15/15 통과**, 13:22:12 KST, `Library/PrototypeValidation/MonsterArtPlayMode.xml`. 방패 앞뒤 방어·회전·돌진·벽/발판 정지, 포탑 탐색·조준 고정·사격 판정, 드론 비행·강제 이동·수직 공격, 사망·비활성화 취소를 확인했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+- 현재 CoreLoopStage의 해당 적 3개가 새 Sprite를 상속함을 확인했다. 실제 프리팹을 별도 PreviewScene에 렌더링해 대기·공격·사망 외형을 검토했다. 캡처: `Library/PrototypeValidation/MonsterArt-20261021.png` (열: 포탑/드론/방패병, 행: 대기/공격/사망).
+- 방패병의 공격은 Angry/Walk로 돌진을 표현한다. 전용 사망 프레임이 없어 Angry/WalkStopB 후 기존 사망 시간에 비활성화한다. `Monster3Hit_PNG.zip`은 실제로 드론 이미지가 들어 있어 사용하지 않았다. 출처·가져온 프레임은 `Docs/ThirdPartyNotices.md`에 기록했다.
+- 게임/테스트 오류는 없었다. 첫 임시 캡처 도구의 RenderTexture 정리 순서 오류 1건을 수정하고 재캡처했다. 프로젝트 런타임 오류가 아니며 검증 도구는 Assets 밖에 있다. 종료 상태: Unity ready, Play Mode 정지, CoreLoopStage dirty=false.
+
+## 2026-10-21 — 플레이어 white slash·white spark 연결
+
+- Unity 6000.3.23f1 재컴파일 성공, 컴파일 오류 0. 기존 몬스터 교체 변경을 보존했다. 플레이어 Animator Controller·클립·전투/글리치 수치·물리 설정·씬 배치는 변경하지 않았다.
+- EditMode `PlayerVisualAssetTests` **2/2 통과**, 13:32:12–13:32:13 KST, `Library/PrototypeValidation/PlayerEffectsEditMode.xml`. 기존 캐릭터 연결과 효과 16프레임 순서·피벗·크기·출처·Root Motion/Collider 분리를 확인했다.
+- PlayMode 필터 `Player` **157/157 통과**, 13:33:02–13:34:04 KST, `Library/PrototypeValidation/PlayerEffectsPlayMode.xml`. 기존 이동·전투·글리치 회귀 검사에 기본 지상/공중 3타 효과 시점·좌우 반전·중단, 스파크 월드 위치·종료·반복 재사용·비활성화 후 재생 방지, 성공/실패·잠복 진입·출현의 표현 위치 검사를 추가했다.
+- 실제 Play Mode에서 Player 프리팹의 Combat을 실행해 양방향 베기를 확인했다. TrainingDummy를 대상으로 Glitch.TryExecute를 실행해 출발/도착 스파크 2개를 확인하고 렌더링을 검토했다. 캡처: `Library/PrototypeValidation/PlayerEffects-SlashRight.png`, `PlayerEffects-SlashLeft.png`, `PlayerEffects-Glitch.png`.
+- 캡처용 플레이어·허수아비·바닥·카메라는 런타임에만 만들고 정리했다. Time.timeScale을 복원하고 Play Mode를 종료했다. 원래 CoreLoopStage를 유지하며 씬 저장은 하지 않았다.
+- 콘솔의 `Player tuning is missing.` 1건은 통과한 UnitLifecycleTests의 의도된 LogAssert 검증이다. 이후 실제 효과 검증에서 새 오류는 없었다. 전체 EditMode/전체 PlayMode 어셈블리와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 공격·글리치 청록/붉은색 팔레트
+
+- 전용 공유 머티리얼과 현재 URP Sprite-Unlit 경로를 따르는 셰이더를 추가했다. C# 재컴파일 성공, 셰이더 지원 및 컴파일 메시지 0건, 검증 후 콘솔 오류 0건을 확인했다.
+- PlayMode `PlayerVisualTests` **7/7 통과**, 13:51:55–13:51:56 KST. 결과: `Library/PrototypeValidation/PlayerEffectsColorPlayMode.xml`. 기본 지상/공중 공격·좌우 반전·피격 중단, 스파크 위치·재사용·종료와 기존 액션 애니메이션을 재검증했다.
+- 실제 Player/TrainingDummy 프리팹을 Play Mode에서 실행했다. 양방향 공격과 성공한 글리치 출발/도착 스파크가 새 공유 머티리얼을 쓰고 캐릭터 본체의 머티리얼은 별도임을 확인했다. 크기 2.5도 런타임 SerializedObject로 확인했다.
+- 렌더 캡처를 직접 검토했다: `Library/PrototypeValidation/PlayerEffectsColor-SlashRight.png`, `PlayerEffectsColor-SlashLeft.png`, `PlayerEffectsColor-Glitch.png`. 청록 검격·붉은 끝부분, 두 색의 글리치 파편이 정상 표시된다.
+- 임시 검증 오브젝트를 정리하고 Time.timeScale=1, runInBackground=false로 복원했다. 종료 상태: CoreLoopStage dirty=false, Play Mode 정지. 전체 테스트와 Player 빌드는 이번 색상 작업에서 실행하지 않았다.
+
+## 2026-10-21 — 고정형 포탑 대기·조준·분노 애니메이션
+
+- Unity C# 컴파일 성공, 검증 후 콘솔 오류 0건. 포탑 프리팹 Visual에만 SurveillanceTurretVisual을 추가했다. 물리·피해·범위·공격 간격 에셋과 씬 배치는 변경하지 않았다.
+- EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 14:11:41 KST. `Library/PrototypeValidation/TurretTrackingEditMode.xml`. 포탑 6개/나머지 적 4개 클립, 기존 정의·물리 설정·Sprite 곡선 연결을 확인했다.
+- PlayMode `EnemyPatternTests` **17/17 통과**, 14:12:15 KST. `Library/PrototypeValidation/TurretTrackingPlayMode.xml`. 새 검사 2개가 3초 간격 회전 시작, 감지 시 분노 대기, 총열의 좌우/상하 방향과 고정 받침대, 발사 방향 유지·표시 종료 후 재추적, 기존 스캔/고정/회복 시간, 분노 사망·비활성화 후 초기화를 검증했다. 기존 방패병·드론·포탑 행동 검사 15개도 통과했다.
+- Play Mode에서 실제 포탑/플레이어 프리팹을 사용해 일반 대기·회전·추적·조준 고정·발사·재추적·분노 사망을 렌더링하고 직접 검토했다. 캡처는 `Library/PrototypeValidation/TurretTracking-Idle.png`, `IdleTurn.png`, `Tracking.png`, `Locked.png`, `Firing.png`, `Retracking.png`, `Death.png`이며 각각 동일한 `TurretTracking-` 접두사를 사용한다.
+- 캡처는 시간을 제어하고 플레이어를 지정 위치로 이동한 재현이다. 실제 발사 1회, Locked Aim 보존, 회복 중 반대 방향 추적, 받침대 회전 0, 사망 시 AngryDeath/06 Sprite를 확인했다. 임시 오브젝트·입력·시간 설정은 정리했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 포탑 반회전과 방향별 3초 대기
+
+- 일반 대기 원본의 01→05만 사용하는 0.5초 `IdleTurn`, 05를 유지하는 `IdleOpposite`, 05→01의 0.5초 `IdleTurnBack`을 연결했다. 양쪽 방향에서 각각 3초 대기한다. 이전 한 바퀴 회전 규칙을 대체하며, 이번 변경은 외형·클립·컨트롤러·프리팹 회전 길이에 한정했다. 전투 FSM과 수치는 유지했다.
+- Unity 재컴파일 성공. EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 14:29:20 KST, `Library/PrototypeValidation/TurretHalfTurnEditMode.xml`. 포탑의 8개 클립과 기존 적 설정을 검사했다.
+- PlayMode `EnemyPatternTests` **17/17 통과**, 14:29:57~14:29:58 KST, `Library/PrototypeValidation/TurretHalfTurnPlayMode.xml`. 3초 대기·양방향 반회전·반대 방향 유지·복귀·다음 반복과 감지 중단, 조준·발사·사망·비활성화 초기화를 검사했다. 관련 검증만 재실행했으며 전체 테스트와 Player 빌드는 실행하지 않았다.
+- 실제 포탑/플레이어 프리팹을 Play Mode에서 18초, 60 FPS, 960×540으로 녹화했다. 임시 바닥과 카메라를 사용하고 플레이어 이동·점프 입력만 자동 공급했다. FSM·물리·외형은 실제 프레임 갱신으로 동작했다. 영상: `Library/PrototypeValidation/TurretHalfTurnVideo/TurretHalfTurn.mp4`, 측정: 같은 폴더의 `timeline.csv`와 `summary.json`.
+- 녹화에서 첫 반회전 3.000초, 오른쪽 대기 3.500초, 복귀 반회전 6.483초, 왼쪽 대기 6.983초를 확인했다(60 FPS 한 프레임 이내 오차). 오른쪽 대기·좌측 복귀·회전 중간 원본 캡처를 직접 검토했다. 7.200초 감지 이후 첫 조준 고정 8.217초 → 발사 8.617초 → 재추적 8.783초, 총 4회 발사를 확인했다. MP4 전체 1,080프레임 디코딩 검사도 통과했다.
+- 녹화 후 콘솔 오류 0건. 임시 오브젝트를 정리하고 Play Mode를 종료했다. CoreLoopStage dirty=false, Time.timeScale=1, Time.captureDeltaTime=0, runInBackground=false로 복원했다.
+
+## 2026-10-21 — 포탑 전방 감지와 포구 발사
+
+- 반회전 시간·방향을 EnemyFsmDefinition의 Idle/Turning 상태로 옮겼다. SurveillanceTurret만 새 대상 선택 시 좌우 전방 반평면을 검사하고, 3초 대기와 0.5초 반회전 완료 후 새 방향에서 탐색한다. 기존 추적·조준 고정·발사·회복 규칙과 드론/방패병 동작은 유지했다. 외형은 FSM 상태를 읽으며 독립 회전 타이머를 제거했다.
+- 포탑 EnemyCombat2D의 조준 축 (0,-0.1625), 포구 거리 0.75를 원본 스프라이트의 총열에 맞췄다. 예고선과 실제 빔·피해 판정의 시작점이 같으며, 축과 포구 사이 장애물도 발사를 차단한다. 씬·프로젝트 설정은 이번 작업에서 변경하지 않았다.
+- Unity C# 재컴파일 성공, 콘솔 오류 0건. EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 14:39:31 KST, `Library/PrototypeValidation/TurretFacingEditMode.xml`.
+- PlayMode `EnemyPatternTests` **19/19 통과**, 14:40:18~14:40:19 KST, `Library/PrototypeValidation/TurretFacingPlayMode.xml`. 외형 갱신 없이도 뒤쪽 무시·반회전 완료 후 감지·좌우 복귀·비활성화 초기화가 동작함을 확인했다. 좌우/대각선/수직 조준의 포구 일치, 포구 뒤의 대상 제외, 가까운 벽 차단과 기존 전투 검사도 통과했다.
+- 최초 PlayMode 실행은 18/19였다. 방향 일치 검사에서 `Vector2.Angle`의 acos 반올림으로 0.0198도가 발생해 정규화 벡터 거리 <0.0001 비교로 바꾸고 재실행했다. 해당 검사로 게임 코드를 추가 수정하지 않았다. 최초 결과는 `TurretFacingPlayModeInitial.xml`에 보존했다.
+- 실제 Play Mode에서 오른쪽(포탑 뒤)에 플레이어를 배치해 18초, 60 FPS로 녹화했다. 0~3초 대기, 3~3.5초 반회전, 3.5167초 첫 감지, 4.5333초 조준 고정, 4.9333초 포구 발사, 5.1000초 재추적을 확인했다. 총 5회 발사했고 조준/발사 프레임의 포구와 계산한 빔 시작점 차이는 최대 0.000061 유닛이었다. 영상의 뒤쪽 대기·포구 발사·반대편 재추적 프레임을 직접 검토했다.
+- 영상은 `Library/PrototypeValidation/TurretFacingVideo/TurretFacing.mp4`, 상태 측정은 같은 폴더 `timeline.csv`/`summary.json`이다. 플레이어 이동·점프 입력만 자동 공급했고 실제 FSM/물리/프리팹을 사용했다. MP4 1,080프레임 전체 디코딩 검사 통과. 임시 오브젝트와 시간 설정을 복원했으며 Play Mode 종료, CoreLoopStage dirty=false를 확인했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 배경 패럴랙스
+
+- `ParallaxLayer2D`를 CoreLoopStage의 Base/Far/Mid에 연결하고 화면상 스크롤 비율 0.05/0.2/0.5를 설정했다. URP의 카메라 렌더 직전 콜백에서 최종 출력 카메라의 위치만 읽는다. 이번 변경 전 씬과 비교했을 때 기존 레이어 GameObject 3개의 컴포넌트 목록과 신규 컴포넌트 3개만 달라졌다. 지형·충돌·플레이어/적·카메라 설정은 동일하다.
+- Unity 재컴파일 성공. PlayMode `ParallaxLayerTests` **5/5 통과**, 16:37:19 KST, 결과 `Library/PrototypeValidation/ParallaxPlayMode.xml`. 실제 URP 카메라를 렌더링하며 정지 시간의 레이어별 속도, 왕복/줌/반복 렌더의 누적 오차, 비활성화 복원과 재활성화, 다른 카메라 무시, LateUpdate 이동의 같은 프레임 반영을 검사했다.
+- 실제 레벨을 자동 입력으로 23.4초/702프레임/30 FPS 플레이했다. 대화 카메라 전환·이동·점프·글리치·전투·적 4종 처치·클리어를 확인했다. 카메라 X 7.5~48.55416 범위에서 레이어 이동량과 설정 비율의 최대 차이는 0.000009346 유닛이었다. 모든 프레임에서 배경 3장의 경계가 카메라 화면을 덮었으며 빈틈 검출은 0건이었다.
+- 영상 `Exports/Environment/Parallax-20261021/Parallax-Gameplay.mp4`, 계측 `parallax.csv` 및 `timeline.csv`. 대화·전투 이동·출구 구간 캡처를 검토했고 MP4 전체 디코딩도 통과했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-21 — 배경 두 장 무한 반복 벨트
+
+- CoreLoopStage의 Base/Far/Mid 각각에 기존 스프라이트를 공유하는 `Repeat` 자식을 연결했다. 총 6개의 SpriteRenderer를 재배치하며, 두 번째 장을 가로 반전해 연결되는 가장자리 무늬를 맞췄다. 최신 스크롤 계수 0.05/0.1/0.25, 원본 이미지·임포트 설정·카메라·플레이어·적·지형 충돌은 유지했다. 가로 반복이며 한 장의 너비가 카메라 화면 너비 이상이어야 한다.
+- Unity C# 재컴파일 성공. PlayMode `ParallaxLayerTests` **9/9 통과**, 16:59:31 KST, 결과 `Library/PrototypeValidation/BackgroundBeltPlayMode.xml`. 기존 5개 검사와 함께 양방향/여러 장 너비 순간 이동, 화면 밖 장만 재배치, 속도 유지와 비활성화 복원, Tiled·Transform 스케일·카메라 줌을 검사했다.
+- 실제 씬 배경으로 카메라 X ±10,000/±5,000 순간 이동 및 1,200→1,600→1,200 왕복을 실행했다. 305개 표본에서 화면 덮임 실패 0건, 두 장의 경계 차이 최대 0, 레이어별 재배치 2회씩, SpriteRenderer 6개 유지를 확인했다. 최초 임시 검증 도구가 원본 장의 재배치만 세어 원경 반복을 누락했으므로 복제 장도 세도록 고친 뒤 재검증했다. 이 계측 수정으로 게임 코드는 변경하지 않았다.
+- 실제 Game View의 배경 경계 왕복 영상 `Exports/Environment/BackgroundBelt-20261021/Background-Belt.mp4`는 10초/300프레임/30 FPS/1280×720이다. 일반 플레이 대신 카메라를 레벨 밖까지 이동시킨 반복 검증 영상이다. 경계 전후 캡처를 직접 확인했고 MP4 전체 디코딩 검사도 통과했다.
+- 종료 시 콘솔 오류 0건, CoreLoopStage dirty=false, Play Mode 정지, Time.timeScale=1, Time.captureDeltaTime=0, runInBackground=false를 확인했다. 임시 카메라·시간·녹화 설정을 복원했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 2026-10-22 — 방패병 전용 애니메이션
+
+- Unity C# 컴파일 성공. EditMode `EnemyPatternDefinitionTests` **4/4 통과**, 15:21:23~15:21:24 KST, `Library/PrototypeValidation/ShieldArtEditMode.xml`. 방패병 9개 클립 연결, 기존 적 정의·충돌·Root Motion 설정을 확인했다.
+- PlayMode `EnemyPatternTests` **22/22 통과**, 15:21:40~15:21:41 KST, `Library/PrototypeValidation/ShieldArtPlayMode.xml`. 신규 3개 검사는 방패 준비/유지/해제와 돌진, 막기/연속 피격과 기존 FSM 타이머 유지, 재활성화 초기화, 우측 반전과 사망 분해 후 기존 0.6초 비활성화를 확인한다. 기존 포탑·드론·방패병 행동 검사 19개도 통과했다.
+- 실제 방패병 프리팹을 Play Mode에서 임시 지형·타깃과 생성하고 기존 FSM을 지정 시간만큼 진행해 9개 포즈를 렌더링했다. `Library/PrototypeValidation/ShieldArt/`의 대기, 방패 올리기/유지/내리기, 좌우 공격, 막기, 피격, 사망 캡처와 Sprite 경로를 확인했다. 좌우 공격과 분해 프레임을 직접 시각 검토했다. 최초 비동기 캡처 도구의 프레임 대기가 만료되어 임시 작업을 정리하고 동기 캡처로 변경했다. 게임 코드 오류는 아니며 검증 도구는 Assets 밖에 있다.
+- 새 PNG 66장의 바이트가 ZIP 원본과 동일하고 각 .meta가 생성됐음을 확인했다. 씬 인스턴스에 새 외형 컴포넌트가 상속됐고 Missing Script=0, Root Motion=false다. 게임플레이 FSM·설정 데이터·씬 파일·물리·기존 Idle/Run은 수정하지 않았다.
+- 종료 시 콘솔 오류 0건, CoreLoopStage dirty=false, Play Mode 정지, Time.timeScale=1, runInBackground=false. 임시 카메라·오브젝트·시간 설정을 복원했다. 전체 테스트와 Player 빌드는 실행하지 않았다.
+
+## 전투 연출 보강 검증 (2026-10-25)
+
+- 검증 경로: 이 프로젝트에 설치된 Unity Pipeline CLI. 별도 Unity MCP 서버에는 에디터 연결이 없었으므로 Pipeline의 recompile / run_tests / eval_file을 사용했다. Unity 6000.3.23f1, DX12에서 실제 실행했다.
+- 컴파일: recompile_status completed, failed=false, errors=[] 확인. 반응 재질의 MaterialPropertyBlock 생성은 Awake로 이동해 에셋 로드/직렬화 중 생성 오류를 수정했다.
+- 전체 PlayMode: 247/247 통과, 0 실패, 0 건너뜀. 결과 `Library/PrototypeValidation/GlitchPresentationFullPlayMode.xml` 및 동일 이름의 JSON. 기존 이동·전투·글리치·적 패턴·컷신 회귀 검사를 포함한다.
+- 이후 접촉 효과가 적 몸체 뒤에 가려지는 정렬을 수정했다. 대상 몸체 +1, 적 사격 예고 +2 순서이며 마지막 외형 PlayMode 9/9 재검증 통과. 결과 `Library/PrototypeValidation/GlitchPresentationVisualFinal.xml`.
+- 전체 EditMode: 36/37 통과. `CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership`의 53행 IsBubbleVisible 확인이 실패했다. 단독 실행과 Timeline 창 포커스 후에도 재현했다. 이번 변경 범위 밖의 편집기 Timeline 미리보기는 수정하지 않았고, 변경 전 동일 실패 여부는 이 작업에서 확인하지 않았으므로 기존 결함으로 단정하지 않는다. 결과 `Library/PrototypeValidation/GlitchPresentationEditMode.xml`.
+- 실제 공격 시작과 피격 자세를 해당 표시 프레임에 반영하도록 Animator를 0초 평가한다. 이 보정 후 실제 플레이어 피격 모션 회귀 검사와 전체 PlayMode가 통과했다.
+- A/B 교대 0.40초 경계·공격 종류 변경·순간이동 유지·피격 초기화·새 공격 우선·사망 우선, 대상별 피해 결과/치명타 비활성화 전 알림, 허수아비 HealthLost=0, 화면 피격 > 처치 > 명중 및 무방향 피해를 검사했다.
+- 1120×660 / 1920×1080 각각 일반/움직임 감소 상태로 실제 PlayMode 렌더링했다. 최대 4 기준 픽셀의 뷰포트 비례 환산과 표시된 적의 화면 좌표를 다시 조준 좌표로 변환했을 때 0.001 월드 단위 이내 일치를 확인했다. 접촉 효과가 대상 위, 사격 예고 아래에 위치하는 정렬도 검사했다.
+- 이미지: `Library/PrototypeValidation/GlitchPresentation-1120-normal.png`, `GlitchPresentation-1120-reduced.png`, `GlitchPresentation-1920-normal.png`, `GlitchPresentation-1920-reduced.png`. 위쪽 A/B/띄우기, 아래쪽 내려찍기/피격/적 접촉을 보여주는 검증용 배치다.
+- 현재 CoreLoopStage를 Play Mode로 실행해 플레이어와 적 4종의 재질/피격 컴포넌트 연결, Missing Script=0, 관련 셰이더 오류=0을 확인했다. 체력은 플레이어 100, 돼지 50, 드론 60, 포탑 90, 방패병 75였다. 실제 전투 API로 일반 공격을 시작한 표시 프레임 캡처는 `Library/PrototypeValidation/GlitchPresentationCoreLoop.png`다. 검증 후 Play Mode를 종료했다.
+- 최종 외형 검사 및 레벨 확인 구간의 새 Console 오류는 0건이다. 전체 회귀 실행의 `Player tuning is missing`, `Unit definition is missing`는 기존 UnitLifecycleTests가 LogAssert.Expect로 확인하는 의도된 로그다.
+- 씬 배치·원본 PNG는 변경하지 않았다. ProjectSettings/TimeManager.asset의 기존 직렬화 변경은 보존했다. 피해·공격 단계·넉백·피격 경직 및 히트스톱/슬로모션 에셋 값이 유지되고 화면 연출 항목만 변경된 것을 diff로 확인했다.
+
+## 2026-10-25 — 글리치 직선 한 줄 효과
+
+- Unity Pipeline 재컴파일 성공: completed, failed=false, errors=[]. Unity MCP 연결 대신 기존 Pipeline CLI로 검증했다.
+- PlayMode `PlayerVisualTests` 9/9 통과(13:50 KST). 수평·수직·대각선의 실제 양 끝점, 회전/확대된 부모와 잠복 표시, 한 렌더러 재사용, 비스케일 0.12초 소멸, 길이 0, 비활성화 후 재생 방지, 사망 초기화를 검사했다. 결과: `Library/PrototypeValidation/GlitchLineVisual.xml`.
+- PlayMode `PlayerGlitchCombatTests` 120/120 통과(13:51 KST). 결과: `Library/PrototypeValidation/GlitchLineCombat.xml`. EditMode `PlayerVisualAssetTests` 2/2 통과, 결과: `Library/PrototypeValidation/GlitchLineAssets.xml`.
+- CoreLoopStage Play Mode에서 임시 허수아비를 사용해 실제 `PlayerGlitch.TryExecute`를 실행하고 선을 렌더링했다. 출발 (3.00, 0.80), 도착 (4.93, 2.73), 렌더러 양 끝점 오차 최대 0.00000012 월드 단위. 청록/붉은 한 선을 `Library/PrototypeValidation/GlitchTeleportLine.png`에서 확인했다. 이 이미지는 실행 검증용으로 카메라를 잠시 경로 중앙에 맞춘 캡처다.
+- 새 Console 오류 0건. 임시 대상을 제거하고 Play Mode를 종료했으며 CoreLoopStage dirty=false, timeScale=1을 확인했다. 이동/전투 코드, 저장된 씬 배치, 원본 PNG는 변경하지 않았다.
+
+## 2026-10-25 — 글리치 spark 한 열 연쇄 재생으로 수정
+
+- 사용자의 연출 의도에 맞춰 직선 렌더러를 제거하고 기존 spark 프레임을 복구했다. 양 끝은 기존 2.5 크기로 즉시 재생하며, 중간은 1.25 크기·약 0.6 간격으로 배치해 0.025초씩 늦게 시작한다. 청록·붉은 기존 재질을 그대로 사용한다.
+- Unity Pipeline 재컴파일 성공(errors=[]). PlayMode `PlayerVisualTests` 9/9, EditMode `PlayerVisualAssetTests` 2/2 통과. 결과는 `Library/PrototypeValidation/GlitchSparkRowVisual.xml`, `GlitchSparkRowAssets.xml`이다. 출발/도착 즉시 표시, 중간 spark의 지연·서로 다른 애니메이션 프레임, 수평/수직/대각선 월드 좌표, 재사용·취소·재시작·사망 정리를 확인했다. 이번 수정에서는 이동/전투 코드를 변경하지 않았고 전체 전투 검사는 다시 실행하지 않았다.
+- CoreLoopStage에서 임시 허수아비를 대상으로 실제 글리치를 실행해 1.125초·34프레임을 캡처했다. 0초에는 출발/도착, 0.034초에는 첫 중간 spark, 이후 뒤쪽 spark가 차례로 활성화되는 기록을 `Library/PrototypeValidation/GlitchSparkRow/bursts.txt`에서 확인했다. 렌더링 이미지를 직접 확인했고, 순서대로 묶은 미리보기는 `Library/PrototypeValidation/GlitchSparkRow.gif`다.
+- 최초 캡처는 명령 평가로 길어진 프레임 때문에 짧은 효과를 놓쳤다. 검증 도구의 실행을 다음 프레임으로 예약한 후 정상 캡처했으며 게임 코드의 시간을 변경하지 않았다. 새 Console 오류 0건, Play Mode 종료, CoreLoopStage dirty=false, timeScale=1을 확인했다.
+
+## 2026-10-25 — ARCBIT 포탑 파랑 / 드론 빨강 레이저
+
+- ARCBIT Lite 1.0.2 무료 ZIP을 제작자 itch.io에서 다운로드했다. 레이저 PNG 6개는 원본과 SHA-256이 모두 일치하며, 원본 JSON·LICENSE·CREDITS도 보존했다. 94개 Sprite 연결과 32 PPU / Point / 무압축 / 피벗을 검사했다.
+- Unity Pipeline 재컴파일 성공(completed, failed=false, errors=[]). PlayMode `EnemyLaserVisualTests` 2/2 통과(14:15 KST), 기존 `EnemyPatternTests` 22/22 통과(14:16 KST), EditMode `EnemyPatternDefinitionTests` 6/6 통과(14:17 KST). 결과: `Library/PrototypeValidation/ArcbitLaserPlayMode.xml`, `ArcbitEnemyRegression.xml`, `ArcbitAssetsEditMode.xml`.
+- 신규 검사는 양 색상, charge/on/loop/off 프레임 동기화, 시작/끝 피벗과 타일 몸통 연결, 사선·좌우·수직 발사, 벽에 잘린 길이, 추적 방향 변경 후 발사 경로 고정, 아주 짧은/길이 0인 빔, 표시 종료·사망·비활성화·재시작을 확인한다. 기존 검사는 포탑 반회전·정면 감지·추적/고정/발사/재추적, 포신 시작점, 피해 및 드론/방패병 행동을 포함한다.
+- 원본 적 프리팹 두 개를 Play Mode 검증용 위치에 임시 생성하고 실제 Fire 결과를 ARCBIT 프레임으로 렌더링했다. `Library/PrototypeValidation/ArcbitEnemyLasers.png`에서 위쪽 포탑의 파랑, 아래쪽 드론의 빨강 및 몸통/끝 조각 연결을 직접 확인했다. 이미지의 배치는 연출 검증용이며 저장된 레벨을 바꾸지 않았다.
+- 현재 CoreLoopStage의 원래 SurveillanceTurret와 FlyingDrone에도 각각 blue/red 프레임과 EnemyLaserVisual이 연결된 것을 확인했다. Play Mode 종료, scene dirty=false, timeScale=1, 검증 구간의 새 Console 오류 0건이다. 이번 수정에서 전투 수치·판정·FSM·플레이어 글리치 효과는 변경하지 않았다.
+
+
+## 2026-10-29 ? Pimen dust / kekkorider impact VFX
+
+- Player prefab: 8 jump/stop smoke frames, 7 running/landing dust frames, 8 hit and 8 finisher impact frames. Imported original PNGs; existing slash, glitch spark and laser references preserved.
+- Presentation only: motion state drives foot dust, accepted hit results drive contact effects. No combat/physics tuning changes. Glitch/underground/discontinuous movement suppresses false dust transitions; 8 reusable dust slots; reset clears them. Contact effects retain target-local tracking and unscaled 0.05/0.10/0.15-second lifetimes.
+- Unity 6000.3.23f1 compilation completed, no errors. PlayMode MovementImpactVfxTests 4/4 and CombatPresentationTests 3/3 passed (fresh JSON results in Library/PrototypeValidation).
+- CoreLoopStage runtime verification at 1920x1080: 24-second input-driven session, 36 attacks / 11 glitches, first encounter clear, rest and next encounter reached. JumpSmoke, GroundDust, HitImpact and FinisherImpact frames observed and screenshots inspected; no Console errors. Video recording disabled. Editor returned to stopped state.
+
+
+## 2026-10-29 ? Combat SFX integration
+
+- Added 12 selected/derived CC0 clips from Swishes, Kenney Impact and Kenney Sci-fi. PlayerSfx.asset controls separate swing/hit/landing/glitch levels; ranged prefabs hold distinct shot clips and volumes. CoreLoopStage main rendering camera now has one AudioListener (previously none).
+- Actual attack and glitch presentation versions drive sounds once. Accepted hit results drive contact audio, coalesced within 0.04 unscaled seconds to avoid multi-target stacking. Ground contact drives landing; shockwave version drives one heavy landing sound. Scripted rest transfer plays one glitch sound on actual start. Enemy ShotVersion drives one sound per shot, including bidirectional drone beams.
+- Six player voices and two per ranged enemy, reused; no per-event object allocation, global manager, mixer override or volume reset. AudioListener pause/volume respected, no timescale-driven pitch changes. Disabled presentation stops voices and snapshots versions. Existing combat/movement data unchanged.
+- Unity compilation succeeded. Fresh PlayMode results: CombatSfxTests 5/5, MovementImpactVfxTests 4/4, CombatPresentationTests 3/3. JSON evidence under Library/PrototypeValidation.
+- CoreLoopStage input-driven runtime: 24 seconds, 33 attacks, 9 glitches; first encounter, rest, second encounter. Observed playing clips for swing A/B, heavy swing, hit A/B/heavy, normal/slam landing, glitch, turret and drone shots. AudioListener output measured nonzero with sampled peak 0.4737694 (<1). This verifies engine playback/output, not subjective speaker listening. No video recording. No Console errors; stopped afterward.
+
+
+## 2026-10-29 ? Open rest entrance after combat; walk or Shift
+
+- Reproduced before fix: ClearedGateAllowsWalkingIntoEachRestAndHealsOnlyOnce failed because ExitGate stayed locked after combat clear. Before-fix JSON: Library/PrototypeValidation/RestWalkingBeforeFix.json.
+- Cause: ExitGate was unlocked only after successful scripted transfer; TransferBlocked returned before any rest detection.
+- Fix: current combat exit unlocks on clear. Player body entering rest on foot consumes the existing single visit/heal and opens the next entrance; Shift remains optional. TransferBlocked can recover by walking or an explicit new Shift press (no automatic retry). Shared EnterRest completion keeps both paths consistent and clears the hint/request. Existing next-fight rear gate and death priority unchanged.
+- Fresh Unity compilation succeeded. RestCycleTests PlayMode 19/19 passed in 45.13s, including all three walking rest transitions, original four-wave Shift cycle, failed-transfer walk recovery/retry, single heal, airborne/underground departures, pause/disable/death and gate regression checks. After-fix JSON: Library/PrototypeValidation/RestWalkingAfterFix.json.
+- Console contains four intentional blocked-destination/arrival errors asserted by those tests; no unexpected errors. No scene/prefab, combat tuning or user GlitchTuning changes made for this fix.
+
+### 2026-10-29 적 피격 외형 보강
+- 포탑에서 숨겨진 원본 대신 표시하는 포신/받침대에도 UnitDamageFlash를 연결했다. 기존 0.06초 비스케일 밝기 변화와 비활성화 초기화를 유지한다.
+- 드론은 피해 버전 변화에 따라 Visual만 최대 8도 기울이고 비스케일 0.12초에 복귀한다. 재피격은 갱신하며 사망/비활성화 시 복원한다. 몸체, FSM, 사격 애니메이션과 전투 설정은 변경하지 않았다.
+- Unity 컴파일 성공. EnemyHitVisualTests PlayMode 2/2 통과: 표시 부품 밝기/소멸, 드론 몸체·FSM 불변 및 복귀/비활성화/사망 초기화. 결과 Library/PrototypeValidation/EnemyHitVisualResults.json. 새 런타임 오류 없음. 전체 전투 회귀 및 수동 플레이 육안 확인은 이번 검증에 포함하지 않았다.
+
+### 2026-10-29 전역 VFX/SFX 리팩토링
+- EffectsRuntime의 영속 루트에 VfxManager/SfxManager를 두고, 캐릭터별 세대 핸들·재사용 뱅크·씬 언로드 정리를 구현했다. 플레이어 이동/접지·글리치 버전 관찰과 적 사격 버전 관찰은 요청자에 남겼다. 렌더러·오디오 생성은 관리자만 수행한다.
+- Player/포탑/드론/방패병 프리팹의 설정을 Data/Presentation 프로필로 이전했다. 이전 직렬화 필드 30항목(프레임/재질/배율/간격/음량)과 프로필을 비교해 30/30 일치 확인 후 구형 필드를 제거했다. 씬별 해당 효과 오버라이드는 없었다. 전투·물리·FSM·카메라 코드는 이번 리팩토링에서 변경하지 않았다.
+- Unity 컴파일 통과. 전체 PlayMode 최초 실행 292개 중 273 통과/19 실패. 새 풀 경로로 갱신이 필요했던 PlayerVisualTests 3개를 수정한 후 해당 클래스 9/9 재실행 통과. 남은 16개는 CutsceneTests 11, FinalWaveCutsceneTests 3, StageFlowTests 2의 카메라 크기 6.5 기대/실제 8 불일치다. HEAD 씬에도 orthographic size=8이며 이번 씬 변경은 없다. 전체 재실행 통과로 보고하지 않는다.
+- 이번 범위 관련 검사 최신 결과: CombatSfx 5, MovementImpactVfx 4, EnemyLaserVisual 2, EnemyHitVisual 2, CombatPresentation 3, GlobalEffects 6, PlayerVisual 9, RestCycle 19, 총 50개 통과. 전역 검사에는 풀 재사용/오래된 핸들 무효/소유자 격리/비활성·파괴 정리/씬 언로드/비스케일 소멸/리스너 일시정지/미제출 지속 효과 숨김을 포함한다.
+- 전체 EditMode 최종 실행 46개 중 45 통과/1 실패. 남은 CutsceneAuthoringTests.EndingTimelinePreviewImmediatelyRestoresCameraOwnership은 Timeline 미리보기의 IsBubbleVisible 기대가 실패했다. 이번 변경 영역 밖이며 원인 수정은 하지 않았다.
+- 실제 CoreLoopStage 1920x1080, Domain Reload 켜짐: 24초/36회 공격/11회 글리치, 휴식 체력100 회복 후 2웨이브 진입. 꺼짐: 24초/38회 공격/10회 글리치 및 2웨이브 진입. 두 실행 모두 VFX/SFX 관리자 각1개, 먼지·명중·처치 프레임 및 플레이어/적 오디오 재생 관측. Unity 출력 샘플 피크 각각 0.4737694/0.44498. 스피커 청취 평가는 하지 않았다.
+- PlayerVisualTests가 생성한 1120x660/1920x1080 연출 캡처 및 실제 레벨 1120x660 캡처 확인. 실제 플레이 입력 검증은 1920x1080에서 수행했다. 녹화는 하지 않았다. 종료 시 에디터 옵션 원복, 씬 저장 변경 없음, timeScale=1/captureDeltaTime=0 확인.
+- 결과: Library/PrototypeValidation/GlobalEffectsFullPlayMode.json, GlobalEffectsPlayerVisualTests.json, GlobalEffectsFullEditMode.json, EffectsProfileMigrationCheck.json, GlobalEffectsRuntime/, GlobalEffectsNoReloadRuntime/. 실제 플레이 구간에 새 게임 런타임 오류는 관측되지 않았다. 전체 검사 중 의도된 오류와 Timeline 관련 편집기 오류는 별도이며 Console을 지우지 않았다.
+
+### 2026-10-29 카메라 8 고정 및 Timeline 미리보기 실패 수정
+- 카메라 크기는 사용자 지정 고정값 8을 유지한다. CutsceneTests/FinalWaveCutsceneTests/StageFlowTests의 이전 기대값 6.5를 8로 변경했다. 크기 8에서 X=12는 화면 반폭(1920x1080 기준 약14.22)보다 작으므로 플레이어 중심을 그대로 기대하던 컷신 복원 검사도 정상 경계 제한을 반영했다. 씬, Timeline 에셋, 런타임 컷신/카메라 코드는 수정하지 않았다.
+- Timeline 실패를 수정 전 재현했다. 테스트가 고정한 1.9초/2.3초에는 현재 IntroConversation의 대사가 없다. 실제 말풍선 클립은 2.6333~3.0333(Guide), 3.0333~3.4333(Player), 3.4333~3.8333(Guide)에 배치돼 있었다. 테스트는 실제 클립의 중간 시점, 연결 화자와 대사로 검증하고 미리보기 갱신을 제한 시간 내 기다리도록 수정했다.
+- 대사 검사 수정 후 추가한 렌즈 복원 검사에서 ClearTimeline 직후 크기가 8 대신4.5에 남는 에디터 복원 지연을 재현했다. CutscenePreview에서 orthographic size를 AnimationMode의 복원 항목에 등록하여 다음 Editor update 없이 원래 크기를 복원한다. 기존 컷신 줌/재생 시간은 유지한다.
+- Unity 컴파일 통과. 전체 EditMode 46/46 통과. 인트로/최종 컷신 PlayMode 21/21, StageFlowTests 12/12 통과(관련 PlayMode 총33개). 완료/취소/스킵/피격/재시작/카메라 경계와 말풍선 표시/되감기/종료 즉시 복원을 검증했다. 전체292개 PlayMode를 이번 수정 후 다시 실행한 것은 아니다.
+- 중간 실행의 VirtualKeyboard 검사에서 입력 직후 표시 검사 실패가 관측됐으나 임시 진단을 제거한 최종21개 실행에서 통과했다. 입력 런타임이나 해당 가상 입력 테스트 로직은 변경하지 않았으며 간헐 실패 원인을 확정하지 않았다.
+- 결과: Library/PrototypeValidation/TimelinePreviewBeforeFix.json, TimelineImmediateLensBeforeFix.json, CameraTimelineEditModeAfterFix.json, CameraTimelineCutscenePlayModeAfterFix.json, CameraTimelineStageFlowAfterFix.json.
+
+### 2026-10-29 최종 전체 PlayMode 재검증
+- 필터 없이 전체 PlayMode를 새로 실행: **292/292 통과, 실패0, 건너뜀0, 미결정0**, 소요221.32초.
+- 이번 실행의 Error 로그6건은 RestCycleTests의 차단/도착 무효 검사4건과 UnitLifecycleTests의 필수 설정 누락 검사2건으로, 모두 LogAssert.Expect로 검증하는 의도된 로그다. 예상하지 않은 새 콘솔 오류는 관측되지 않았다.
+- 종료 후 PlayMode 중지, 씬 dirty=false, 카메라 크기8, timeScale=1, captureDeltaTime=0 확인. 코드·에셋·설정 변경 없이 검증했다.
+- 앞선 부분 실행에서 관측된 가상 키보드 검사도 이번 전체 실행에서 통과했다. 과거 실패 기록은 이력으로 남기며 이번 실행 결과와 구분한다.
+- 결과: Library/PrototypeValidation/FullPlayMode-20261029-Final.json.
+
+## 2026-11-01: PixelFX three-hit slash integration
+
+- Imported 70 independent frames (20/20/30) and bound the three optional arrays in the existing PlayerVfx profile. Actual Strike chooses normal ground/air VFX, not the visual A/B counter. Special attacks retain prior slash assets. Per-renderer neutral tint preserves authored cyan/red while teleport colors remain unchanged.
+- Unity 6000.3.23f1 batch import/compilation succeeded. The interactive Editor belonged to another project, so validation used this project in a separate batch Editor without changing the other Editor.
+- Fresh PlayMode: PlayerVisualTests, CombatPresentationTests, GlobalEffectsTests: 18/18 passed, 0 skipped (Library/PixelFxPipeline/PlayMode.xml).
+- Fresh PlayMode: PlayerGlitchCombatTests: 122/122 passed, 0 skipped (Library/PixelFxPipeline/CombatPlayMode.xml). Total relevant tests: 140 passed.
+- Inspected current Unity camera render at Library/PrototypeValidation/PlayerArtAttacks.png; distinct 1/2/3 slash shapes and authored palette visible; special attack colors retained. Copy: Exports/Effects/glitch-triple-slash/UnityApplied.png.
+- No combat tuning, gameplay state machine, player physics, scene, prefab or camera configuration edits. Restored the SENTIS_ANALYTICS_ENABLED define removed by Editor/package startup. Test-only scenes emit missing-AudioListener warnings; no test failures. Full stage manual playthrough and standalone player build were not run.
+
+## 2026-11-02: Airborne cutscene start waits for landing
+
+- Symptom: entering the intro trigger mid-jump froze the player in mid-air for the whole conversation. Cause: both CoreLoopStage cutscenes use World Mode Pause, and CutsceneRunner.TryPlay set Time.timeScale=0 immediately without a grounded check (the trigger and the final-wave reveal only check overlap/underground). The control lock zeroed only horizontal velocity, so the frozen jump resumed after the cutscene.
+- Fix: CutsceneRunner locks control and deactivates gameplay input at once, then waits in the new Landing state while physics keeps running. Once player.Motor.IsGrounded, it pauses time/FSMs, acquires the camera and plays the Timeline as before. Damage/death/stage end during landing reuse the existing cancel checks; Skip finishes without a camera return. Max Landing Wait (default 1.5 s, 0 = no wait) starts in place if no floor is reached. Grounded starts and Continue mode are unchanged. No scene, prefab, Timeline, tuning or camera edits.
+- Before fix (batch PlayMode): new AirbornePauseStartLandsBeforeFreezingWorld failed (timeScale 0 immediately instead of 1); DamageWhileLandingCancelsWithoutTakingCamera passed (regression guard). Library/PrototypeValidation/LandingWaitBeforeFix.xml.
+- After fix, full runs in a separate Unity 6000.3.23f1 batch Editor: EditMode 46/46 passed. PlayMode 293/295 passed, 0 skipped. The 3 new tests (landing, damage while landing, wait limit) and AirborneLastKillRevealsDoor passed. Library/PrototypeValidation/LandingWaitFullEditMode.xml, LandingWaitFullPlayMode.xml.
+- The 2 PlayMode failures (BubbleFollowsAnchorWhileWaitingAndKeepsLayoutDuringTypingAndZoom bubble size, VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput reveal after Enter) also failed on the unmodified code in the same batch mode (stash baseline, Library/PrototypeValidation/LandingWaitBaselineBatchFailures.xml). They passed in the interactive Editor on 2026-10-29; not rerun interactively this time, so the batch-only cause is not confirmed.
+- Batch Editor startup again removed SENTIS_ANALYTICS_ENABLED from ProjectSettings; restored from Git. Manual in-game playthrough of the trigger was not performed.
+
+## 2026-11-02: Player attack range and slash size doubled, centered on the player
+
+- User request. PlayerCombatTuning Reach/Width 1.2/1.6 -> 2.4/3.2 and PlayerVfx Basic Attack Effect Size 2.5 -> 5, changed through the open Editor (SerializedObject + SaveAssetIfDirty); only those three YAML values changed. Shockwave radius 2, glitch effect size 2.5, code defaults and attack timing/damage are unchanged.
+- PlayerActionEffects now places every slash at the player Visual center instead of the old direction offsets (side 0.65/0.3, lift 0.15/0.55, slam 0.3/-0.35). PixelFX combo frames pivot at the character (0.4, 0.5) and white_slash draws its arc outside the slice-center pivot, so side arcs stay in front, lift above and slam below without the doubled arc rising off the body.
+- Tests: PlayerVisualTests now expects the centered position (also for Lift); the attack capture layout was widened for the larger arcs. PlayerGlitchCombatTests pins Reach/Width 1.2/1.6 in its cloned fixture like its other timing/geometry values, because its enemy placements assume that reach (2 tests hit the 'miss' enemy at 2.4).
+- Verified in the user's open Unity 6000.3.23f1 Editor via Unity CLI: compile OK, console errors 0 after the runs. EditMode 46/46. Full PlayMode first run 292/295 (the 3 expectations above), after test updates 294/295. The remaining CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput passed in the first Editor run with the same attack changes, then failed 3 times (also after editor focus); it also failed on unmodified code in batch mode earlier today. Cause not determined; it does not touch attack code.
+- Captures: Library/PrototypeValidation/AttackScaleBefore.png, AttackScaleAfter.png. Combo arcs sit around body height in front; lift/slam arcs above/below. Manual play in the stage was not performed.
+- Editor side effects not part of this change: Assets/Settings/DefaultVolumeProfile.asset gained the URP Bloom 'filter' field when the Editor saved it; ProjectSettings.asset was rewritten without content changes. Four NullReferenceExceptions at PlayerUnit.cs:199 were logged at 14:16, before this work and right after the com.unity.pipeline package update.
+
+## 2026-11-02: Glitch path, view and unusable-reason rules (design draft v0.3 step 3)
+
+- Terrain no longer blocks glitch targeting. GlitchUtility.TargetBlock checks max distance, then the target body center inside the player's Aim Camera view, then IGlitchBarrier colliders on the player->target line (closed StageGate barriers only). Player attack/shockwave wall sight and enemy sight are unchanged.
+- Unusable targets under the cursor are still selected (usable ones win) so GlitchPreview.Reason explains the red marker: OutOfRange, OffScreen, GateClosed, NoSpace, Cooldown, Busy. StageFlowController feeds StageFlowView.ShowGlitchHint in LateUpdate; Busy shows no text; hidden under control lock or cutscenes.
+- New tests: TerrainBetweenDoesNotBlockButClosedGateDoes, TargetOutsideTheViewIsExplainedAndRejected, UnusableTargetsUnderTheCursorExplainWhileUsableOnesWin, StageFlowTests.AimingAtAnUnusableGlitchTargetShowsItsReasonNearTheMarker. WallCancels... became OccupiedArrivalCancels... (the wall-between case is now allowed) with a NoSpace reason check.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; EditMode 46/46; full PlayMode 297/299. The two failures were test timing: the new HUD test asserted before the stage view's LateUpdate, and RestCycleTests.UndergroundClearCancels... glitched right after a teleport before the camera followed (now waits one frame). After the fixes RestCycleTests 19/19 and StageFlowTests 13/13; the full suite was not rerun after these test-only edits. The VirtualKeyboard cutscene test passed in this run.
+- In-game check: Play Mode in CoreLoopStage with a forced OutOfRange preview, captured with ScreenCapture at Library/PrototypeValidation/GlitchHintHud.png; the label renders above the marker position. Real mouse play through walls/gates was not performed. Console errors 0, scene not dirty, Play Mode exited.
+
+## 2026-11-02: Design draft v0.3 steps 4-7 (attack choice, lift/slam, enemy interrupts, strong third hit, combo HUD, range display)
+
+- Runtime: PlayerCombat chooses the attack kind from the supplied in-reach target or the nearest visible enemy when the attack starts; PositionAttackSelector takes grounded (air Lift, airborne Slam when the player's center is above the target's head); grounded Side swings lock movement; glitches no longer cancel recovery; any press during an attack buffers one follow-up; Lift raises the player only on a landed hit; Slam hits the column below and only a finishing slam lands with a shockwave; UnitHealth.InterruptVersion marks Lift/Slam/Emergence/Shockwave hits and the patrol/enemy FSMs stop an attack in progress only for those; combo advances only on landed hits, finisher multiplies damage (2) and lift launch (1.5); glitch/emergence extend a live combo; StageFlowView combo pips; PlayerVisual Show Glitch Range. Removed CancelRecovery/ObserveArrival/ObserveGrounded.
+- Tests rewritten for the new rules (slams start above a floating target, shockwave checks use a one-strike combo, buffer/movement/combo expectations) and new tests added for lift rise/interrupts, finisher strength, combo window, enemy interrupt, patrol ordinary hits and the combo HUD.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; EditMode 46/46; final full PlayMode 303/303 (0 failed, 0 skipped). An earlier run of the same runtime had StageFlowTests.CameraFollowsEmergedBodyAfterUndergroundMovement fail once (camera followed the parked body); it passed in the two later full runs, cause not determined.
+- In-game check: Play Mode in CoreLoopStage with a forced 2/3 combo and the range display on, captured at Library/PrototypeValidation/ComboHudAndRange.png (COMBO pips with STRONG NEXT, range ring radius 8). Real mouse play of lift/slam/finisher was not performed; values such as damage 10/HP 50-90, timing and speeds were not changed (design steps 1-2 excluded).
+- Follow-up (same day, user decision): combo counting rolled back from landed-hit to execution-based. PlayerCombat advances nextStrike again when the windup ends, so misses and shield blocks count; finisher effects, combo window extension and the HUD are unchanged. Three test expectations restored (miss advances the strike). Verified in the open Editor: EditMode 46/46, full PlayMode 303/303. One earlier attempt started the async run right after a recompile and left a stale 'running' status with no tests executed; it was cancelled and rerun.
+
+## 2026-11-02: Charged finisher aura (PixelFX)
+
+- User request: show an aura round the player while the strong third hit is loaded. New PixelFX effect Tools/PixelFx/effects/finisher-aura.mjs (seamless 1.2 s loop, 30 fps, 36 frames, 60x64, authored on the player art's 18 PPU grid with the Visual center as pivot 0.5/0.28125). Rendered deterministically with node Tools/PixelFx/pipeline.mjs (Node v24.22.1 from the Codex runtime; no node on PATH). Imported with the new Game > Effects > Import Generated Finisher Aura into Assets/_Game/Art/Effects/PixelFxFinisherAura and PlayerVfx.finisherAuraFrames; the combo importer now shares the same helper with unchanged settings.
+- Runtime: PlayerCombat.FinisherReady(now) (combo length > 1 and executed strikes = length - 1), PlayerUnit/IPlayerActionState.FinisherReady, PlayerActionEffects 'Finisher aura' renderer: same sorting order as the body with z +0.01 (behind the player, above terrain at 0), unscaled-time loop from frame 0 on each new ready state with a 0.12 s fade-in, flipped by facing, hidden underground, on Die/Hit resets and when not ready. PlayerVfxProfile gained finisherAuraFrames/finisherAuraFps (validated). No combat values, combo rules, scene or prefab changes.
+- Tests: new PlayerVisualTests.FinisherAuraLoopsBehindThePlayerWhileTheStrongStrikeIsReady; FinisherReady assertions added to FinisherStrengthensWhicheverKindCarriesIt and ComboExpiresButRepositioningKeepsALiveChainGoing. The first visual run failed one assertion that checked the fade-in alpha too early (test timing); fixed by waiting past the fade.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; full PlayMode 304/304; EditMode 46/46.
+- In-game check: Play Mode in CoreLoopStage with the combat state set to 2/3 executed strikes, captured at Library/PrototypeValidation/FinisherAura.png and FinisherAuraZoom.png: the aura sits behind the player above the floor together with the STRONG NEXT HUD. Real mouse play of a full three-hit chain was not performed. Scene not dirty, console errors 0 after exiting Play Mode.
+
+## 2026-11-03: Glitch aiming marker replaced with PixelFX glitch marker
+
+- User request: replace the plain destination circle shown above/below/left/right of an aimed enemy with a glitch-style asset made with PixelFX. New Tools/PixelFx/effects/glitch-marker.mjs with glitch-marker-ready (teal, pulsing diamond core, scan line) and glitch-marker-blocked (red, flickering X core, harder jitter/tears) wrappers; shared breathing corner brackets, RGB-split shadow, a torn bracket on some frames, side slices, loose noise pixels and a faint pane. 0.8 s loops, 24 frames each, 32x32 at the player art's 18 PPU, center pivot. Rendered with the Codex-runtime Node v24.22.1; deterministic, no edge pixels.
+- Imported with the new Game > Effects > Import Generated Glitch Marker into Assets/_Game/Art/Effects/PixelFxGlitchMarker/Ready|Blocked and PlayerVfx glitchMarkerReadyFrames/glitchMarkerBlockedFrames (glitchMarkerFps 30, validated). PlayerVisual's 'Glitch preview' renderer plays the variant for GlitchPreview.CanExecute in unscaled time at native size and disables 'Glitch preview ring'; empty arrays fall back to the old circle. Destination, underground offset, hide rules and glitch rules are unchanged.
+- Tests: PreviewFollowsFourDirectionsShowsBlockedAndUndergroundDestinations now checks the sprite variant (glitch-marker-ready-/blocked-), native size and the disabled ring instead of the tint colors.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; full PlayMode 304/304; EditMode 46/46.
+- Visual check: the test's own captures Library/PrototypeValidation/GlitchPreviewRight/Blocked/Underground.png (after) against GlitchMarkerBefore*.png (old circles, 11-02). The marker sits on the same destination at roughly the old size on the pixel grid. Real mouse aiming in CoreLoopStage was not performed.
+
+## 2026-11-03: NO SPACE glitch hint removed
+
+- User request. StageFlowView.HintText no longer maps GlitchBlockReason.NoSpace to text, so a blocked destination shows only the red (blocked) marker, like Busy. Other reason texts and the NoSpace rule are unchanged. StageFlowTests.AimingAtAnUnusableGlitchTargetShowsItsReasonNearTheMarker now also checks that NoSpace shows no hint.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK, console errors 0; StageFlowTests 14/14. The full suites were not rerun for this one-line view change.
+
+## 2026-11-03: Hit feel reinforcement (kill emphasis, enemy shudder, SFX pitch, PixelFX debris/shatter, strong-strike glitch screen, ringing shake)
+
+- User request: implement the six recommendations from the hit-feel review. Existing user-tuned values (attack timing, knockback, damage, camera size 8) unchanged; new PlayerCombatTuning fields use code defaults (Kill Hit Stop Bonus .04, Final Blow Slow .3x .2 s + .15 s, Finisher Glitch Duration .1). Shake Frequency (22 Hz) was previously unused and now rings slam/shockwave/kill shakes.
+- Runtime: PlayerImpact carries Killed/Finisher; PlayerImpactFeedback adds the kill bonus, PlayFinalBlow (after the blow's hit stop; damage slow keeps priority), generalized slow state, oscillating shakes and GlitchStrength; StageFlowController.UpdateObjective calls PlayerUnit.PresentFinalBlow when the current group's remaining count reaches 0; UnitDamageFlash shudders the unit's direct Visual child by one art pixel (min .05 s, up to .2 s while time is frozen) and restores it; SoundCue/ShortSoundPool pitch with PlayerSoundEffects strike rise and variation; PlayerContactEffects 'Contact burst' renderer plays PixelFX glitch-hit-debris (per hit, from the contact point, flipped by direction) or glitch-shatter (kill, from the body center); PlayerDamageScreen/its shader gained _Glitch/_GlitchSeed for the strong-strike tear overlay (no pipeline or camera post-processing change; off in reduced motion).
+- PixelFX: Tools/PixelFx/effects/glitch-hit-debris.mjs (15 frames, 56x44) and glitch-shatter.mjs (19 frames, 80x72), 30 fps, 18 PPU, deterministic, last frame empty. Imported with Game > Effects > Import Generated Contact Bursts; the aura/marker import menus now share the same helper with unchanged settings.
+- Tests (7 new): PlayerImpactFeedbackTests KillsHoldTheHitStopLongerAndTheFinalBlowSlowsAfterIt, SlamAndKillShakesRingWhileOrdinaryHitsOnlyKick, StrongStrikeTearsTheScreenBrieflyExceptInReducedMotion; CombatPresentationTests HitEnemyVisualShuddersThroughTheHitStopAndSettlesBack; CombatSfxTests StrikesRiseInPitchAndEverySoundVariesSlightly; MovementImpactVfxTests HitDebrisOutlivesTheContactAndKillsBurstFromTheBody; StageFlowTests ClearingTheLastEnemyBrieflySlowsTime.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; full PlayMode 311/311; EditMode 46/46. The glitch overlay was then toned down (thinner/sparser bands, smaller and rarer blocks) after the first in-game capture covered too much of the screen; PlayerImpactFeedbackTests 18/18 after that shader-only change, full suites not rerun.
+- In-game check (CoreLoopStage Play Mode, presentation-only calls): Library/PrototypeValidation/ImpactBursts.png and ImpactBurstsZoom.png (shatter and debris at a turret), FinisherGlitchScreen.png (final glitch look). Real mouse play of the full combat loop was not performed. Scene not dirty, console errors 0 after exiting Play Mode.
+
+## 2026-11-03: Finisher aura removed
+
+- User request. Removed the charged finisher aura added on 2026-11-02: the PlayerActionEffects renderer, PlayerVfxProfile finisherAuraFrames/finisherAuraFps (PlayerVfx.asset reserialized; only those fields left the YAML, no missing references), the aura-only FinisherReady members (IPlayerActionState, PlayerUnit, PlayerCombat), the import menu, Assets/_Game/Art/Effects/PixelFxFinisherAura and Tools/PixelFx/effects/finisher-aura.mjs. The aura test and its FinisherReady assertions were removed; the HUD STRONG NEXT keeps its own check.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; full PlayMode 310/310 (311 minus the removed aura test); EditMode 46/46.
+
+## 2026-11-03: Attack recoil (player pushback on a landed basic swing)
+
+- User request (recommended defaults). PlayerCombatTuning "Attack recoil" (code defaults: 4 u/s over .1 s, finisher 7 u/s over .12 s, air x.6; 0 disables). PlayerCombat records a recoil for a landed Side/Air swing once per swing (none for misses, blocks, Lift, Slam, Shockwave, Emergence) and exposes ConsumeRecoil; PlayerUnit queues it on the hit's physics step and applies it from the next step (after the hit stop), replacing the grounded swing's movement lock or locomotion with CharacterMotor2D.SimulateRecoil while it lasts; on the ground it ends when CharacterMotor2D.HasGroundAhead finds no floor ahead. Cleared by glitches, underground, emergence, slam preparation/descent, control locks, hits, death and disable.
+- Tests (3 new in PlayerGlitchCombatTests): OnlyLandedBasicSwingsRecoilAwayFromTheTargetScaledForFinisherAndAir, LandedSwingPushesThePlayerBackOnlyAfterTheHitStop, RecoilStopsAgainstAWallAndAtAPlatformEdge.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; EditMode 46/46; full PlayMode 312/313. The failure, StageFlowTests.StartsPlayableWithBalancedMixedEnemiesAndLockedExit, expects the authored ledge X positions 26.5/36.5/45; CoreLoopStage.unity was saved at 17:07 during the run with moved platforms/ledges (first ledge now 26.3), an Editor edit that is not part of this change and was left as is. The new recoil tests and all other suites passed.
+- In-game check: CoreLoopStage Play Mode, a real grounded swing on the first turret (input injected only for facing/attack): no movement during the hit stop (time scale 0), then pushed 0.240 units with speed falling -4 -> -3.2 -> -2.4 -> -1.6 -> -0.8, grounded throughout (Library/PrototypeValidation/RecoilCheck.txt). Play Mode exited, scene not dirty.
+
+## 2026-11-03: Tests follow the user's new CoreLoopStage ledge layout
+
+- The user moved 17 CoreLoopStage ledges (Terrain/Ledge 1-3 and the Wave 2/3/4 ledges) and the surveillance turret on Ledge 2 (36.5, 3.62 -> 37.31, 6.44); Unity also wrote the CutsceneRunner maxLandingWait default when the scene was saved. The only test with these positions fixed was StageFlowTests.StartsPlayableWithBalancedMixedEnemiesAndLockedExit; its Ledge 1/2/3 X expectation is now 26.3/37.31/48.03 (tolerance .001). No other test referenced the old coordinates.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: full PlayMode 313/313, EditMode 46/46. Scene not dirty before and after the runs.
+
+## 2026-11-03: Stationary turrets re-seated on the moved ledges
+
+- User request. Four surveillance turrets stood on ledges the user moved and were left floating or embedded. Each was moved by its own ledge's offset (the same rule as the user's Ledge 2 turret): Encounter 2 (88.5, 3.62) -> (89.30, 5.77) on Wave 2 Ledge 3; Encounter 3 (138.5, 3.62) -> (138.80, 4.17) on Wave 3 Ledge 3; Encounter 4 (189, 3.62) -> (188.61, 4.36) on Wave 4 Ledge 3 and (195.25, 6.62) -> (196.96, 8.24) on Wave 4 Ledge 4. Ground turrets (29, 0.62) and (144.5, 0.62) and all mobile enemies unchanged. Edited through the open Editor (prefab instance position overrides only) with the scene clean beforehand; the scene diff contains only these overrides besides the user's ledge/turret moves.
+- Support check in Play Mode (encounter groups briefly activated, then restored): all 7 turrets rest 0.020 above Floor/Ledge tops, both base edges supported. After exiting Play Mode the scene showed a dirty flag; re-saving produced a byte-identical file.
+- Tests: no test references these turret coordinates. Full PlayMode 312/313, EditMode 46/46. The failure, CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput (virtual Enter not revealing the intro line), failed again when the class was rerun (18/19); it exercises the intro conversation at X=6 only and is the Editor input-routing test already recorded as intermittent (failed three times in a row on 11-02 without related changes). It passed in the full run earlier today; cause still not determined.
+
+## 2026-11-03: Shield spec v1.8 (front and rush shield types)
+
+- User request (recommended decisions): positional shield check for every attack kind (front blocked at any height incl. diagonals; behind and the 0.5 column directly above/below pass; no shield while Reacting or dead), blocks reported by UnitHealth.GuardBlockVersion and ending the PlayerCombat chain, shield FSM without walking, turn only at telegraph start, 0.2 s recognition delay (range 13, height 2.8, sight, on the player's Aim Camera via IUnitViewSource), 0.4 s telegraph, 5 s between telegraph starts, cancel on lost recognition, Reacting state after launches/slams until landed, rush path fixed at 5.5 / 18.9 u/s with 0.65 s recovery, new ShieldFront prefab variant (Strike: trigger 2.9, reach 2.3 from the front edge, 0.12 s, recovery 0.5), GroundMovement2D Ignore Knockback on both shield prefabs, floor-line telegraph of the attack area. px converted at 47.5 px/unit; HP/damage scale, player knockback/invincibility and the A07 kill-zone rule left out. MovementLab gained a ShieldFront sample at (-5, 0.82); CoreLoopStage unchanged.
+- Tests: EnemyPatternTests shield tests rewritten/added (28 in the class): recognition delay and telegraph/dash, interrupt to Reacting, block/hit reactions, whole-front/behind/above/below guard, turn only at telegraph start, front never walks, 5 s interval and cancel, fixed rush path with one contact, front strike once in place and miss out of reach, block ending the combo with another target hit, wall/ledge stops, launch dropping the shield until landing. EditMode: ShieldFront prefab case and BothShieldTypesShareTheShieldBodyButDifferInAttack (48 total).
+- Test isolation fix: PlayerCourseTests now unloads MovementLab after each test. The first full runs failed PlayerCourseTests.PlayerInputDrivesMovement... once and PlayerGlitchCombatTests knockback/slam timing tests (they passed alone); a temporary probe showed fixedDeltaTime/timeScale were 0.02/1 before the class, and the cause was the MovementLab left loaded by PlayerCourseTests: its rush shield now recognizes the player start (11 units away) and, dashing 5.5 every 5 s, reached and hit that idle player during later classes, whose damage slow-mo disturbed their fixed-step timing. The probe was removed.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: compile OK; full PlayMode 318/318; EditMode 48/48. After a later visual-only change (floor-line telegraph) EnemyPatternTests 28/28, EnemyHitVisualTests 2/2, EnemyLaserVisualTests 2/2.
+- In-game check (CoreLoopStage Play Mode, runtime-only instances beside the player): the front shield telegraphed 0.4 s and struck in place (player 100 -> 86), recovered and went idle; the rush shield telegraphed, dashed from x 12 to 6.51 (5.49) without reaching the player at x 3 and stayed there; both guarding throughout (Library/PrototypeValidation/ShieldCheck.txt, ShieldTelegraph.png/ShieldTelegraphZoom.png). The first log sample already showed the telegraph because the script's editor stall gave the first frame a long delta; the recognition delay itself is covered by the tests. Scene not dirty after exiting Play Mode.
+
+## 2026-11-03: Player hit sounds replaced (layered sword-on-machine hits)
+
+- User request: find and apply a fitting hit sound. The previous HitA/HitB/HitHeavy were single Kenney punch recordings. New clips are layered from the already downloaded CC0 packs (no new download): punch body + high-passed metal tick + short bit-crushed explosionCrunch excerpt; HitC added as a third light variant (PlayerSfx Hits 2 -> 3). HitA/HitB/HitHeavy overwritten in place (GUIDs kept); HitC.wav.meta copies HitA's import settings (PCM, mono).
+- Measured against the old clips: integrated loudness within 0.6 LU (light -19.9 to -20.7 LUFS vs -20.3/-20.5; heavy -22.3 vs -21.8), spectral centroid light ~0.9-1.1 kHz (old 0.6-0.7), heavy ~0.7 kHz (old 0.5), peak 0.8, lengths 0.2/0.32 s. Hit Volume, pitch spread and coalescing unchanged. Regenerating with PrepareSfx.py left every other clip byte-identical.
+- Verified in the open Unity 6000.3.23f1 Editor via Unity CLI: imported as PCM mono 44.1 kHz (0.2/0.2/0.2/0.32 s); full PlayMode 317/318 (twice); EditMode 48/48. The one failure both times was CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput (the known intermittent virtual-keyboard test); CombatSfxTests and GlobalEffectsTests passed.
+- In-game check (CoreLoopStage Play Mode, scripted swings at the first turret, Library/PrototypeValidation/HitSfxCheck.txt): 7 swings 90 -> 0 HP played HitA, HitB, HitC, HitA, HitB, HitC at volume 0.42 with pitch 0.94-1.06, then HitHeavy on the kill; audio not muted, one listener. Scene not dirty, console errors 0 after exiting Play Mode. Listening comparison (old then new per clip): Library/PrototypeValidation/HitSfxCompare_old_then_new.wav. Nobody has listened to the result yet; the choice rests on layering and measurements.
+
+## 2026-11-04: 보스 AI 구조 최종 검증 (테스트 보스·디버그 표시·전체 회귀)
+
+- 검증 경로: 열려 있는 Unity 6000.3.23f1 Editor를 Unity CLI(script recompile / test run / script eval_file)로 사용했다. 컴파일 오류 0.
+- 테스트 보스 에셋(`Data/Bosses/TestBoss`, `Animations/Bosses/TestBoss`, `Prefabs/Bosses/TestBoss.prefab`)은 일회용 편집기 스크립트(`eval_file`)로 한 번에 만들었다. 스크립트는 프로젝트에 남기지 않았다. 생성 전 `BossDefinitionTests` 7개가 모두 실패하는 것을 확인했고, 생성 뒤 통과했다. 씬 파일은 바뀌지 않았다(`git status`).
+- 새 테스트: EditMode `BossDefinitionTests`(프리팹 연결·애니메이터 상태·FSM 검증 거부·에셋 값), `BossDebugTextTests`, `BossNodeDrawerTests`(목록 복사본 비움·없어진 타입 머리글). PlayMode `TestBossTests`(근/원거리 선택, 접근 후 패턴, 절반 체력 구간 전환·사망·비활성).
+- 편집기 확인: 선택 트리 Inspector를 `Library/PrototypeValidation/BossSelectorInspector.png`로 캡처했다(요약 머리글 `Selector (2)`, 교체·삭제 버튼, 잎의 패턴을 임시로 비웠을 때 오류 HelpBox. 비운 값은 바로 되돌려 저장했고 검증 통과). 노드 펼침과 추가 메뉴는 창에 입력을 보낼 수 없어 캡처하지 못했다. (이 줄의 'Play Mode Inspector 미확인'은 아래 '디버그 표시 확인' 줄로 대체됐다.)
+- 확인 결과: `arraySize++`로 늘린 칸은 비어 있지만 `InsertArrayElementAtIndex`는 같은 노드 객체를 가리키는 복사본을 만든다(managedReferenceId 동일) → 다음 그리기에서 뒤쪽 복사본을 비우도록 수정했다. 없어진 노드 클래스는 `SerializedProperty`에서 형식 이름이 비고 값이 null이라 구분되지 않으므로 에셋 전체의 `SerializationUtility.GetManagedReferencesWithMissingTypes`로 `(missing type 클래스명 …)`을 표시한다.
+- 전체 EditMode: 89/89 통과(기존 48 + 새 41), 2026-11-04 12:34, `.superpowers/sdd/2026-11-04-boss-ai/tools/last-editor.json`.
+- 전체 PlayMode: 355/355 통과(기존 318 + 새 37), 2026-11-04 12:38 완료, 알려진 간헐 실패 `CutsceneTests.VirtualKeyboard…`도 이번에는 통과했다. 결과 `.superpowers/sdd/2026-11-04-boss-ai/tools/last-playmode.json`. 의도된 오류 로그는 기존과 같다.
+- 변경 파일 점검: 보스·문서 밖에서 바뀐 것은 `Editor/UnitEditor.cs`(보스 디버그 표시)와 `Runtime/Player/PlayerUnit.cs`(`ICharacterMotionState` 전달)뿐이다. 씬·ProjectSettings 변경 없음.
+- 수정(검토 반영): 처음 만든 TestBoss의 Visual 위치는 (0, -1.2)였다. 중심 피벗인 도형 스프라이트(`Art/Block.png`)에서는 1.6×2.4 상자가 몸체 콜라이더 아래로 절반 내려가는 결함이었다. 프리팹을 `PrefabUtility.LoadPrefabContents`/`SaveAsPrefabAsset`로 (0, 0)으로 고쳤다. `BossDefinitionTests.TestBossPrefabIsWiredAndValid`가 Visual 로컬 위치 (0,0,0)과 스프라이트 월드 경계가 BoxCollider2D 경계와 0.01 이내로 일치하는 것을 검사한다. 수정 후 BossDefinitionTests 7/7, TestBossTests 3/3 통과. 새 단언의 수정 전 실패 실행은 따로 하지 않았다.
+- Play Mode 디버그 표시 확인: 열려 있는 씬에서 Play Mode를 시작하고(`editor.playmode start`) 런타임에 TestBoss 프리팹을 인스턴스화해 선택한 뒤 Inspector를 `Library/PrototypeValidation/TestBossPlayModeInspector.png`로 캡처했다. `Boss State Dormant / Boss Pattern None / Boss Phase 0`과 접힌 `Last Selection`, 체력 300/300이 표시됐다. 플레이어가 없어 Dormant이므로 패턴·선택 경로가 갱신되는 장면은 이 캡처에 없고(그 부분은 PlayMode 테스트가 검증), 종료 후 `git status`에 `.unity`·ProjectSettings 변경이 없고 Console 오류·경고 0이다.
+- 최종 검토 수정(2026-11-04): ① Staggered·PhaseShift·Death도 `Progress`가 0→1로 올라 Motion Time(`ActionTime`)으로 재생된다. ② 돌진 예고 상자 폭을 이동 거리 + 몸체 폭으로 넓혀 실제 판정(`HitSweep`)과 맞췄다. ③ 선택 트리 머리글이 요약이 비면 노드 형식 이름을 보이고, 삭제 버튼은 GUI 이벤트 중일 때 `GUIUtility.ExitGUI()`를 부른다. ④ 경직 면역은 경직이 끝난 시점부터 센다(툴팁과 일치). ⑤ `RecentlyGlitched`는 대상에 `IUnitRepositionState`가 없으면 알 수 없는 값이다. ⑥ 위치 조절 패턴은 dx≈0에서 보스가 바라보는 쪽을 플레이어 쪽으로 보고 반대로 물러난다. ⑦ 패턴 Run 재사용을 주석·가이드에 명시. ⑧ 패턴 검증 메시지를 한글화하고 Inspector 오류의 이름 중복 접두사를 제거. ⑨ TestBoss Visual 재질을 `UnitReaction.mat`(`_HitFlash` 있음)로 교체. RED 확인: 수정 전 코드로 되돌려 BossBrainTests 2개, BossPatternTests 2개 실패를 본 뒤 복원. 실행: EditMode 91/91, PlayMode 359/359(알려진 간헐 실패도 이번에는 통과). 선택 트리 Inspector 클릭 확인은 사용자 몫이다.
+
+## 2026-11-04: 보스 테스트 씬 (`BossTest.unity`)
+
+- 사용자 요청으로 `Assets/_Game/Scenes/BossTest.unity`를 만들었다. `AssetDatabase.CopyAsset`으로 MovementLab을 복사하고, 복사본을 추가 모드로 열어 `Enemy Pattern Samples`와 `TrainingDummy`를 지운 뒤 `Boss Test` 아래 `TestBoss` 프리팹 인스턴스를 (5, 1.22)에 놓고 저장했다. 원래 열려 있던 CoreLoopStage는 변경 없음 상태였고 MovementLab 파일은 바뀌지 않았다. 빌드 설정은 그대로다.
+- Play Mode 확인(열린 Editor, CLI): 처음 실행은 Editor가 포커스를 잃어 플레이 루프가 멈춰(Time.time 0.80 고정) 보스가 Dormant로 남았다. 확인 스크립트에서 `Application.runInBackground = true`를 잠시 켜고 다시 실행했다(끝나면 원래 값으로 되돌림).
+- 결과(12초, `Library/PrototypeValidation/BossTestSceneCheck.txt`): 플레이어 dx≈2에서 근접 예고 0.5초 → 실행 → 회복 → 재선택이 반복되며 플레이어 체력이 10씩 줄었다. dx 7(지상)로 옮기자 돌진을 골라 보스가 플레이어를 지나 반대편까지 달렸고(체력 −12), 붙은 거리에서는 물러나기(6유닛 이동, 피해 없음)와 근접을 골랐다. 플레이어가 뒤에 있을 때는 다음 예고에서 돌아섰다. 보스 체력은 300 그대로(플레이어가 공격하지 않음).
+- 종료 후 `git status`: 새 파일은 `BossTest.unity`와 `.meta`뿐이고 다른 씬·ProjectSettings 변경은 없다. 코드 변경이 없어 테스트는 다시 실행하지 않았다.
+
+## 2026-11-04: 보스 머리 위 행동 표시 (`BossDebugLabel`)
+
+- 추가: `Runtime/Units/Bosses/BossDebugLabel.cs`(보스 루트, `BossCombat2D.State`를 읽기만 함, Editor·Development Build에서만 `OnGUI`로 그림), EditMode `BossDebugLabelTests` 10개(상태별 문구·퍼센트·구간/체력 줄, 뇌 없음·패턴 없음 문구, 예고/실행/회복 색 구분). TestBoss 프리팹 루트에 `PrefabUtility.LoadPrefabContents`/`SaveAsPrefabAsset`로 부착했다(BossTest 씬의 인스턴스가 그대로 받음).
+- 실행: 컴파일 오류 0(경고 1개는 기존 `EnemyVisual2D.audio` CS0108). EditMode `BossDebugLabelTests` 10/10, `BossDefinitionTests` 7/7, `BossDebugTextTests` 2/2. PlayMode `TestBossTests` 3/3, `BossVisualTests` 4/4. 테스트를 구현 뒤에 작성해 실패 실행은 없다. 전체 스위트는 다시 돌리지 않았다.
+- Play Mode 화면 확인(BossTest 씬): CLI `screenshot --view game`은 카메라만 렌더해 IMGUI 표시가 빠지므로 `ScreenCapture.CaptureScreenshot`으로 최종 프레임을 저장했다. `Library/PrototypeValidation/BossLabel/screen1.png`에 `Telegraph · TestBossMelee 59% / P0 · HP 300/300`(주황, 주황 예고 상자와 함께), `screen2.png`에 `Execute · TestBossMelee 21%`(빨강)가 보스 머리 위에 표시됐다. 확인 중 `Application.runInBackground`를 잠시 켰다가 끝난 뒤 false로 되돌렸고 `PlayerSettings.runInBackground`도 false, 씬·ProjectSettings 변경 없음.
+
+## 2026-11-04: 보스 패턴 추가 (도약 내려찍기 · 소환)
+
+- 사용자 요청: "점프 후 공중에서 플레이어 조준 -> 착지 지점 고정 -> 1초 후 착지하며 주변 충격파" / "하수인 2마리 소환(임시로 패트롤에너미, 어떤 몬스터를 소환할지 인스펙터에서 설정)". 구현은 `BossLeapSlamPattern`·`BossSummonPattern`과 공용 훅(`BossTelegraph.Locked`, `BossCombat2D.HitCircle/TryFindGround/ClampHorizontal/ClampVertical/RayClampX`, `IBossMover` 공중 제어, `BossPatternRun.OnBossDied/OnBossStopped`, `BossContext.RunOf`)이다. 사용법은 `Docs/PrototypeGuide.md` 2026-11-04 절.
+- TestBoss: 에셋 `TestBossLeapSlam`(쿨타임 5·회복 0.6)·`TestBossSummon`(쿨타임 12·회복 0.5, `minionPrefab` = PatrolEnemy)을 일회용 `eval_file` 스크립트(저장소에 남기지 않음)로 만들고 애니메이터에 빈 상태 4개를 더했다. 선택 트리: 체력 구간 1 이상 → 소환 / 근접·물러나기 / 돌진 / 도약 내려찍기(거리 3.5~12·높이 -2~6).
+- 새 테스트: PlayMode `BossPatternTests` 7개(도약 조준·고정, 착지 시점·반경·1회 피해, 벽, 공중 취소·복원, 소환 위치·프리팹 설정, maxAlive·벽, 보스 사망·정지 시 하수인), `BossBrainTests` 2개(훅이 비활성 캐시 Run에도 호출됨), `BossVisualTests` 1개(고정 예고 색), `TestBossTests` 갱신(dx 8 공중 → 도약, dx 4.5 → 도약, 구간 1 첫 패턴 = 소환 + PatrolEnemy 2마리 + 사망 시 함께 죽음). EditMode `BossDefinitionTests`에 에셋 값·선택 트리 모양·두 패턴 검증 거부 3개 추가.
+- RED 확인: 구현 전 빈 껍데기 패턴으로 `BossPatternTests` 6개 실패(도약 3 + 소환 3, 벽 테스트는 통과해 단언을 강화), `BossBrainTests` 훅 2개 실패. `BossVisualTests`의 색 테스트와 TestBoss 에셋 EditMode 테스트는 공용 코드·에셋을 먼저 만들어 실패 실행을 남기지 못했다.
+- GREEN: `BossPatternTests` 18/18, `BossBrainTests` 25/25, `TestBossTests` 3/3, EditMode Boss* 56/56, `BossVisualTests` 5/5, `EnemyPatternTests` 28/28, `PatrolEnemyTests` 4/4. 전체 EditMode 104/104, 전체 PlayMode 369/369(알려진 간헐 VirtualKeyboard 검사도 통과). 컴파일 오류 0(경고는 기존 `EnemyVisual2D` CS0108).
+- 한계: 씬에서 직접 플레이한 확인은 하지 않았다(BossTest 씬 변경 없음). 소환 직후 PatrolEnemy가 보스 씬의 플레이어를 바로 추적하는 실제 전투는 자동 테스트에서 수동 틱으로 진행해 확인하지 못했다.
+- 실제 씬 확인(BossTest, 열린 Editor Play Mode, 확인 중에만 `Application.runInBackground` 켬): 플레이어 dx 4.5에서 도약 내려찍기 예고 0.3초 → 실행(Kinematic, 착지 표시가 플레이어를 따라감) → 높이 약 5에서 고정(빨간 표시) → 고정 1.00초 뒤(게임 시간 6.29→7.29) 착지·Dynamic 복귀, 플레이어 −15. 보스 체력을 140으로 낮추자 구간 전환 후 소환을 골라 PatrolEnemy 2마리가 나왔고 플레이어를 공격했다. 기록 `Library/PrototypeValidation/BossLeapSummonCheck.txt`, 캡처 `Library/PrototypeValidation/BossLabel/leap_summon6.png`. 종료 후 씬·ProjectSettings 변경 없음.
+
+## 2026-11-04: GameManager (씬 전환에도 남는 흐름 관리자)
+
+- 사용자 결정 '흐름 전부 옮기기'. 설계 `Docs/superpowers/specs/2026-11-04-game-manager-design.md`, 사용법은 `Docs/PrototypeGuide.md` 2026-11-04 GameManager 절. 1단계에서 웨이브·휴식·구역 이동 규칙을 일반 C# `StageProgress`로 떼어 냈고(StageFlowTests 15/15, RestCycleTests 19/19, CutsceneTests 19/19, FinalWaveCutsceneTests 4/5 — 아래 기존 실패), 2단계에서 소유자 코드를 DontDestroyOnLoad `GameManager`로 옮겼다.
+- 이름 바꾸기: `AssetDatabase.RenameAsset`으로 `StageFlowController.cs` → `StageLayout.cs`(스크립트 GUID `4dffababc920b284293ddc39e9cea5e5` 유지, `.meta` 확인). CoreLoopStage `Stage Flow`의 기존 연결(Player, Goal, Cinematics, Final Wave Exit Reveal, Required Enemies 2, Encounters 4, Transfer Terrain Mask 1)이 그대로 남았다. `StageProgress`의 적 같은 씬 검사는 StageLayout의 씬을 받는다.
+- 에셋·씬(일회용 `eval_file`, 저장소 밖): 새 `Assets/_Game/Resources/GameManager.prefab`(UIDocument: `UI/StagePanelSettings.asset`·Sorting Order 100, StageFlowView, GameManager). CoreLoopStage에서 `Stage UI`(Transform·UIDocument·StageFlowView만, 자식 없음 확인)를 지우고, IntroCutscene 프리팹 인스턴스에 남은 `stage` 덮어쓰기 1개를 지운 뒤 저장했다. 씬 diff는 이 세 가지(Stage UI 블록, `view`, `stage` 참조 2개)뿐이다. 다른 씬·프리팹·ProjectSettings 변경 없음(`git status`). 씬의 `m_EditorClassIdentifier`는 Unity가 예전 클래스 이름 문자열을 그대로 두었다(GUID로 연결되므로 동작 무관, YAML 손편집 금지라 그대로 둠).
+- RED: 새 테스트 작성 후 `script recompile` → `GameManager`·`StageLayout` 없음 컴파일 오류(CS0103/CS0246 20개).
+- GREEN(열린 Unity 6000.3.23f1 Editor, Unity CLI, 클래스별): EditMode `GameManagerEditModeTests` 3/3, `CutsceneAuthoringTests` 4/4. PlayMode `GameManagerTests` 6/6, `StageFlowTests` 15/15, `RestCycleTests` 19/19, `CutsceneTests` 19/19, `FinalWaveCutsceneTests` 4/5. 컴파일 오류 0(경고는 기존 `EnemyVisual2D.audio` CS0108).
+- 기존 실패 `FinalWaveCutsceneTests.AirborneLastKill…`(`AssertRestored`의 fixedDeltaTime 0.0199999921 기대, 0.0199999865 실제): 1단계 전 코드에서도, 클래스 단독·테스트 단독 실행에서도 실패한다. 원인: 프로젝트 Fixed Timestep이 141,120,000 tick/초 기준 2,822,399 tick이라 읽은 값 0.0199999921을 다시 쓰면 1 tick 줄어 0.0199999865가 된다(Play Mode에서 확인: 읽기/쓰기/쓰기 = 0.0199999921/0.0199999865/0.0199999865, 이후 안정). 새 Play Mode에서 첫 쓰기는 이 테스트 중 마지막 처치 슬로(`PlayerImpactFeedback`의 저장값 복원)다. GameManager는 이 테스트 중 fixedDeltaTime을 쓰지 않고 기록 시점도 예전 Awake와 같은 프레임이라 결과가 같다(좋아지지도 나빠지지도 않음). 단언을 느슨하게 하지 않았다.
+- 실제 플레이(CoreLoopStage, 확인 중에만 `Application.runInBackground` 켬): GameManager 1개가 DontDestroyOnLoad에 있고 HasStage, StageVersion 1, Playing, 스테이지 HUD·COMBO 표시. 첫 방 처치 후 `REST AREA OPEN > WALK OR SHIFT` 표시(캡처로 안내·COMBO 확인). 플레이어를 죽이자 씬이 다시 불러와졌고 같은 매니저(InstanceID 동일, 1개)가 StageVersion 2로 새 스테이지에 연결, 이전 플레이어는 파괴, 새 플레이어는 활성 씬, 클리어 화면·이동 안내 숨김, timeScale 1. BossTest를 바로 플레이: GameManager 1개, HasStage false, StageLayout 없음, 스테이지 HUD 숨김, timeScale 1. 확인 구간 콘솔 오류 0. 끝난 뒤 BossTest 열림·dirty false.
+- 전체 실행: EditMode 107/107(기존 104 + 새 3), 3.4초. PlayMode 374/375(기존 369 + 새 6), 270.7초. 실패 1개는 알려진 간헐 실패 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(Expected True, was False)이고 `CutsceneTests`만 다시 실행하자 19/19 통과했다. 전체 실행에서는 `FinalWaveCutsceneTests.AirborneLastKill…`이 통과했다(앞 테스트가 이미 fixedDeltaTime을 안정 값으로 바꿔 둠). Console에 남은 오류는 기존 의도된 로그 6건(휴식 도착 차단 3·무효 1, PlayerTuning·정의 누락 1씩)이며, GameManagerTests의 두 의도된 오류는 `LogAssert.Expect`로 확인됐다(Test Framework는 예상하지 않은 오류 로그가 있으면 테스트를 실패시킨다). `git status`: 의도한 파일만 바뀌었다(코드·테스트·CoreLoopStage·새 프리팹·문서). ProjectSettings 변경 없음.
+- 최종 리뷰 후속(같은 날): ① `StageFlowView.OnEnable`이 루트 전체를 지우던 것을 자기 `stage-hud` 구역만 제거·재생성하도록 바꿨다(다른 구역 보존). ② `StageVersion`은 등록 직후 `UpdateObjective()`가 성공하고 스테이지가 유지될 때만 올린다. ③ `GameManager.OnDisable`이 스테이지를 해제한다(재활성화는 다시 등록하지 않음). ④ `State` 문서 주석. ⑤ `Ensure()`가 프리팹 누락·`GameManager` 컴포넌트 누락을 한 번만 오류로 남기고 재시도하지 않는다(`SubsystemRegistration`에서 초기화). ⑥ 새 PlayMode 테스트 3개(`StageViewKeepsOtherSectionsWhenReenabled`, `DisablingTheManagerReleasesTheStage`, `SetupErrorDuringPlayUnregistersAndRestoresTime`).
+- RED: 수정 전 `GameManagerTests` 9개 중 7/9 — 구역 보존 테스트(sibling.parent가 null)와 OnDisable 테스트(HasStage가 True)가 실패했고, 플레이 중 설정 오류 테스트는 이미 통과했다(현재 동작을 고정하는 회귀 테스트). GREEN: `GameManagerTests` 9/9, EditMode `GameManagerEditModeTests` 3/3, `StageFlowTests` 15/15, `RestCycleTests` 19/19, `CutsceneTests` 19/19, `FinalWaveCutsceneTests` 4/5(기존 AirborneLastKill fixedDeltaTime 실패, 위 설명 그대로). 전체 실행: EditMode 107/107, PlayMode 378/378(기존 375 + 새 3, VirtualKeyboard 포함 모두 통과).
+
+## 2026-11-04: ESC 일시정지와 일시정지 메뉴
+
+- 사용자 요청: ESC로 멈추고 `계속하기`·`옵션`·`저장 후 종료` 버튼만 만든다(계속하기만 재개, 나머지는 기능 없음). 사용법은 `Docs/PrototypeGuide.md` 2026-11-04 일시정지 절.
+- 추가: `Data/GameControls.inputactions`(`Game/Pause`: `<Keyboard>/escape`, `<Gamepad>/start`), 일반 C# `Runtime/Flow/GamePause.cs`, `Runtime/Flow/PauseMenuView.cs`, `GameManager`의 `controls`·`pauseMenu`·`IsPaused`·`TryPause()`·`Resume()`·`PauseMenu`. 프리팹 `Resources/GameManager.prefab`에 `PauseMenuView`(Document·Noto Sans KR)를 붙이고 GameManager에 연결했다(일회용 `eval_file` 스크립트로 `PrefabUtility.LoadPrefabContents`/`SaveAsPrefabAsset`, 스크립트는 저장소에 없음). EditMode 테스트 어셈블리에 `Unity.InputSystem` 참조를 더했다.
+- 새 테스트: PlayMode `PauseTests` 10개(시간·오디오·입력 정지와 복원, Esc·Start 토글, 계속하기/옵션/저장 후 종료, 컷신 중·컷신이 끝난 프레임 거부, 사망·클리어 거부, 히트스톱·슬로 중 정지 후 기본 시간 복원, 멈춘 동안 누른 공격·점프 미실행, 스테이지 없는 씬, 씬 이동 시 재개, 스테이지 해제·관리자 비활성화 시 재개). EditMode `GameManagerEditModeTests.PauseMenuAndPauseInputAreWired`.
+- RED: 테스트만 작성 → `script recompile` 컴파일 오류(`PauseMenuView` 없음, `GameManager`에 `Resume`/`PauseMenu`/`IsPaused`/`TryPause` 없음). 빈 API만 둔 상태 → `PauseTests` 0/10, `PauseMenuAndPauseInputAreWired` 실패(프리팹에 PauseMenuView 없음).
+- GREEN(열린 Editor, Unity CLI, 클래스별): `PauseTests` 10/10, `GameManagerTests` 9/9, `StageFlowTests` 15/15, `RestCycleTests` 19/19, `CutsceneTests` 19/19(VirtualKeyboard 포함), `FinalWaveCutsceneTests` 4/5(기존 `AirborneLastKill…` fixedDeltaTime 실패, 클래스 단독 실행 때만), EditMode `GameManagerEditModeTests` 4/4. 컴파일 오류 0.
+- 돌연변이 확인: 컷신 종료 프레임 기록, 시간 효과 `Reset()`, `DeactivateInput`을 일부러 빼면 각각 해당 테스트가 실패했다(`PauseIsRefusedDuringACutscene…`, `PausingDuringHitStop…`, `InputPressedWhilePaused…`/`TryPauseStops…`/`PauseWorksInASceneWithoutStage`). 확인 뒤 원래 코드로 되돌렸다.
+- 테스트 작성 중 알게 된 점: UI Toolkit의 `NavigationSubmitEvent`는 보낸 요소가 아니라 포커스된 요소로 간다. 메뉴가 열리면 `계속하기`에 포커스가 있으므로, 옵션 버튼에 Submit만 보내면 계속하기가 눌린다. 테스트는 버튼에 포커스를 준 뒤 보낸다(실제 키보드 탐색과 같은 순서).
+- 전체 실행: EditMode 108/108(기존 107 + 새 1). PlayMode 392/392(실행 전 382 + 새 10), 285.5초. 이 파일의 직전 PlayMode 기록은 378이고, 382에는 다른 세션의 커밋되지 않은 `PlayerGlitchCombatTests` 변경에서 온 4개가 들어 있다. 알려진 간헐 `CutsceneTests.VirtualKeyboard…`와 `FinalWaveCutsceneTests.AirborneLastKill…`도 이번 전체 실행에서 통과했다. Console 오류는 기존 의도된 로그 6건뿐이다.
+- 실제 플레이 확인(열린 Editor, 확인 중에만 `Application.runInBackground`·입력 포커스 설정을 바꾸고 되돌림, `playModeStartScene`으로 시작 씬만 지정 후 해제). Editor에 실제 키를 보낼 수 없어 가상 키보드·마우스 장치를 썼다. CoreLoopStage: Esc → 정지(timeScale 0, 오디오 정지, 플레이어 입력 꺼짐, COMBO 숨김, `pause-menu`가 맨 위, 계속하기 포커스), 한글 버튼 3개가 Noto Sans KR로 보임, Esc → 재개. (이 회차의 `CoreLoopStage-paused.png`는 뒤의 옵션 클릭 뒤 다시 찍혀 옵션에 포커스가 있었다. 수정 1회차 확인에서 메뉴를 연 직후 다시 찍었다.) 가상 마우스로 옵션을 누르면 포커스만 옮겨 가고 정지 유지, 계속하기를 누르면 재개되고 플레이어는 공격하지 않았다. BossTest(스테이지 없음): Esc 정지·Esc 재개, 캡처 `Library/PrototypeValidation/Pause/BossTest-paused.png`(Editor 전용 IMGUI 보스 디버그 표시는 메뉴 위에 그려진다). 기록 `Library/PrototypeValidation/Pause/live-check.txt`. 두 확인 동안 새 Console 오류·경고 0, 끝난 뒤 씬·ProjectSettings 변경 없음.
+- 한계: 실제 물리 키보드·게임패드·마우스 입력과 스탠드얼론 빌드는 확인하지 않았다. 옵션·저장 후 종료는 의도적으로 기능이 없다.
+- 수정 1회차(리뷰 반영, 같은 날): ① 키를 `Update`가 아니라 `LateUpdate` 끝(스테이지 판정 뒤, `cutsceneBusyAtLateUpdate` 갱신 전)에서 읽는다. 같은 프레임에 먼저 일어난 클리어·사망·컷신 시작이 일시정지를 거부하게 한다. 스테이지가 없는 씬에서도 키를 읽는다. ② 멈춘 동안 스테이지가 Playing을 벗어나면 재개 때 시간·입력을 되돌리지 않고 메뉴·오디오만 정리한다. ③ 재개 때 `fixedDeltaTime`은 값이 달라졌을 때만 쓴다(같은 값을 다시 쓰면 1 tick 줄어든다). ④ 계속하기 뒤 메뉴 안에 포커스가 남지 않는지 검사를 추가했다. ⑤ 위 기록의 캡처는 옵션 클릭 뒤 다시 찍힌 것이라 다시 찍었다.
+  - 리뷰가 제안한 "멈춘 동안 컷신이 시작되면 재개 때 시간·입력을 되돌리지 않음"은 넣지 않았다. 멈춘 상태에서 시작된 컷신은 저장 배율 0과 꺼진 입력을 기록하므로, 되돌리지 않으면 컷신이 끝난 뒤 timeScale 0·입력 꺼짐으로 굳는다. 되돌리면 연출만 어긋나고 굳지 않는다. 키 위치를 옮긴 뒤로 실제 게임에서 멈춘 동안 컷신이 시작되는 경로는 없다(트리거는 플레이어가 움직여야 하고 최종 연출은 timeScale 0이면 시작하지 않음).
+  - 새 PlayMode 테스트 3개: `PauseRequestedOnTheFrameTheGoalIsReachedIsRefused`, `StageCompletedDuringThePauseKeepsItsStoppedTimeAndInputOnResume`, `CutsceneStartingOnThePauseFrameRefusesThePause`.
+  - RED(수정 전 코드): `PauseTests` 10/13. 세 테스트가 각각 "pause is refused … Expected False But was True"(2개)와 "resuming must not restart the world … Expected 0 But was 1.0f"로 실패했다. 포커스 검사는 수정 전에도 통과했다.
+  - GREEN: `PauseTests` 13/13, `GameManagerTests` 9/9, `StageFlowTests` 15/15, `CutsceneTests` 19/19, EditMode `GameManagerEditModeTests` 4/4. 전체 PlayMode 395/395(392 + 새 3), 286.6초, Console 오류는 의도된 6건뿐. 컴파일 오류 0.
+  - 실제 플레이 재확인(CoreLoopStage·BossTest): Esc 열기·닫기, 가상 마우스 옵션(정지 유지)·계속하기(재개, 공격 없음). 메뉴를 연 직후 `계속하기`에 포커스가 있을 때만 찍는 스크립트로 `CoreLoopStage-paused.png`·`BossTest-paused.png`를 다시 찍었다. 새 Console 오류·경고 0. 기록 `Library/PrototypeValidation/Pause/live-check.txt`.
+
+## 2026-11-04: 플레이어 피격 반응 (슬로·흔들림·넉백·피격 무적·피격음)
+
+- 사용자 요청: 피격 슬로 0.1배·0.75초, 카메라 흔들림 8px, 캐릭터 기울기 제거, 전용 피격음, 넉백과 1.5초 피격 무적(스프라이트 깜빡임). 사용법은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 변경: `PlayerCombatTuning`(Player Damage Response 4개 필드·검증), `UnitHealth.Invulnerable`/`SetInvulnerable`(위치·방향 피해만 막음), `PlayerUnit`(무적 시간·넉백), `PlayerReactionPresentation.Invulnerable`, `PlayerVisual`(기울기 제거·깜빡임·피격음 호출), `PlayerSoundEffects.Hurt`, `PlayerSfxDefinition`(`hurt`·`hurtVolume`), `PlayerImpactFeedback.MaxShakePixels` 8(이전 4). 에셋은 Editor API로 바꿨다: `PlayerCombatTuning.asset`(슬로 0.1·0.75, 흔들림 8, 무적 1.5; 저장하면서 그동안 코드 기본값을 쓰던 필드들도 같은 값으로 기록됨), `PlayerSfx.asset`(Hurt·0.5), 새 `Audio/Combat/Hurt.wav`(PrepareSfx.py 재실행, 다른 13개 클립은 바이트 동일, `Sources.json`에 항목 추가).
+- 새 테스트: PlayMode `PlayerDamageResponseTests` 5개(넉백 방향·뜀, 무적 1.5초·깜빡임·종료 후 다시 맞음, 일시정지 중 무적 시간 정지, 근원 없는 피해는 넉백·무적 차단 없음, 피격음 1회·기울기 없음), `PlayerVisualTests.InvulnerabilityBlinksTheSpriteButNeverWhileDying`(reduced motion 고정 알파 포함), EditMode `PlayerVisualAssetTests.PlayerDamageFeedbackUsesTheRequestedSlowShakeAndHurtSound`.
+- RED: API만 둔 상태에서 `PlayerDamageResponseTests` 0/5(각각 무적·넉백·피격음 없음으로 실패), 에셋 테스트 실패(슬로 0.2).
+- 기존 테스트 수정: 흔들림 기대값 4px → 8px(`CombatPresentationTests`, `PlayerVisualTests` 캡처), 기울기 검사 → 기울기 없음, `PlayerHitAnimationRestarts…`는 두 번째 적 공격이 무적에 막히는지 본 뒤 무적이 끝나고 반응이 다시 시작되는지 확인하도록 바꿨다. 슬로 시간을 0.3/0.6초 고정 대기로 가정하던 통합 테스트 3개(`CutsceneTests` 2, `ActualDamageSlows…`)는 시간 효과가 끝날 때까지 기다리게 했고, 슬로 기계 동작을 보는 `PlayerImpactFeedbackTests`는 자기 복사본에서 이전 값(0.2배·0.15초·0.1초)을 고정한다(실제 에셋 값은 EditMode 테스트가 검사).
+- GREEN(열린 Editor, Unity CLI): 첫 전체 실행 PlayMode 393/401(위 슬로 시간 가정 7개 + 간헐 VirtualKeyboard 1개) → 수정 후 클래스 재실행 `PlayerImpactFeedbackTests` 18/18, `CutsceneTests` 19/19(VirtualKeyboard 포함), `PlayerGlitchCombatTests` 133/133 → 전체 PlayMode 401/401(기존 395 + 새 6), EditMode 109/109(기존 108 + 새 1). Console 오류는 의도된 6건뿐, 컴파일 오류 0.
+- 실제 플레이 확인(MovementLab, 열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림): 전면 방패병 앞에 세워 실제 적 공격을 맞혔다. 14 피해(왼쪽에서), 오른쪽으로 1.32유닛 밀리고 0.23유닛 뜸, 최저 timeScale 0.10, 무적은 맞은 뒤 1.50초에 풀림, 그동안 추가 피해 없음, 스프라이트 알파 0.2~1.0 깜빡임. 시작부터 기록하면 돌진 방패병의 공격이 약 5.5초 간격으로 14씩 들어왔다. 캡처 `Library/PrototypeValidation/PlayerHurt/MovementLab-hurt-slow.png`·`-blink.png`. 씬·ProjectSettings 변경 없음.
+- 한계: 피격음은 파형(길이 0.32초, 최고 0.8, 40ms RMS 0.30→0.01 감쇠)만 확인했고 직접 들어 보지 않았다. CoreLoopStage 전체 플레이, 실제 입력, 빌드는 확인하지 않았다.
+- 같은 날 사용자 요청으로 슬로를 0.2배·0.5초, 다시 0.2배·0.35초로 조정했다(`PlayerCombatTuning.asset`, EditMode 에셋 테스트 기대값 갱신, 슬로 관련 7개 클래스 재실행). 위 실제 플레이 수치(최저 timeScale 0.10)는 조정 전 0.1배·0.75초 때 기록이다.
+
+## 2026-11-04: 잠복 출현 버그 수정 2건
+
+- 동작 설명은 `Docs/PrototypeGuide.md`의 같은 날 절을 본다. 두 수정 모두 다른 세션에서 했고, 이 기록은 그 세션의 보고와 커밋을 옮긴 것이다.
+- `d7da531b`(후딜레이 중 잠복 → 출현 지연): `PlayerGlitchCombatTests`에 회귀 테스트 4개를 추가했다. 이 4개는 ESC 일시정지 전체 실행(PlayMode 392/392) 때 이미 포함돼 있었다(위 일시정지 절의 '커밋되지 않은 4개').
+- `3c6826e5`(보스 아래 잠복 후 출현 거부):
+  - 재현: BossTest에서 보스가 공중에 있을 때 출현이 거부됐고, 그때 출현 지점은 비어 있었다(실측 로그).
+  - 새 테스트 4개 중 3개가 수정 전 코드에서 실패했다. 닫힌 문 테스트는 이미 있던 동작을 지키는 테스트라 수정 전에도 통과했다.
+  - GREEN: `PlayerGlitchCombatTests` 137/137. BossTest 재확인에서 잠복 75번이 모두 출현했고 실패는 0건이었다. 확인용 파일은 지웠다.
+  - 전체 실행(열린 Editor): EditMode 109/109, PlayMode 405/405(기존 401 + 새 4).
+- 한계: 실제 물리 키보드·마우스 입력과 스탠드얼론 빌드는 확인하지 않았다.
+
+## 2026-11-05: 공격 위험구역 통일 (PixelFX 빨간 사각형)
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 에셋: `node Tools/PixelFx/pipeline.mjs render custom/attack-zone` → 1 frame, 16×16, deterministic. Node는 `C:\Users\yjhpi\AppData\Local\OpenAI\Codex\runtimes\cua_node\9c26d707817e90a7\bin\node.exe`(v24.22.1, 11-02에 쓴 경로는 없어짐). `Import Generated Attack Zone`을 일회용 스크립트에서 실행해 18 PPU·Border 1·Full Rect를 확인했고, 프리팹 5개(ShieldSoldier·SurveillanceTurret·FlyingDrone·PatrolEnemy·TestBoss)에 연결했다. ShieldFront는 상속을 확인했고, TestBoss의 `Telegraph` 자식을 지웠다(BossTest 씬에 관련 오버라이드 없음).
+- 테스트(열린 Editor, Unity CLI): 새 테스트 `AttackZoneAssetTests` 2/2, `AttackZoneTests` 3/3(첫 실행 1/3: 같은 프레임에 단계를 바꾸면 이전 요청이 남음 → 외형이 매 LateUpdate 시작에 구역을 먼저 숨기도록 수정), `BossVisualTests` 5/5, `UnitCombatFsmTests` 14/14, `EnemyLaserVisualTests` 2/2, `EnemyPatternTests` 28/28.
+- 전체 실행: EditMode 111/111(109 + 새 2). PlayMode 408/409(405 + 새 4, 보스 상자 검사 2개는 위험구역 검사 2개로 교체). 실패 1개는 알려진 간헐 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`이며 클래스 재실행에서도 18/19로 같은 테스트만 실패했다(입력·대화만 다루는 테스트로 위험구역과 무관하다고 판단, 원인 미확정). Console 오류는 의도된 6건, 컴파일 오류 0.
+- 실제 화면(열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림, 씬 저장 없음): MovementLab에서 전면 방패병 2.30×1.60, 돌진 방패병 5.50×1.60, 포탑·드론 광선 띠(벽까지), 임시로 생성한 순찰 돼지 앞쪽 1.20×1.00. BossTest에서 도약 내려찍기 착지 띠 6.00×0.30, 돌진 경로 상자. 측정한 알파는 0.20~0.70이다. 돼지는 선딜레이가 0.2초라 백그라운드 Editor 프레임 간격에서 최대 0.50까지만 관측됐다(중간값 0.45는 PlayMode 테스트가 확인). 캡처 `Library/PrototypeValidation/AttackZone/*.png`.
+- 한계: 실제 입력·스탠드얼론 빌드·CoreLoopStage 전체 플레이는 확인하지 않았다. 위험구역이 캐릭터 위에 그려져 구역 안의 플레이어도 붉게 보인다(정렬 +2, 기존 보스 상자와 같은 위치).
+- 같은 날 글리치 모양으로 다시 제작(사용자 요청: 글리치 느낌, 청록 없이, 컴퓨터 세상 속 버그):
+  - 에셋: `render custom/attack-zone` → 8 frames, 32×32, 12 fps, deterministic. `Import Generated Attack Zone`이 예전 1프레임 PNG를 지우고 8프레임(Border 1, 18 PPU)과 fps 12를 프로필에 넣었다. 그리기는 Sliced → Tiled.
+  - 실제 화면에서 찾은 문제: BossTest에서 보스 Visual의 Transform 스케일이 구역에 곱해져 글리치 픽셀이 커지고 비율이 어긋났다. `VfxManager`가 구역 렌더러에서 소유자 스케일을 상쇄하도록 고쳤고(실제 스케일 1), `BossVisualTests`에 늘어난 Visual에서도 스케일 1인지 보는 검사를 추가했다. 다시 찍은 캡처에서 보스·방패병·포탑·드론 구역의 픽셀 크기가 같았다.
+  - 테스트: `AttackZoneAssetTests` 3/3(빨강 계열만: 모든 불투명 픽셀에서 R ≥ G, R ≥ B / 구멍은 0보다 많고 10% 미만 / 8프레임이 모두 다름 / 프레임 순환), `AttackZoneTests` 3/3, `BossVisualTests` 5/5, `UnitCombatFsmTests` 14/14, `EnemyLaserVisualTests` 2/2, `BossDefinitionTests` 10/10.
+  - 전체 실행: EditMode 112/112(새 프레임 순환 테스트 1 포함), PlayMode 409/409(간헐 VirtualKeyboard도 통과), 324초.
+  - 캡처: `Library/PrototypeValidation/AttackZone/MovementLab-glitch-*.png`, `BossTest-glitch-*.png`(돼지는 단색 때 캡처만 있다).
+
+## 2026-11-05: 기획서 v0.3 대조 후 조정 (내려찍기 속도 36 통일 · 순간이동 입력 예약)
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절. 캐릭터 기획서 v0.3(웹 문서)을 코드·에셋 값과 대조한 뒤 사용자가 고른 두 항목이다.
+- 에셋: `PlayerCombatTuning.asset`의 `slamSpeed` 28 → 36만 바뀌었다(Editor API, diff 한 줄). 코드 기본값도 36.
+- 새 테스트: PlayMode `GlitchPressedMidSwingIsKeptAndRunsAtRecovery`(선딜레이 중 두 번 누르면 마지막 입력이 남고, 후딜레이 시작 뒤 한 번만 실행, 후딜레이 유지), `HitDropsAGlitchKeptDuringTheSwing`, `ZeroAttackBufferTimeKeepsNoGlitchEither`, EditMode `SlamDescentAndKnockdownShareOneSpeed`. 수정 전 코드는 선딜레이 중 Shift를 저장하지 않으므로 첫 테스트는 성공할 수 없다(수정 전 코드로 따로 돌려 보지는 않았다).
+- 클래스 실행: `PlayerVisualAssetTests` 4/4, `PlayerGlitchCombatTests` 140/140(새 3 포함).
+- 전체 실행: EditMode 113/113, PlayMode 411/412, 311초. 실패 1개는 간헐 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`이며 `CutsceneTests` 클래스 재실행 두 번은 19/19로 통과했다. Console 오류는 의도된 6건, 컴파일 오류 0.
+- 확인하지 않은 것: 실제 키보드·마우스로 공격 중 Shift를 누르는 수동 플레이, 스탠드얼론 빌드.
+
+## 2026-11-05: 글리치 일직선 줄기 (PixelFX)
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 에셋: `render custom/glitch-streak` → 8 frames, 32×16, 30 fps, deterministic(처음 루프 끔 설정에서 끝 프레임이 하나 더 붙은 9프레임이 나와 루프 설정으로 8프레임에 맞춤). `Import Generated Glitch Streak`을 일회용 스크립트에서 실행해 18 PPU·피벗 (0, 8)·Full Rect를 확인했고, PlayerVfx diff는 새 필드 12줄뿐이다.
+- 실제 화면(MovementLab, 열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림, 씬 저장 없음): X=0에서 포탑 왼쪽(6.03, 0.84)으로 글리치. 줄기는 0.034초에 5.05, 0.087초에 경로 전체 6.03(캡처 때문에 프레임이 한 번 끊김), 프레임 0→2→3→4로 바뀌고 0.164초부터 출발 쪽이 당겨져 0.270초에 길이 0.05로 끝났다. 캡처 `Library/PrototypeValidation/GlitchStreak/MovementLab-streak-1.png`(뻗은 직후)·`-2.png`(흔들리며 당겨지는 중).
+- 테스트: `PlayerVisualAssetTests` 5/5, `PlayerVisualTests` 11/11(새 줄기 테스트 1, 기존 spark 열 테스트는 프레임 없음 대체 동작으로 유지), `CombatPresentationTests` 4/4.
+- 전체 실행: EditMode 114/114, PlayMode 412/413, 312초. 실패 1개는 `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(288줄, 가상 Enter 뒤 대사 전부 표시가 False)이며 클래스 재실행 두 번에서도 같은 테스트만 실패했다. 입력·대화만 다루는 테스트이고 이번 변경은 효과 렌더링뿐이라 무관하다고 판단하지만, 수정 전 코드로 같은 조건에서 돌려 보지는 않았다(11-02·11-03에도 클래스 재실행 실패 기록이 있음, 원인 미확정). Console 오류는 의도된 6건, 컴파일 오류 0.
+- 확인하지 않은 것: 실제 Shift 입력으로의 수동 플레이, 빠른 연속 순간이동에서의 겹침, 스탠드얼론 빌드.
+
+## 2026-11-05: 플레이어 피격 — 0.2초 완전 정지 + 0.1초 복귀
+
+- 사용자 요청과 동작은 `Docs/PrototypeGuide.md` 같은 날 절.
+- 에셋: `PlayerCombatTuning.asset`의 `damageSlowTimeScale` 0.2 → 0, `damageSlowDuration` 0.35 → 0.2(Editor API, diff 두 줄). `damageSlowRecovery` 0.1은 그대로.
+- 실제 화면(MovementLab, 전면 방패병의 실제 공격, 열린 Editor, 확인 중에만 `Application.runInBackground`·Play Mode 시작 씬을 바꾸고 되돌림, 씬 저장 없음): 맞은 순간부터 0.188초까지 timeScale 0·fixedDeltaTime 0.0200, 0.209초 0.04(물리 간격 0.0010), 0.229초 0.25, 0.250초 0.55, 0.271초 0.82, 0.291초 0.99, 0.311초부터 1.00·0.0200.
+- 첫 전체 실행: EditMode 114/114, PlayMode 411/414. 실패 3개는 모두 예전 슬로를 전제한 테스트였다.
+  - `PlayerDamageResponseTests.HitGrantsInvulnerability…`: 무적은 timeScale 0 동안 세지 않으므로 정지 0.2초만큼 늦게 풀린다. 규칙은 유지하고 기대 시점을 정지 시간만큼 늦췄다.
+  - `PlayerGlitchCombatTests.ActualDamageSlows…`: "슬로 중에도 물리가 움직인다"를 검사했다. "정지 중에는 움직이지 않고 풀린 뒤 움직인다"로 바꾸고 이름을 `ActualDamageFreezes…`로 바꿨다.
+  - `PlayerGlitchCombatTests.AirSwingJumpRelease…`: 피격 직후 물리 한 단계를 기다린 뒤 Hit 반응을 봤는데, 정지가 끝나야 물리 단계가 돌아 그때는 0.12초 반응이 끝나 있었다. 반응은 피격 직후 프레임에서 확인하도록 바꿨다.
+  - `PauseTests.PausingDuringHitStop…`: 물리 간격을 줄이는 슬로 중 일시정지를 피격 슬로로 확인하던 부분을 처치 슬로로 옮기고, 피격 정지 중 일시정지·재개도 따로 확인하게 했다.
+- 새 테스트: `PlayerImpactFeedbackTests.DamageFreezeStopsTimeThenEasesBackAndRestoresThePhysicsStep`. 검증 테스트에서 배율 0을 유효로 바꿨고, EditMode 에셋 값 검사를 0/0.2/0.1로 바꿨다.
+- 클래스 실행: `PlayerVisualAssetTests` 5/5, `PlayerImpactFeedbackTests` 19/19, `PlayerDamageResponseTests` 5/5, `CombatPresentationTests` 4/4, `PlayerVisualTests` 11/11, `PauseTests` 13/13, `PlayerGlitchCombatTests` 140/140.
+- 수정 후 전체 실행: EditMode 114/114, PlayMode 414/414(간헐 VirtualKeyboard도 통과), 311초. Console 오류는 의도된 6건, 컴파일 오류 0.
+- 확인하지 않은 것: 실제 입력으로의 수동 플레이 체감, CoreLoopStage 전체 플레이, 스탠드얼론 빌드.
+- 같은 날 정지 시간 0.2 → 0.35초(사용자 요청, `damageSlowDuration`만 변경, 복귀 0.1초 그대로). 전체 실행 EditMode 114/114, PlayMode 413/414: `PlayerDamageResponseTests.InvulnerabilityClockStopsWhileThePauseHoldsTime`이 맞고 0.3초 뒤 일시정지하는데, 정지가 0.35초로 늘어 그때까지 무적 시간이 하나도 세어지지 않았다(규칙대로 동작). 일시정지 시점을 "정지 시간 + 0.3초"로 옮겼다. 이후 클래스 재실행 `PlayerDamageResponseTests` 5/5, `PauseTests` 13/13, `CutsceneTests` 19/19. 테스트만 바꾼 뒤라 전체는 다시 돌리지 않았다.
+
+## 2026-11-05 — 원거리·영역 적 7종
+
+- 범위: 사용자 요청으로 관련 테스트만 실행(전체 실행 안 함). 열린 Editor, Unity CLI `test run`.
+- EditMode `RangedEnemyAssetTests` 4/4: 7종 정의·FSM·프리팹 연결, px 환산 값, PixelFX 프레임 크기·청록 없음, 테스트 씬 구성과 빌드 미포함.
+- PlayMode `RangedEnemyTests` 16/16: 최초 인식 1회·고정 조준, 샷건 3발 ±12°와 재공격 조건, 접촉·무적·잠복 시 탄 처리, 큰 탄, 발사자 사망 후 탄 유지·벽 소멸, 인식 상실 취소·화면 밖, 띄우기 취소, 훑기 방향·1회 피해·잔상, 무적 접촉 미소모, 지형 차단, 투하병 추적·지면 폭발 1회·직접 명중, 영역 자기 중심/고정·종료·사망 제거, 위험구역·레이저·영역 표시.
+- PlayMode `PlayerGlitchCombatTests` 146/146(새 영역 즉사 5·약한 피격 1), `RestCycleTests` 20/20(구역 클리어 시 탄 정리 1).
+- 실제 동작: `Scenes/RangedEnemyTest.unity`(이후 기존 적까지 모아 `EnemyTest.unity`로 이름 변경) Play Mode에서 플레이어를 각 적 앞으로 옮겨 7종의 예고·발사·폭발·훑기·영역 활성을 Game 뷰 캡처로 확인했다. 투하병 기둥 띠가 늘린 몸체 스케일 때문에 찌그러진 것을 발견해 세션을 비스케일 루트로 옮겼고(위험구역 띠 스케일 1 검사는 테스트로 확인), 수정 후 재캡처는 하지 않았다.
+- 에셋: `render custom/{enemy-bolt, enemy-pellet, enemy-heavy, enemy-shell, enemy-blast, enemy-shot-pop, domain-field}` → 4/4/6/4/4/4/6 frames, `Import Generated Ranged Enemy Effects`로 18 PPU 가져오기, 영역 타일 Border 1.
+
+## 2026-11-05 — CoreLoopStage 적 재배치 (기존 적 + 원거리 5종, 영역형 제외)
+
+- 변경: 열린 Editor의 CoreLoopStage에서 몬스터 21개(저장된 14마리 + 저장 안 된 채 맨 위에 놓인 원거리·영역 7개, 디스크와 비교해 다른 변경 없음을 확인)를 지우고 18마리를 3/4/5/6으로 배치했다. 저장 후 fileID 단위 비교에서 바뀐 것은 적 인스턴스·웨이브 루트 자식 목록·`StageLayout`의 적 목록뿐이고 지형·문·카메라는 그대로다. 좌표는 `Docs/PrototypeGuide.md` 같은 날 절.
+- 테스트 수정: `RestCycleTests`의 저작 배치 검사(총 18·비활성 15·웨이브별 3+n마리·종류 목록, 재시작 3마리, 잠복 테스트 대상은 첫 웨이브의 순찰 돼지).
+- 열린 Editor에서 CoreLoopStage를 쓰는 PlayMode 클래스만 실행: `RestCycleTests` 20/20, `StageFlowTests` 15/15, `PauseTests` 13/13, `GameManagerTests` 9/9, `FinalWaveCutsceneTests` 4/5. 실패는 `AirborneLastKill…`의 `fixedDeltaTime` 0.0199999921 → 0.0199999865로, 이 클래스만 따로 돌릴 때 생기는 기존 1 tick 반올림 문제(배치와 무관)다. 전체 실행은 하지 않았다.
+- 첫 실행은 테스트 실행기가 띄운 "Scene(s) Have Been Modified" 대화상자에서 멈췄다. 저장 뒤 재컴파일 후 씬의 변경 표시만 다시 켜졌고 내용은 저장본과 같았다(비교 확인). 대화상자를 취소하고 다시 저장(파일 해시 동일)한 뒤 재실행했다.
+- 실제 동작: Play Mode에서 웨이브 2~4 루트를 켜고 5초 뒤 18마리 모두 제자리(지상 적 발 높이 0.01~0.02, 발판 위 적은 발판 윗면, 공중 적은 지정 높이). 플레이어를 X 86·194로 옮겨 샷건 발사, 훑기 레이저, 공중 투하병의 추적·투하를 확인했고 캡처는 `Library/PrototypeValidation/CoreLoopRelayout/Wave2.png`, `Wave4.png`다. 콘솔 새 오류 0. 끝난 뒤 Play Mode 종료, runInBackground 복원, 씬 dirty=false.
+
+## 2026-11-05 — 플레이어 그리기 순서 50
+
+- 원인 확인: Player Visual Sorting Order 1, 적·보스·NPC 프리팹 10~14(모두 Default 레이어). Play Mode 렌더러 목록에서도 적 몸체 10, 포탑 머리 11, 방패병 방어막 12였다.
+- `RenderOrderTests`(EditMode) 2개를 먼저 써서 수정 전 2/2 실패(플레이어 1 < 적 쪽 최대 16)를 확인했다. Player 프리팹 Visual을 50으로 바꾼 뒤 2/2 통과.
+- 관련 클래스만 실행: EditMode `PlayerVisualAssetTests` 5/5, PlayMode `PlayerVisualTests` 11/11·`AttackZoneTests` 3/3. 전체 실행은 하지 않았다.
+- 실제 화면: CoreLoopStage Play Mode에서 적을 모두 멈추고 플레이어를 돌진 방패병·큰 탄 몸체에 겹쳐 플레이어가 위에 그려지는 것을 캡처했다(`Library/PrototypeValidation/CoreLoopRelayout/OverlapShield.png`, `OverlapHeavy.png`). 그때 렌더러 순서는 적 10~12, 플레이어 먼지 49, 플레이어 50. 콘솔 새 오류 0. 끝난 뒤 Play Mode 종료, runInBackground 복원, 씬 dirty=false.
+
+
+## 2026-11-11 — 아웃게임 (타이틀·휴식 구역 저장·설정·일시정지 5버튼·실패/클리어 화면)
+
+- 열린 Editor에서 Unity CLI `test run`으로 전체 실행: EditMode 138/138, PlayMode 463/464.
+- 새 테스트: EditMode `OutGameRulesTests` 18개(저장 시점 7.2, 설정 항목별 기본값, 파일 저장의 임시 파일 교체·읽기 실패 보존, 15초 화면 복원, 전환 중복·실패, 메뉴 스택·확인창 기본 취소, 키 슬롯·중복, 카탈로그·빌드 목록·프리팹·타이틀 씬). PlayMode `OutGameFlowTests` 15개(타이틀·새 게임 1회 진입·덮어쓰기 취소, 휴식 구역 저장과 재도전·이어하기 재개, 일시정지 재시작·타이틀 확인창, 최종 클리어, 설정 저장·탭별 복원, 진행도 삭제, 읽기 실패 보존, 저장 실패 안내, 키 변경·중복 거부·Esc 취소, 메뉴를 닫은 클릭이 공격이 되지 않음, 연출 0).
+- 고친 기존 테스트: 사망 뒤 자동 재로드를 기다리던 StageFlow 2·RestCycle 1·FinalWaveCutscene 1·Cutscene 1·Pause 1개는 실패 화면의 `재도전`을 누르고 전환이 끝나기를 기다린다. Pause의 메뉴 버튼 검사는 5버튼과 하위 화면 왕복으로 바꿨다.
+- 실패 1개: `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(290줄, 가상 Enter 뒤 대사 전체 표시가 안 됨). 클래스 재실행에서도 실패했다. 11-05 기록의 같은 줄 실패와 증상이 같다.
+- Play Mode 캡처(`Library/PrototypeValidation/OutGame/`): 타이틀, 일시정지 5버튼, 일시정지 위 설정, 조작 키 탭, 휴식 구역 1 재개, 실패 화면.
+- 확인하지 못한 것: 스탠드얼론 빌드에서의 화면 모드·해상도 15초 확인, 게임 종료·창 닫기 확인창, 실제 저장 파일로 재실행했을 때의 유지(Editor에서는 파일 저장·읽기만 확인).

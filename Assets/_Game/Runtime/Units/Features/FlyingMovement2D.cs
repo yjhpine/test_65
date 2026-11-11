@@ -12,12 +12,16 @@ namespace ActionPlatformer.Units.Features
         private UnitHealth health;
         private Vector2 home;
         private float clock, remaining, forcedX, deceleration;
-        private bool knocking, cruising;
+        private bool knocking, cruising, following;
+        private float followX, followSpeed;
         private float radius, amplitude, maxX, maxY;
         private readonly RaycastHit2D[] hits = new RaycastHit2D[16];
         public bool IsForcedMoving => remaining > 0f || knocking;
         public Vector2 Velocity => body == null ? Vector2.zero : body.linearVelocity;
         public Vector2 Position => body == null ? (Vector2)transform.position : body.position;
+        // Follow mode (the mortar): the height it was placed at, and whether it is still flying back up to it.
+        public float HomeHeight => home.y;
+        public bool IsReturning => following && !IsForcedMoving && Mathf.Abs(Position.y - home.y) > .05f;
         private void Awake()
         {
             body = GetComponent<Rigidbody2D>(); bodyCollider = GetComponent<Collider2D>();
@@ -26,7 +30,14 @@ namespace ActionPlatformer.Units.Features
         }
         public void Configure(float patrolRadius, float bobAmplitude, float horizontalSpeed, float verticalSpeed)
         { radius = patrolRadius; amplitude = bobAmplitude; maxX = horizontalSpeed; maxY = verticalSpeed; }
-        public void Cruise(bool value) { cruising = value; if (!value && !IsForcedMoving) StopBody(); }
+        public void Cruise(bool value) { cruising = value; if (value) following = false; if (!value && !IsForcedMoving) StopBody(); }
+        // Moves only horizontally toward x at up to speed, holding (or flying back to) the placed height; speed 0 hovers in place.
+        public void Follow(float x, float speed)
+        {
+            if (float.IsNaN(x) || float.IsInfinity(x) || !(speed >= 0f) || float.IsInfinity(speed)) throw new System.ArgumentOutOfRangeException(nameof(speed));
+            following = true; cruising = false; followX = x; followSpeed = speed;
+        }
+        public void Hover() => Follow(Position.x, 0f);
         public void StopBody() { if (body != null) body.linearVelocity = Vector2.zero; }
         private bool CanReact => isActiveAndEnabled && body != null && unit != null && unit.isActiveAndEnabled &&
             unit.Definition.AllowForcedMovement && health.CanReceiveDamage;
@@ -58,6 +69,12 @@ namespace ActionPlatformer.Units.Features
                 velocity = ClipVelocity(velocity, dt);
                 if (knocking) knocking = velocity.x != 0f;
             }
+            else if (following)
+            {
+                float vx = followSpeed <= 0f ? 0f : Mathf.Clamp((followX - Position.x) * 8f, -followSpeed, followSpeed);
+                float vy = Mathf.Clamp((home.y - Position.y) * 4f, -maxY, maxY);
+                velocity = ClipVelocity(new Vector2(vx, vy), dt);
+            }
             else if (cruising)
             {
                 Vector2 target = home + new Vector2(Mathf.Sin(clock * .65f) * radius, Mathf.Sin(clock * 1.3f) * amplitude);
@@ -84,7 +101,7 @@ namespace ActionPlatformer.Units.Features
             }
             return velocity;
         }
-        private void OnDisable() { cruising = false; CancelForcedMovement(); }
+        private void OnDisable() { cruising = following = false; CancelForcedMovement(); }
         private static bool Finite(float value) => !float.IsNaN(value) && !float.IsInfinity(value);
     }
 }

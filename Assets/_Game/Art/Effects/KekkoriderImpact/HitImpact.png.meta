@@ -1,0 +1,412 @@
+fileFormatVersion: 2
+guid: 34e6cf6cb38a5e240b36f3a7f8a3c7ce
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -8643721061460284362
+    second: HitImpact_0
+  - first:
+      213: -479895518367507829
+    second: HitImpact_1
+  - first:
+      213: -3233395200574099185
+    second: HitImpact_2
+  - first:
+      213: -8260406152846120881
+    second: HitImpact_3
+  - first:
+      213: 5841741565625306244
+    second: HitImpact_4
+  - first:
+      213: -3447750182758548055
+    second: HitImpact_5
+  - first:
+      213: 3373001738816593734
+    second: HitImpact_6
+  - first:
+      213: -5183441104585953257
+    second: HitImpact_7
+  - first:
+      213: -1462653418727274252
+    second: HitImpact_8
+  - first:
+      213: -7390000764810473535
+    second: HitImpact_9
+  - first:
+      213: -5572529050809446686
+    second: HitImpact_10
+  - first:
+      213: -1647604867214881107
+    second: HitImpact_11
+  - first:
+      213: -6143960884834975312
+    second: HitImpact_12
+  - first:
+      213: -3410389904845749007
+    second: HitImpact_13
+  - first:
+      213: -2954888510110737905
+    second: HitImpact_14
+  - first:
+      213: -3867056770666984379
+    second: HitImpact_15
+  - first:
+      213: -8242197158198624675
+    second: HitImpact_16
+  - first:
+      213: 111168684286733753
+    second: HitImpact_17
+  - first:
+      213: 4740974461064516682
+    second: HitImpact_18
+  - first:
+      213: 7796471686652056980
+    second: HitImpact_19
+  - first:
+      213: 5748101793817313044
+    second: HitImpact_20
+  - first:
+      213: 7563772313275190069
+    second: HitImpact_21
+  - first:
+      213: 8559441882640399775
+    second: HitImpact_22
+  - first:
+      213: -3724640258877051560
+    second: HitImpact_23
+  - first:
+      213: 2110842635277855
+    second: HitImpact_24
+  - first:
+      213: -1451058817118499556
+    second: HitImpact_25
+  - first:
+      213: 1580719910337069716
+    second: HitImpact_26
+  - first:
+      213: 9015484010241028418
+    second: HitImpact_27
+  - first:
+      213: -6930916245435706044
+    second: HitImpact_28
+  - first:
+      213: -2235372477605832721
+    second: HitImpact_29
+  - first:
+      213: 7375520306545349872
+    second: HitImpact_30
+  - first:
+      213: 2803887602348838499
+    second: HitImpact_31
+  - first:
+      213: 7727195203594530115
+    second: HitImpact_32
+  - first:
+      213: -6992930463982549639
+    second: HitImpact_33
+  - first:
+      213: 1233218716187127482
+    second: HitImpact_34
+  - first:
+      213: 5377630578297175868
+    second: HitImpact_35
+  - first:
+      213: -8636596369137562684
+    second: HitImpact_36
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 0
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 128
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 0
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: HitImpact_00
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ae0fd30889badcd4db5e286eea63902d
+      internalID: -73922963
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_01
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0f7281efa661b12459a3463006db5b64
+      internalID: 2107093435
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_02
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 568651c9041055c4d90b9ed0f94a0efb
+      internalID: -1168362961
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_03
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 256
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 38d9ac5a9cb1d1047bdec240045a0c61
+      internalID: -861721619
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_04
+      rect:
+        serializedVersion: 2
+        x: 0
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 943b6b23473851f4ba23f50f53b6a76f
+      internalID: -1492090853
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_05
+      rect:
+        serializedVersion: 2
+        x: 128
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 170d6046f48078f4282730e0e94993db
+      internalID: -1765969866
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_06
+      rect:
+        serializedVersion: 2
+        x: 256
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5ebef4d72ac9aa34fbb6edd41cd3fc07
+      internalID: 227979385
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: HitImpact_07
+      rect:
+        serializedVersion: 2
+        x: 384
+        y: 128
+        width: 128
+        height: 128
+      alignment: 9
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2752e7523c26f8847b54987f7d6f6476
+      internalID: -757504627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 716f696ea0e34b543a44553a8361219a
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      HitImpact_00: -73922963
+      HitImpact_01: 2107093435
+      HitImpact_02: -1168362961
+      HitImpact_03: -861721619
+      HitImpact_04: -1492090853
+      HitImpact_05: -1765969866
+      HitImpact_06: 227979385
+      HitImpact_07: -757504627
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

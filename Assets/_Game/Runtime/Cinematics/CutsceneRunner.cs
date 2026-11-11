@@ -14,7 +14,7 @@ using UnityEngine.Timeline;
 namespace ActionPlatformer.Cinematics
 {
     public enum CutsceneWorldMode { Pause, Continue }
-    public enum CutsceneState { Idle, Playing, Waiting, Returning }
+    public enum CutsceneState { Idle, Playing, Waiting, Returning, Landing }
     public enum CutsceneEndReason { Completed, Skipped, Damaged, Cancelled }
 
     [DisallowMultipleComponent, RequireComponent(typeof(PlayableDirector))]
@@ -24,11 +24,11 @@ namespace ActionPlatformer.Cinematics
         [SerializeField] private CutsceneView view;
         [SerializeField] private CutsceneCoordinator coordinator;
         [SerializeField] private PlayerUnit player;
-        [SerializeField] private StageFlowController stage;
         [SerializeField] private InputActionAsset cutsceneInput;
         [SerializeField] private CutsceneWorldMode worldMode;
         [SerializeField] private bool allowSkip = true;
         [SerializeField, Min(0f)] private float returnDuration = .35f;
+        [SerializeField, Min(0f)] private float maxLandingWait = 1.5f;
         [SerializeField] private UnityEvent completed = new UnityEvent();
         private readonly List<TimelineClip> waitClips = new List<TimelineClip>();
         private readonly List<IDisposable> pausedFsms = new List<IDisposable>();
@@ -47,7 +47,7 @@ namespace ActionPlatformer.Cinematics
         private UnitHealth health;
         private IDisposable controlLock;
         private bool inputWasActive, feedbackSuppressed, ownsTime, cleaning;
-        private float savedScale, returnElapsed;
+        private float savedScale, returnElapsed, landingElapsed;
         private int nextWait, inputFrame;
         private TimelineClip waitingClip;
         private CutsceneEndReason returnReason;
@@ -60,8 +60,19 @@ namespace ActionPlatformer.Cinematics
         public CutsceneCoordinator Coordinator => coordinator;
         public PlayerUnit Player => player;
         public CutsceneWorldMode WorldMode { get => worldMode; set { if (!IsRunning) worldMode = value; } }
+        public float MaxLandingWait { get => maxLandingWait; set { if (!IsRunning && float.IsFinite(value) && value >= 0) maxLandingWait = value; } }
         public double CurrentTime => currentTime;
         public event Action<CutsceneEndReason> Finished;
+        // The persistent GameManager has this scene's stage registered and playing.
+        private bool StagePlaying
+        {
+            get
+            {
+                var game = GameManager.Existing;
+                return game != null && game.Stage != null && game.Stage.gameObject.scene == gameObject.scene &&
+                    game.State == StageState.Playing;
+            }
+        }
 
         public void BindOutputs()
         {
@@ -82,13 +93,15 @@ namespace ActionPlatformer.Cinematics
             else if (view == null || !view.IsConfigured) error = "대화 UI의 Document, UXML, Panel Settings를 연결하세요.";
             else if (coordinator == null || coordinator.CameraRig == null || !coordinator.CameraRig.IsConfigured)
                 error = "씬의 CutsceneCoordinator와 카메라 연결을 확인하세요.";
-            else if (player == null || stage == null || cutsceneInput == null ||
+            else if (player == null || StageLayout.FindIn(gameObject.scene) == null || cutsceneInput == null ||
                 cutsceneInput.FindAction("Cutscene/Confirm") == null || cutsceneInput.FindAction("Cutscene/Skip") == null)
                 error = "플레이어, 스테이지 흐름, 연출 입력을 연결하세요.";
-            else if (player.gameObject.scene != gameObject.scene || coordinator.gameObject.scene != gameObject.scene ||
-                stage.gameObject.scene != gameObject.scene) error = "연출 연결은 같은 씬에 있어야 합니다.";
+            else if (player.gameObject.scene != gameObject.scene || coordinator.gameObject.scene != gameObject.scene)
+                error = "연출 연결은 같은 씬에 있어야 합니다.";
             else if (float.IsNaN(returnDuration) || float.IsInfinity(returnDuration) || returnDuration < 0)
                 error = "복귀 시간은 유한한 0 이상의 값이어야 합니다.";
+            else if (float.IsNaN(maxLandingWait) || float.IsInfinity(maxLandingWait) || maxLandingWait < 0)
+                error = "착지 대기 시간은 유한한 0 이상의 값이어야 합니다.";
             if (error != null) return false;
             int dialogues = 0, fades = 0, cameras = 0;
             var allDialogueClips = new List<TimelineClip>();
@@ -144,7 +157,7 @@ namespace ActionPlatformer.Cinematics
                     if (!actor.IsAvailable) return false;
                     boundSpeakers.Add(actor);
                 }
-            if (!player.isActiveAndEnabled || player.Motor == null || stage.State != StageState.Playing ||
+            if (!player.isActiveAndEnabled || player.IsScriptedTransferring || player.Motor == null || !StagePlaying ||
                 !player.TryGetComponent(out health) || !health.IsAlive || !coordinator.TryAcquire(this)) return false;
             State = CutsceneState.Playing;
             try
@@ -158,6 +171,28 @@ namespace ActionPlatformer.Cinematics
                 playerInput.DeactivateInput();
                 player.ControlInterrupted += OnPlayerInterrupted;
                 initialDamage = health.DamageVersion;
+                // A paused world would hold an airborne player in mid-air; the locked player lands first.
+                landingElapsed = 0;
+                player.Motor.RefreshContacts();
+                if (worldMode == CutsceneWorldMode.Pause && maxLandingWait > 0 && !player.Motor.IsGrounded)
+                {
+                    State = CutsceneState.Landing;
+                    return true;
+                }
+            }
+            catch (Exception exception)
+            {
+                Finish(CutsceneEndReason.Cancelled);
+                Debug.LogException(exception, this);
+                return false;
+            }
+            return BeginPresentation();
+        }
+        private bool BeginPresentation()
+        {
+            State = CutsceneState.Playing;
+            try
+            {
                 savedScale = Time.timeScale;
                 if (worldMode == CutsceneWorldMode.Pause)
                 {
@@ -200,10 +235,16 @@ namespace ActionPlatformer.Cinematics
             if (!IsRunning) return;
             if (player == null || !player.isActiveAndEnabled || health == null || !health.IsAlive ||
                 health.DamageVersion != initialDamage) { Finish(CutsceneEndReason.Damaged); return; }
-            if (stage == null || !stage.isActiveAndEnabled || stage.State != StageState.Playing)
-            { Cancel(); return; }
+            if (!StagePlaying) { Cancel(); return; }
             foreach (var actor in boundSpeakers)
                 if (actor == null || !actor.IsAvailable) { Cancel(); return; }
+            if (State == CutsceneState.Landing)
+            {
+                // Scaled time follows the physics that moves the player; the limit covers a missing floor.
+                landingElapsed += Time.deltaTime;
+                if (player.Motor.IsGrounded || landingElapsed >= maxLandingWait) BeginPresentation();
+                return;
+            }
             if (Time.frameCount > inputFrame)
             {
                 if (allowSkip && skip.WasPressedThisFrame()) { Skip(); return; }
@@ -219,7 +260,7 @@ namespace ActionPlatformer.Cinematics
         }
         private void LateUpdate()
         {
-            if (!IsRunning || coordinator == null || coordinator.CameraRig == null) return;
+            if (!IsRunning || State == CutsceneState.Landing || coordinator == null || coordinator.CameraRig == null) return;
             if (State == CutsceneState.Returning)
                 coordinator.CameraRig.BlendBack(returnDuration > 0 ? returnElapsed / returnDuration : 1, Time.unscaledDeltaTime);
             else coordinator.CameraRig.Tick(Time.unscaledDeltaTime);
@@ -286,7 +327,13 @@ namespace ActionPlatformer.Cinematics
             State = CutsceneState.Playing;
             Advance(0);
         }
-        public void Skip() { if (IsRunning && allowSkip && State != CutsceneState.Returning) BeginReturn(CutsceneEndReason.Skipped); }
+        public void Skip()
+        {
+            if (!IsRunning || !allowSkip || State == CutsceneState.Returning) return;
+            // Nothing is presented while landing, so there is no camera to blend back.
+            if (State == CutsceneState.Landing) Finish(CutsceneEndReason.Skipped);
+            else BeginReturn(CutsceneEndReason.Skipped);
+        }
         public void Cancel()
         {
             if (IsRunning) Finish(health != null && (!health.IsAlive || health.DamageVersion != initialDamage)
@@ -329,7 +376,7 @@ namespace ActionPlatformer.Cinematics
                 controlLock?.Dispose(); controlLock = null;
                 if (inputWasActive && playerInput != null && playerInput.isActiveAndEnabled &&
                     player != null && player.isActiveAndEnabled && health != null && health.IsAlive &&
-                    stage != null && stage.isActiveAndEnabled && stage.State == StageState.Playing && !playerInput.inputIsActive)
+                    StagePlaying && !playerInput.inputIsActive)
                     playerInput.ActivateInput();
             }
             finally { cleaning = false; }

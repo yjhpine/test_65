@@ -9,6 +9,8 @@ namespace ActionPlatformer.Units.Features
         [SerializeField] private Collider2D bodyCollider;
         [SerializeField] private LayerMask environmentMask = 1;
         [SerializeField] private bool stopAtLedges = true;
+        [Tooltip("Ordinary hits keep this unit's current action: no knockback. Launches and slams still move it.")]
+        [SerializeField] private bool ignoreKnockback;
         [SerializeField, Min(0.001f)] private float arrivalTolerance = 0.02f;
         [SerializeField, Min(0.11f)] private float groundProbeDistance = 0.3f;
         private const float Skin = 0.05f;
@@ -42,7 +44,7 @@ namespace ActionPlatformer.Units.Features
             if (!IsFinite(horizontalSpeed) || !IsFinite(deceleration) || deceleration <= 0f ||
                 !IsFinite(controlLockDuration) || controlLockDuration < 0f)
                 throw new System.ArgumentOutOfRangeException(nameof(deceleration));
-            if (!CanApplyForcedMovement()) return;
+            if (ignoreKnockback || !CanApplyForcedMovement()) return;
             hasDestination = false;
             forcedRemaining = controlLockDuration;
             forcedHorizontal = 0f;

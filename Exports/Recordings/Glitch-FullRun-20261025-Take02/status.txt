@@ -1,0 +1,1 @@
+149.0s wave=3 phase=Combat enemies=1 hp=68 glitches=25 position=(135.35, 4.38) target=FlyingDrone step=Wave 3 Ledge 3

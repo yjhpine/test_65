@@ -1,0 +1,24 @@
+{
+  "id": "custom/glitch-hit-debris",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "80cecc450276ef0b8a7146aa499bbc7aada2b5b38aeba1ddffc29e65afee2cd7",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 15,
+  "frameSize": [
+    56,
+    44
+  ],
+  "duration": 0.45,
+  "loop": false,
+  "unityPivot": [
+    0.25,
+    0.4545454545454546
+  ],
+  "rgbaSha256": "780a3c8aaa5ee3d5ab8d2e5b1e722ce7411f6ecc6b4f00749c2624156db4b133",
+  "deterministic": true,
+  "edgePixels": 0,
+  "lastFrameEmpty": true
+}

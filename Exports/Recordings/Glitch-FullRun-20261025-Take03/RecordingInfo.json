@@ -1,0 +1,13 @@
+{
+  "frames": "4692",
+  "fps": "60",
+  "seconds": "78.20",
+  "glitches": "43",
+  "attacks": "106",
+  "health": "84",
+  "record": "True",
+  "size": "1280x720",
+  "bytes": 10287510,
+  "source": "Unity Game View; automated movement/aim/glitch/attack inputs; unchanged game rules",
+  "decode": "passed"
+}

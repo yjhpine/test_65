@@ -1,0 +1,24 @@
+{
+  "id": "custom/glitch-streak",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "2718ce9c54122fe88f48d781783209326205af9ad81b24001cd8f95971367311",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 8,
+  "frameSize": [
+    32,
+    16
+  ],
+  "duration": 0.26666666666666666,
+  "loop": true,
+  "unityPivot": [
+    0,
+    0.5
+  ],
+  "rgbaSha256": "d670e30eb1296ca70be3ced9da61c3b6a4a55a4163f67329ffdb70e56086db33",
+  "deterministic": true,
+  "edgePixels": 77,
+  "lastFrameEmpty": false
+}

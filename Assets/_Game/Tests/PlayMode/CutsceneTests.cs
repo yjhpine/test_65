@@ -20,7 +20,7 @@ namespace ActionPlatformer.Tests
     {
         private CutsceneRunner runner;
         private PlayerUnit player;
-        private StageFlowController stage;
+        private GameManager stage;
         private CutsceneTrigger trigger;
         private float scale, fixedDelta;
         private bool background;
@@ -34,10 +34,10 @@ namespace ActionPlatformer.Tests
             Time.timeScale = 1;
             yield return SceneManager.LoadSceneAsync("CoreLoopStage");
             yield return null;
-            runner = Object.FindFirstObjectByType<CutsceneRunner>();
-            player = runner.Player; stage = Object.FindFirstObjectByType<StageFlowController>();
+            runner = Object.FindFirstObjectByType<CutsceneTrigger>().GetComponentInParent<CutsceneRunner>();
+            player = runner.Player; stage = GameManager.Instance;
             trigger = Object.FindFirstObjectByType<CutsceneTrigger>();
-            Assert.That(stage.isActiveAndEnabled, Is.True);
+            Assert.That(stage.HasStage, Is.True);
             runner.Finished += OnFinished;
             yield return new WaitForFixedUpdate();
         }
@@ -69,7 +69,7 @@ namespace ActionPlatformer.Tests
             Assert.That(runner.View.IsDialogueVisible, Is.False);
             Assert.That(Object.FindFirstObjectByType<StageCameraFollow>().enabled, Is.True);
             Assert.That(Object.FindObjectsByType<Unit>(FindObjectsSortMode.None).All(u => u.Fsm == null || !u.Fsm.IsPaused), Is.True);
-            Assert.That(Camera.main.orthographicSize, Is.EqualTo(6.5f).Within(.001f));
+            Assert.That(Camera.main.orthographicSize, Is.EqualTo(8f).Within(.001f));
         }
         [UnityTest] public IEnumerator TriggerFreezesWorldTypesThreeSpeakersAndRestoresGameplay()
         {
@@ -123,7 +123,9 @@ namespace ActionPlatformer.Tests
                 {
                     player.Motor.Teleport(new Vector2(x, 5f));
                     yield return new WaitForFixedUpdate(); yield return null; yield return null;
-                    Assert.That(Camera.main.transform.position.x, Is.EqualTo(player.Motor.Position.x).Within(.03f));
+                    float halfWidth = 8f * Camera.main.aspect;
+                    Assert.That(Camera.main.transform.position.x,
+                        Is.EqualTo(Mathf.Clamp(player.Motor.Position.x, halfWidth, 217f - halfWidth)).Within(.03f));
                     Assert.That(Camera.main.transform.localPosition.x, Is.EqualTo(0).Within(.001f));
                 }
             }
@@ -155,8 +157,53 @@ namespace ActionPlatformer.Tests
             Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
             Assert.That(player.Feedback.CameraEffectsSuppressed, Is.False);
             Assert.That(player.Feedback.IsDamageFeedbackActive(Time.unscaledTimeAsDouble), Is.True);
-            yield return new WaitForSecondsRealtime(.6f);
+            // The damage slow lasts as long as its tuning says; wait for it rather than a fixed time.
+            yield return Until(() => !player.Feedback.IsTimeEffectActive);
+            yield return new WaitForSecondsRealtime(.2f);
             AssertRestored();
+        }
+        [UnityTest] public IEnumerator AirbornePauseStartLandsBeforeFreezingWorld()
+        {
+            trigger.enabled = false;
+            player.Motor.Teleport(new Vector2(8, 4)); Physics2D.SyncTransforms();
+            Assert.That(runner.TryPlay(), Is.True);
+            Assert.That(runner.State, Is.EqualTo(CutsceneState.Landing));
+            Assert.That(player.IsControlLocked, Is.True);
+            Assert.That(player.GetComponent<PlayerInput>().inputIsActive, Is.False);
+            Assert.That(Time.timeScale, Is.EqualTo(1f));
+            Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.False);
+            yield return Until(() => Time.timeScale == 0);
+            Assert.That(player.Motor.IsGrounded, Is.True);
+            Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.True);
+            yield return Until(() => runner.State == CutsceneState.Waiting);
+            runner.Skip(); yield return Until(() => !runner.IsRunning);
+            Assert.That(reason, Is.EqualTo(CutsceneEndReason.Skipped)); AssertRestored();
+        }
+        [UnityTest] public IEnumerator DamageWhileLandingCancelsWithoutTakingCamera()
+        {
+            trigger.enabled = false;
+            player.Motor.Teleport(new Vector2(8, 6)); Physics2D.SyncTransforms();
+            Assert.That(runner.TryPlay(), Is.True);
+            yield return null;
+            Assert.That(player.GetComponent<UnitHealth>().ApplyDamage(1), Is.EqualTo(1));
+            yield return Until(() => !runner.IsRunning);
+            Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
+            Assert.That(runner.Coordinator.CameraRig.IsAcquired, Is.False);
+            yield return Until(() => !player.Feedback.IsTimeEffectActive);
+            yield return new WaitForSecondsRealtime(.2f);
+            AssertRestored();
+        }
+        [UnityTest] public IEnumerator LandingWaitLimitStartsWithoutFloor()
+        {
+            trigger.enabled = false;
+            runner.MaxLandingWait = .1f;
+            player.Motor.Teleport(new Vector2(8, 30)); Physics2D.SyncTransforms();
+            Assert.That(runner.TryPlay(), Is.True);
+            Assert.That(runner.State, Is.EqualTo(CutsceneState.Landing));
+            yield return Until(() => Time.timeScale == 0);
+            Assert.That(player.Motor.IsGrounded, Is.False);
+            runner.Skip(); yield return Until(() => !runner.IsRunning);
+            Assert.That(reason, Is.EqualTo(CutsceneEndReason.Skipped)); AssertRestored();
         }
         [UnityTest] public IEnumerator CancelRequiresExitBeforeTriggerRetryAndCompletedTriggerDoesNotReplay()
         {
@@ -211,14 +258,17 @@ namespace ActionPlatformer.Tests
             trigger.enabled = false;
             runner.WorldMode = CutsceneWorldMode.Continue;
             Assert.That(runner.TryPlay(), Is.True);
-            var previousStage = stage;
+            int previousVersion = stage.StageVersion;
             var health = player.GetComponent<UnitHealth>();
             health.ApplyDamage(health.MaxHealth);
             yield return Until(() => !runner.IsRunning);
             Assert.That(reason, Is.EqualTo(CutsceneEndReason.Damaged));
-            yield return Until(() => previousStage == null);
+            yield return OutGameTestSupport.RetryAfterDeath(stage);
+            yield return Until(() => stage.StageVersion > previousVersion);
+            yield return OutGameTestSupport.WaitForTransition(stage);
             yield return null;
-            var next = Object.FindFirstObjectByType<StageFlowController>();
+            var next = GameManager.Instance;
+            Assert.That(next.HasStage, Is.True);
             Assert.That(next.State, Is.EqualTo(StageState.Playing));
             Assert.That(next.Player.IsControlLocked, Is.False);
             Assert.That(next.Player.GetComponent<PlayerInput>().inputIsActive, Is.True);

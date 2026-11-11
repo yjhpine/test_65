@@ -1,0 +1,6 @@
+COMPLETED
+frames=1690
+fps=60
+seconds=28.17
+record=True
+size=1920x1080

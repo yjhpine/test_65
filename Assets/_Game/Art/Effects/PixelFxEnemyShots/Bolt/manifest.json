@@ -1,0 +1,24 @@
+{
+  "id": "custom/enemy-bolt",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "4ed143f56d45b82ba562f1f801b2c6f058cfabb10ecc5ac745281da11c811e66",
+  "seed": 7,
+  "fps": 12,
+  "options": {},
+  "frames": 4,
+  "frameSize": [
+    11,
+    11
+  ],
+  "duration": 0.3333333333333333,
+  "loop": true,
+  "unityPivot": [
+    0.45454545454545453,
+    0.5454545454545454
+  ],
+  "rgbaSha256": "0fe22f2701541845671e7eb81fc00d6e3af51c56879b85947e7af5c613570601",
+  "deterministic": true,
+  "edgePixels": 48,
+  "lastFrameEmpty": false
+}

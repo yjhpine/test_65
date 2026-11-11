@@ -1,0 +1,159 @@
+0.00s WAVE 1
+1.75s DIALOGUE 앞쪽 발판을 따라 이동해 보세요.
+4.17s DIALOGUE 출구는 어떻게 열죠?
+6.58s DIALOGUE 모든 적을 쓰러뜨리면 오른쪽 출구가 열립니다.
+11.02s GLITCH Right target=SurveillanceTurret position=(29.975, 0.840) underground=False
+11.08s ATTACK Side
+11.37s ATTACK Side
+11.63s ATTACK Side
+11.85s GLITCH Up target=SurveillanceTurret position=(29.000, 2.170) underground=False
+11.90s ATTACK Slam
+12.22s ATTACK Side
+12.48s ATTACK Side
+12.70s GLITCH Down target=SurveillanceTurret position=(28.965, 0.805) underground=True
+12.98s ATTACK Emergence
+13.40s GLITCH Right target=SurveillanceTurret position=(29.975, 0.840) underground=False
+13.45s ATTACK Side
+13.73s ATTACK Side
+14.82s ATTACK Air
+15.02s GLITCH Right target=SurveillanceTurret position=(37.475, 3.840) underground=False
+15.08s ATTACK Side
+15.35s ATTACK Side
+15.63s ATTACK Side
+15.82s GLITCH Up target=SurveillanceTurret position=(36.500, 5.170) underground=False
+15.88s ATTACK Slam
+16.18s ATTACK Side
+16.45s ATTACK Side
+16.65s GLITCH Left target=SurveillanceTurret position=(35.525, 3.840) underground=False
+16.72s ATTACK Side
+16.98s ATTACK Side
+18.83s REST hp=100
+20.83s WAVE 2
+21.25s GLITCH Right target=PatrolEnemy position=(81.975, 0.840) underground=False
+21.32s ATTACK Side
+21.58s ATTACK Side
+21.85s ATTACK Side
+22.47s ATTACK Side
+22.72s GLITCH Left target=PatrolEnemy position=(75.837, 0.840) underground=False
+22.78s ATTACK Side
+23.90s GLITCH Right target=SurveillanceTurret position=(89.475, 3.840) underground=False
+23.95s ATTACK Side
+24.23s ATTACK Side
+24.50s ATTACK Side
+24.73s GLITCH Up target=SurveillanceTurret position=(88.500, 5.170) underground=False
+24.80s ATTACK Slam
+25.10s ATTACK Side
+25.38s ATTACK Side
+25.58s GLITCH Left target=SurveillanceTurret position=(87.525, 3.840) underground=False
+25.65s ATTACK Side
+25.93s ATTACK Side
+26.18s ATTACK Side
+26.38s GLITCH Right target=FlyingDrone position=(84.784, 8.046) underground=False
+26.45s ATTACK Air
+27.07s ATTACK Side
+27.25s GLITCH Up target=FlyingDrone position=(83.564, 7.787) underground=False
+27.32s ATTACK Slam
+27.63s ATTACK Side
+27.90s ATTACK Side
+28.07s GLITCH Down target=FlyingDrone position=(80.372, 4.583) underground=False
+28.37s ATTACK Air
+29.48s ATTACK Air
+31.47s REST hp=100
+33.45s WAVE 3
+33.87s GLITCH Right target=PatrolEnemy position=(131.975, 0.840) underground=False
+33.93s ATTACK Side
+34.20s ATTACK Side
+34.47s ATTACK Side
+35.08s ATTACK Side
+35.33s GLITCH Left target=PatrolEnemy position=(125.837, 0.840) underground=False
+35.40s ATTACK Side
+36.52s GLITCH Right target=SurveillanceTurret position=(139.475, 3.840) underground=False
+36.57s ATTACK Side
+36.85s ATTACK Side
+37.12s ATTACK Side
+37.33s GLITCH Up target=SurveillanceTurret position=(138.500, 5.170) underground=False
+37.40s ATTACK Slam
+37.70s ATTACK Side
+37.98s ATTACK Side
+38.18s GLITCH Left target=SurveillanceTurret position=(137.525, 3.840) underground=False
+38.25s ATTACK Side
+38.55s ATTACK Side
+38.80s ATTACK Side
+39.33s GLITCH Right target=SurveillanceTurret position=(145.475, 0.840) underground=False
+39.40s ATTACK Side
+39.67s ATTACK Side
+39.95s ATTACK Side
+40.15s GLITCH Up target=SurveillanceTurret position=(144.500, 2.170) underground=False
+40.22s ATTACK Slam
+40.53s ATTACK Side
+40.78s ATTACK Side
+40.98s GLITCH Down target=SurveillanceTurret position=(144.500, 0.805) underground=True
+41.28s ATTACK Emergence
+41.87s GLITCH Left target=SurveillanceTurret position=(143.525, 0.840) underground=False
+41.93s ATTACK Side
+42.20s ATTACK Side
+45.52s GLITCH Right target=FlyingDrone position=(135.431, 9.060) underground=False
+45.58s ATTACK Air
+45.85s ATTACK Side
+46.35s GLITCH Up target=FlyingDrone position=(134.207, 8.790) underground=False
+46.40s ATTACK Slam
+46.70s ATTACK Side
+46.97s ATTACK Side
+47.20s GLITCH Down target=FlyingDrone position=(132.427, 6.090) underground=False
+47.73s ATTACK Air
+49.72s REST hp=100
+51.72s WAVE 4
+52.13s GLITCH Right target=PatrolEnemy position=(183.975, 0.840) underground=False
+52.20s ATTACK Side
+52.47s ATTACK Side
+52.73s ATTACK Side
+53.35s ATTACK Side
+53.60s GLITCH Left target=PatrolEnemy position=(177.837, 0.840) underground=False
+53.67s ATTACK Side
+54.78s GLITCH Right target=SurveillanceTurret position=(189.975, 3.840) underground=False
+54.85s ATTACK Side
+55.12s ATTACK Side
+55.65s GLITCH Up target=SurveillanceTurret position=(189.000, 5.170) underground=False
+55.72s ATTACK Slam
+56.02s ATTACK Side
+56.28s ATTACK Side
+56.50s GLITCH Left target=SurveillanceTurret position=(188.025, 3.840) underground=False
+56.55s ATTACK Side
+56.83s ATTACK Side
+57.10s ATTACK Side
+57.32s GLITCH Left target=SurveillanceTurret position=(188.025, 3.840) underground=False
+57.38s ATTACK Side
+58.95s GLITCH Right target=FlyingDrone position=(186.761, 9.060) underground=False
+59.02s ATTACK Air
+59.28s ATTACK Side
+59.57s ATTACK Side
+59.77s GLITCH Up target=FlyingDrone position=(183.885, 8.786) underground=False
+59.83s ATTACK Slam
+60.47s GLITCH Down target=FlyingDrone position=(183.401, 3.800) underground=True
+60.75s ATTACK Emergence
+61.03s ATTACK Air
+64.75s GLITCH Right target=SurveillanceTurret position=(196.225, 6.840) underground=False
+64.82s ATTACK Side
+65.08s ATTACK Side
+65.37s ATTACK Side
+65.57s GLITCH Up target=SurveillanceTurret position=(195.250, 8.170) underground=False
+65.63s ATTACK Slam
+65.95s ATTACK Side
+66.20s ATTACK Side
+66.40s GLITCH Left target=SurveillanceTurret position=(194.275, 6.840) underground=False
+66.47s ATTACK Side
+66.73s ATTACK Side
+67.02s ATTACK Side
+67.78s GLITCH Right target=ShieldSoldier position=(201.298, 0.840) underground=False
+67.83s ATTACK Side
+68.12s ATTACK Side
+68.38s ATTACK Side
+68.57s GLITCH Left target=ShieldSoldier position=(199.198, 0.840) underground=False
+68.63s ATTACK Side
+68.90s ATTACK Side
+69.18s ATTACK Side
+69.38s GLITCH Down target=ShieldSoldier position=(199.198, 0.805) underground=True
+69.67s ATTACK Emergence
+69.95s ATTACK Air
+70.13s GLITCH Left target=ShieldSoldier position=(201.618, 5.956) underground=False
+70.20s ATTACK Air

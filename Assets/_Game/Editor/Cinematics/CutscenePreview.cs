@@ -36,6 +36,12 @@ namespace ActionPlatformer.Editor
                 var rig = preview.Coordinator.CameraRig;
                 PreserveEnabled(rig.Output.transform.parent.GetComponent<ActionPlatformer.Flow.StageCameraFollow>());
                 PreserveEnabled(rig.Brain);
+                // ClearTimeline ends AnimationMode before our next Editor update. Restore the
+                // authored lens in that same transaction, alongside the camera ownership flags.
+                AnimationMode.AddPropertyModification(
+                    EditorCurveBinding.FloatCurve(string.Empty, typeof(Camera), "orthographic size"),
+                    new PropertyModification { target = rig.Output, propertyPath = "orthographic size",
+                        value = rig.Output.orthographicSize.ToString(System.Globalization.CultureInfo.InvariantCulture) }, true);
                 preview.Coordinator.CameraRig.Begin();
             }
             preview.EvaluatePresentation(true);

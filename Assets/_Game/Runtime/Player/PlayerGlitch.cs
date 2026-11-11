@@ -14,6 +14,7 @@ namespace ActionPlatformer.Player
         private readonly GlitchTuning tuning;
         private readonly List<Collider2D> overlaps = new List<Collider2D>(32);
         private readonly List<RaycastHit2D> hits = new List<RaycastHit2D>(8);
+        private Camera view;
         private BoxCollider2D floor;
         private bool previousDamageEnabled;
         private double nextUseAt;
@@ -25,14 +26,22 @@ namespace ActionPlatformer.Player
         public Vector2 UndergroundPosition { get; private set; }
         public Vector2 GroundMarkerPosition { get; private set; }
         public uint SuccessVersion { get; private set; }
-        public float CooldownRemaining(double now) => tuning.Cooldown == 0f ? 0f : (float)System.Math.Max(0, nextUseAt - now);
+        public PlayerGlitchPresentation Presentation { get; private set; }
+        public float CooldownRemaining(double now) => (float)System.Math.Max(0, System.Math.Max(
+            tuning.Cooldown == 0f ? 0 : nextUseAt - now, blockedUntil - now));
+        private double blockedUntil;
+        // A light hit keeps the next glitch waiting a moment (shown as the cooldown), on top of the normal cooldown.
+        public void BlockFor(double now, float seconds) { if (seconds > 0f) blockedUntil = System.Math.Max(blockedUntil, now + seconds); }
 
         public PlayerGlitch(Unit owner, UnitHealth health, CharacterMotor2D motor, CapsuleCollider2D body, GlitchTuning tuning)
         {
             this.owner = owner; this.health = health; this.motor = motor; this.body = body; this.tuning = tuning;
         }
 
-        public GlitchRequest Select(Vector2 cursor) => GlitchUtility.Select(owner, motor.Position, cursor, tuning, overlaps, hits);
+        // Targets whose center is outside this camera's view are not selectable. Null skips the check.
+        public void SetView(Camera camera) => view = camera;
+
+        public GlitchRequest Select(Vector2 cursor) => GlitchUtility.Select(owner, motor.Position, cursor, tuning, view, overlaps, hits);
 
         public GlitchPreview Preview(GlitchRequest request, double now) => Evaluate(request, now, out _);
 
@@ -41,7 +50,8 @@ namespace ActionPlatformer.Player
         {
             support = null;
             if (IsUnderground || !UnitPhysics2D.IsAvailable(health) ||
-                !GlitchUtility.ValidTarget(owner, request.Target, motor.Position, tuning, hits)) return default;
+                !GlitchUtility.IsCandidate(owner, request.Target, tuning)) return default;
+            var reason = GlitchUtility.TargetBlock(request.Target, motor.Position, tuning, view, hits);
             var target = UnitPhysics2D.Body(request.Target).bounds;
             Vector2 destination = GlitchUtility.Placement(body.bounds, motor.Position, target, request.Direction, tuning.Clearance);
             var preview = new GlitchPreview
@@ -50,19 +60,26 @@ namespace ActionPlatformer.Player
                 Destination = destination,
                 Bounds = new Bounds(destination + (Vector2)body.bounds.center - motor.Position, body.bounds.size)
             };
-            bool free = GlitchUtility.SpaceFree(body, motor.Position, destination,
-                tuning.ObstacleMask.value | tuning.TargetMask.value, overlaps);
-            if (!free && request.Direction == GlitchDirection.Down && tuning.UndergroundEnabled &&
-                !GlitchUtility.SpaceFree(body, motor.Position, destination, tuning.ObstacleMask, overlaps) &&
-                GlitchUtility.TryFloor(target, tuning.ObstacleMask, hits, out support))
+            // An unusable target still shows its would-be arrival, explained by the reason.
+            if (reason == GlitchBlockReason.None)
             {
-                Vector2 marker = new Vector2(target.center.x, support.bounds.max.y);
-                preview.IsUnderground = true;
-                preview.Destination = marker + Vector2.down * tuning.UndergroundDepth;
-                preview.Bounds = new Bounds(marker, new Vector3(0.8f, 0.12f));
-                free = GlitchUtility.TryEmergence(body, motor.Position, support, preview.Destination, tuning, overlaps, out _);
+                bool free = GlitchUtility.SpaceFree(body, motor.Position, destination,
+                    tuning.ObstacleMask.value | tuning.TargetMask.value, overlaps);
+                if (!free && request.Direction == GlitchDirection.Down && tuning.UndergroundEnabled &&
+                    !GlitchUtility.SpaceFree(body, motor.Position, destination, tuning.ObstacleMask, overlaps) &&
+                    GlitchUtility.TryFloor(target, tuning.ObstacleMask, hits, out support))
+                {
+                    Vector2 marker = new Vector2(target.center.x, support.bounds.max.y);
+                    preview.IsUnderground = true;
+                    preview.Destination = marker + Vector2.down * tuning.UndergroundDepth;
+                    preview.Bounds = new Bounds(marker, new Vector3(0.8f, 0.12f));
+                    free = GlitchUtility.TryEmergence(body, motor.Position, support, preview.Destination, tuning, overlaps, out _);
+                }
+                if (!free) reason = GlitchBlockReason.NoSpace;
+                else if (CooldownRemaining(now) > 0f) reason = GlitchBlockReason.Cooldown;
             }
-            preview.CanExecute = free && CooldownRemaining(now) <= 0f;
+            preview.Reason = reason;
+            preview.CanExecute = reason == GlitchBlockReason.None;
             return preview;
         }
 
@@ -70,6 +87,8 @@ namespace ActionPlatformer.Player
         {
             var preview = Evaluate(request, now, out var support);
             if (!preview.CanExecute) return false;
+            Vector2 from = body.bounds.center;
+            Vector2 bodyOffset = from - motor.Position;
             if (!preview.IsUnderground) motor.Relocate(preview.Destination, Vector2.zero);
             else
             {
@@ -87,6 +106,7 @@ namespace ActionPlatformer.Player
             ArrivalTarget = request.Target;
             nextUseAt = now + tuning.Cooldown;
             unchecked { SuccessVersion++; }
+            Present(from, IsUnderground ? GroundMarkerPosition : preview.Destination + bodyOffset);
             return true;
         }
 
@@ -115,20 +135,27 @@ namespace ActionPlatformer.Player
             CanEmerge = TryGetEmergencePoint(out _);
         }
 
+        // The emergence column is the marker on the burrow floor, so only a lost target cancels it; where the target moved since
+        // (a boss leaping off the floor or stepping out of glitch range) does not. Range and view were judged when it was chosen.
         private bool TryGetEmergencePoint(out Vector2 destination, bool searchNearby = false)
         {
             destination = default;
-            if (!IsUnderground || !GlitchUtility.ValidTarget(owner, ArrivalTarget, motor.Position, tuning, hits)) return false;
-            var target = UnitPhysics2D.Body(ArrivalTarget).bounds;
-            if (!GlitchUtility.TryFloor(target, tuning.ObstacleMask, hits, out var currentFloor) || currentFloor != floor) return false;
-            return searchNearby
+            if (!IsUnderground || !GlitchUtility.IsCandidate(owner, ArrivalTarget, tuning)) return false;
+            bool free = searchNearby
                 ? GlitchUtility.TryNearestEmergence(body, motor.Position, floor, UndergroundPosition, emergenceSearchDirection, tuning, overlaps, out destination)
                 : GlitchUtility.TryEmergence(body, motor.Position, floor, UndergroundPosition, tuning, overlaps, out destination);
+            // A closed gate between the parked body and the emergence point still blocks it, as it blocks every glitch path.
+            return free && !GlitchUtility.BarrierBetween(motor.Position, destination, tuning.ObstacleMask, hits);
         }
+
+        // Whether TryEmerge would succeed now (the nearby search included), without changing anything.
+        public bool WouldEmerge() => TryGetEmergencePoint(out _, true);
 
         public bool TryEmerge()
         {
             if (!IsUnderground) return false;
+            Vector2 from = GroundMarkerPosition;
+            Vector2 bodyOffset = (Vector2)body.bounds.center - motor.Position;
             bool valid = TryGetEmergencePoint(out var destination, true);
             if (valid)
             {
@@ -139,7 +166,13 @@ namespace ActionPlatformer.Player
             EndUnderground();
             if (!valid) { ArrivalTarget = null; return false; }
             motor.Relocate(destination, Vector2.zero);
+            Present(from, destination + bodyOffset);
             return true;
+        }
+
+        private void Present(Vector2 from, Vector2 to)
+        {
+            Presentation = new PlayerGlitchPresentation { Version = unchecked(Presentation.Version + 1), From = from, To = to };
         }
 
         public void CancelUnderground() { EndUnderground(); ArrivalTarget = null; }
@@ -157,7 +190,7 @@ namespace ActionPlatformer.Player
         public void Reset()
         {
             CancelUnderground();
-            nextUseAt = 0;
+            nextUseAt = 0; blockedUntil = 0;
         }
     }
 }

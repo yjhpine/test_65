@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b0bb22e534b68f48a4c2f1eed0c7822, type: 3}
+  m_Name: EnemyProjectiles
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Presentation.EnemyProjectileProfile
+  boltFrames:
+  - {fileID: 21300000, guid: 652a4814c6ec1c8468aed945ed0f617b, type: 3}
+  - {fileID: 21300000, guid: 69efdc6e954bed44aa21d50e7ac7350d, type: 3}
+  - {fileID: 21300000, guid: 75b2bbcac3f73d64fa6baef4d0455668, type: 3}
+  - {fileID: 21300000, guid: 95e99b0d630b2284ca126be61b8ebcc1, type: 3}
+  pelletFrames:
+  - {fileID: 21300000, guid: f6224e40c95df4441a4302d6311934ba, type: 3}
+  - {fileID: 21300000, guid: b6bc6c8998258b04da92cbe4ae8873db, type: 3}
+  - {fileID: 21300000, guid: a4d642db44f1d1a4bb2b174d56fb60c8, type: 3}
+  - {fileID: 21300000, guid: 70be8fa6eee37db418dfd41b1f63b120, type: 3}
+  heavyFrames:
+  - {fileID: 21300000, guid: a1352f9a71c62fe4d99727ef6f178101, type: 3}
+  - {fileID: 21300000, guid: 94b019d60f3e39c44a91378d57bfa7cb, type: 3}
+  - {fileID: 21300000, guid: 1dcd9398ddf43bc44860c6a7ad708476, type: 3}
+  - {fileID: 21300000, guid: c7714ca61a1d5c7498b6b8dd20035790, type: 3}
+  - {fileID: 21300000, guid: b67ad41101a37ce4d95ce276f99a96e4, type: 3}
+  - {fileID: 21300000, guid: 23f7875745a8d464cb0986bc20fed9b7, type: 3}
+  shellFrames:
+  - {fileID: 21300000, guid: 4dfd074e05af34842b4e71a694475c3b, type: 3}
+  - {fileID: 21300000, guid: 72e1386d49dc97743913aed58247c261, type: 3}
+  - {fileID: 21300000, guid: 624459c9f3cdc414e9e6abd46c321148, type: 3}
+  - {fileID: 21300000, guid: c998822e8e19fb84cb5bfd02be4ad339, type: 3}
+  shotFps: 12
+  blastFrames:
+  - {fileID: 21300000, guid: 034a74c271235e04a82e376a41f9449f, type: 3}
+  - {fileID: 21300000, guid: 0d3aac52ab5ceeb4bb35bbc19432b4a4, type: 3}
+  - {fileID: 21300000, guid: f6b76795ce3107f489c8f201956967e1, type: 3}
+  - {fileID: 21300000, guid: e8c60010b0df37949ac8ce5a9271671b, type: 3}
+  popFrames:
+  - {fileID: 21300000, guid: 82625fbc58734e340b684fadeccec5d8, type: 3}
+  - {fileID: 21300000, guid: d649b28857124274c96bfb3ea8e48d2e, type: 3}
+  - {fileID: 21300000, guid: fefdf808ffbbdf74f8aad1eea81b3bc3, type: 3}
+  - {fileID: 21300000, guid: 7138497ccfc0ebc48bda5002c3d28936, type: 3}
+  popDuration: 0.12
+  sortingOrder: 12

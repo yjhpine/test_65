@@ -1,0 +1,9 @@
+DIED
+frames=7944
+fps=60
+seconds=132.40
+glitches=13
+attacks=32
+health=0
+record=False
+size=1280x720

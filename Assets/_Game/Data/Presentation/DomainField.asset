@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 213232e967ab031428956ef9f74f0eeb, type: 3}
+  m_Name: DomainField
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Presentation.AttackZoneProfile
+  frames:
+  - {fileID: 21300000, guid: 811a34f3b6902604e9aa3dcac798661f, type: 3}
+  - {fileID: 21300000, guid: ec338575ffa8a8343bde136d5f651583, type: 3}
+  - {fileID: 21300000, guid: 6085d760d5b3c9c4fbf35963f49e3708, type: 3}
+  - {fileID: 21300000, guid: 4b5dad70c20abac4eb156fe5c2e5d2e0, type: 3}
+  - {fileID: 21300000, guid: 869d889e475f83447bb4de84c9715738, type: 3}
+  - {fileID: 21300000, guid: a5e84afd38b0990499fb25b6fee450d9, type: 3}
+  fps: 12
+  startAlpha: 0.55
+  impactAlpha: 0.55
+  sortingOffset: 1

@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2e489de2d48cd884fa233a8f886300e6, type: 3}
   m_Name: GlitchTuning
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Player.GlitchTuning
-  maxDistance: 6
-  aimAssistRadius: 1.25
+  maxDistance: 8
+  aimAssistRadius: 1.5
   centerRadius: 0.1
   clearance: 0.15
   cooldown: 0

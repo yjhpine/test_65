@@ -1,0 +1,15 @@
+{
+  "scene": "CoreLoopStage",
+  "frames": 695,
+  "fps": 30,
+  "seconds": 23.166666666666668,
+  "size": [
+    1280,
+    720
+  ],
+  "source": "Game View including UI; actual scene and simulated player inputs",
+  "ending": "Completed",
+  "remaining": "0",
+  "health": "74",
+  "bytes": 1016127
+}

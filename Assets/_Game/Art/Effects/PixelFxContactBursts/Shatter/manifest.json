@@ -1,0 +1,24 @@
+{
+  "id": "custom/glitch-shatter",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "0e2e2d97b1240ed6550d65a4fdc1ac79d0411ffec75cd800ca2179ba02df3bc9",
+  "seed": 7,
+  "fps": 30,
+  "options": {},
+  "frames": 19,
+  "frameSize": [
+    80,
+    72
+  ],
+  "duration": 0.6,
+  "loop": false,
+  "unityPivot": [
+    0.5,
+    0.5
+  ],
+  "rgbaSha256": "e6957012b2d5d37e84e777c6413c5082fbde2d5a4375709ee9aff02504895219",
+  "deterministic": true,
+  "edgePixels": 0,
+  "lastFrameEmpty": true
+}

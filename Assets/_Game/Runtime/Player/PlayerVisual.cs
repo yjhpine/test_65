@@ -1,4 +1,5 @@
 using UnityEngine;
+using ActionPlatformer.Presentation;
 
 namespace ActionPlatformer.Player
 {
@@ -7,6 +8,41 @@ namespace ActionPlatformer.Player
     {
         [Tooltip("Overlay the actual hit area while attacking (debug display).")]
         [SerializeField] private bool showAttackArea = true;
+        [Tooltip("Draw the glitch's maximum distance around the player (balance testing display).")]
+        [SerializeField] private bool showGlitchRange;
+        [Header("Movement and contact VFX")]
+        private VfxManager effects;
+        private EffectOwnerHandle effectOwner;
+        public Transform EffectsRoot => effects?.GetSessionRoot(effectOwner);
+        private PlayerMovementObserver movementObserver;
+        private uint observedGlitch;
+        [SerializeField] private ActionPlatformer.Presentation.PlayerVfxProfile vfxProfile;
+        [Header("Sound effects")]
+        [SerializeField] private PlayerSfxDefinition soundEffects;
+        private PlayerSoundEffects audioEffects;
+        [Header("Damage protection blink")]
+        [Tooltip("Half-period of the blink while enemy hits are ignored after a hit (real time).")]
+        [SerializeField, Min(.01f)] private float damageBlinkInterval = .08f;
+        [Tooltip("Sprite alpha in the blink's dim half. Reduced motion holds halfway between this and 1 instead.")]
+        [SerializeField, Range(0f, 1f)] private float damageBlinkAlpha = .2f;
+
+        private readonly System.Collections.Generic.Queue<PlayerHitPresentation> pendingHits = new System.Collections.Generic.Queue<PlayerHitPresentation>();
+        private readonly PlayerAttackAlternation alternation = new PlayerAttackAlternation();
+        private MaterialPropertyBlock reactionProperties;
+        private Quaternion originalRotation;
+        private bool reducedMotion;
+        private uint landingVersion, alternationVersion, reactionAttackVersion;
+        private uint observedReactionVersion;
+        public void SetReducedMotion(bool value) { reducedMotion = value; }
+        public void PresentHit(PlayerHitPresentation hit) => pendingHits.Enqueue(hit);
+        public void PresentTransferSpark(Vector2 point) => effects?.PlayTransferSpark(effectOwner,point);
+        public void PresentTransferSound() => audioEffects?.PlayGlitch();
+        public void NotifyDamage()
+        {
+            observedReactionVersion = actions?.ReactionPresentation.Version ?? 0;
+            alternation.Reset(); reactionAttackVersion = actions?.AttackPresentation.Version ?? 0;
+            audioEffects?.Hurt();
+        }
         private ICharacterMotionState motionState;
         private SpriteRenderer spriteRenderer;
         private Animator animator;
@@ -15,8 +51,11 @@ namespace ActionPlatformer.Player
         private Color originalColor;
         private SpriteRenderer attackShape, groundMarker;
         private SpriteRenderer glitchFill;
-        private readonly SpriteRenderer[] glitchEdges = new SpriteRenderer[4];
-        private readonly SpriteRenderer[] shockwaveEdges = new SpriteRenderer[24];
+        private SpriteRenderer glitchRing;
+        private SpriteRenderer lockOnMarker;
+        private Sprite previewDiscSprite, previewRingSprite, rangeRingSprite;
+        private Texture2D previewDiscTexture, previewRingTexture, rangeRingTexture;
+        private SpriteRenderer glitchRange;
         private Sprite shapeSprite;
         private static readonly int Moving = Animator.StringToHash("Moving");
         private static readonly int Grounded = Animator.StringToHash("Grounded");
@@ -43,13 +82,17 @@ namespace ActionPlatformer.Player
         {
             this.motionState = motionState ?? throw new System.ArgumentNullException(nameof(motionState));
             this.actions = actions;
+            observedGlitch = actions?.GlitchPresentation.Version ?? 0;
+            effects?.ResetOwner(effectOwner,actions?.GlitchPresentation.Version ?? 0);
         }
 
         private void Awake()
         {
+            reactionProperties = new MaterialPropertyBlock();
             spriteRenderer = GetComponent<SpriteRenderer>();
             animator = GetComponent<Animator>();
             originalPosition = transform.localPosition;
+            originalRotation = transform.localRotation;
             originalColor = spriteRenderer.color;
             foreach (var parameter in animator.parameters)
                 hasActionAnimations |= parameter.nameHash == ActionOverride && parameter.type == AnimatorControllerParameterType.Bool;
@@ -70,21 +113,48 @@ namespace ActionPlatformer.Player
             }
             if (actions != null)
             {
+                if (soundEffects != null) audioEffects = new PlayerSoundEffects(transform, soundEffects);
+                audioEffects?.Reset(actions);
+                movementObserver=new PlayerMovementObserver((kind,point,flip)=> {
+                    effects?.PlayDust(effectOwner,kind,point,flip);
+                    if(kind==MovementDustKind.Landing)audioEffects?.Land(point,false);
+                });
+                EnsureEffects();
                 shapeSprite = Sprite.Create(Texture2D.whiteTexture, new Rect(0, 0, 1, 1), new Vector2(0.5f, 0.5f), 1f);
                 attackShape = CreateShape("Attack area", new Color(1f, 0.8f, 0.2f, 0.4f));
                 groundMarker = CreateShape("Underground marker", new Color(0.15f, 1f, 1f, 0.9f));
                 glitchFill = CreateShape("Glitch preview", Color.white);
-                for (int i = 0; i < glitchEdges.Length; i++)
-                    glitchEdges[i] = CreateShape("Glitch preview edge " + i, Color.white);
-                for (int i = 0; i < shockwaveEdges.Length; i++)
-                    shockwaveEdges[i] = CreateShape("Shockwave " + i, Color.white);
+                previewDiscSprite = CreatePreviewCircle(false, out previewDiscTexture);
+                previewRingSprite = CreatePreviewCircle(true, out previewRingTexture);
+                glitchFill.sprite = previewDiscSprite;
+                glitchRing = CreateShape("Glitch preview ring", Color.white);
+                glitchRing.sprite = previewRingSprite;
+                lockOnMarker = CreateShape("Lock-on marker", Color.white);
+                // A finer texture keeps the large range ring thin.
+                rangeRingSprite = CreatePreviewCircle(true, out rangeRingTexture, 256, 3f);
+                glitchRange = CreateShape("Glitch range", new Color(0.15f, 1f, 1f, 0.35f));
+                glitchRange.sprite = rangeRingSprite;
             }
         }
 
         private void LateUpdate()
         {
             if (motionState == null) return;
+            EnsureEffects();
+            audioEffects?.Observe(actions);
             bool underground = actions != null && actions.IsUnderground;
+            var attack = actions?.AttackPresentation ?? default;
+            var reaction = actions?.ReactionPresentation ?? default;
+            if (reaction.Kind != PlayerReaction.None && reaction.Version != observedReactionVersion)
+            {
+                observedReactionVersion = reaction.Version;
+                NotifyDamage();
+            }
+            if (actions != null && actions.AttackPhase != PlayerAttackPhase.Ready && attack.Version != alternationVersion)
+            {
+                alternationVersion = attack.Version;
+                alternation.Begin(attack.Kind, attack.StartedAt);
+            }
             spriteRenderer.enabled = !underground;
             if (underground)
                 transform.position = new Vector3(actions.UndergroundPosition.x, actions.UndergroundPosition.y, transform.position.z);
@@ -97,7 +167,28 @@ namespace ActionPlatformer.Player
             animator.SetBool(Grounded, motionState.IsGrounded);
             animator.SetBool(Rising, velocity.y > 0.1f);
             UpdateAttackAnimation(underground, moving, velocity.y > 0.1f);
+            // Apply the selected sprite in this display frame, including during a global hit stop.
+            if (hasActionAnimations && animator.GetBool(ActionOverride)) animator.Update(0f);
             spriteRenderer.color = originalColor;
+            // Protection after a hit blinks on real time, keeping its rhythm through the hit's slow motion.
+            // Reduced motion holds a steady dim instead of flickering. The death pose never blinks.
+            if (reaction.Invulnerable && reaction.Kind != PlayerReaction.Die)
+            {
+                // The flash setting narrows the blink toward that steady dim; at 0 it holds still like reduced motion.
+                float depth = reducedMotion ? 0f : ActionPlatformer.Presentation.PresentationSettings.Flash;
+                float steady = Mathf.Lerp(damageBlinkAlpha, 1f, .5f);
+                bool dim = (int)(Time.unscaledTime / damageBlinkInterval) % 2 == 1;
+                var faded = originalColor;
+                faded.a *= Mathf.Lerp(steady, dim ? damageBlinkAlpha : 1f, depth);
+                spriteRenderer.color = faded;
+            }
+            bool hurt = reaction.Kind == PlayerReaction.Hit;
+            bool newAttack = actions != null && actions.AttackPhase != PlayerAttackPhase.Ready && attack.Version != reactionAttackVersion;
+            transform.localRotation = originalRotation;
+            spriteRenderer.GetPropertyBlock(reactionProperties);
+            reactionProperties.SetFloat("_HitFlash", hurt ? Mathf.Clamp01(1 - reaction.Progress * 2) : 0);
+            reactionProperties.SetFloat("_OutlineWidth", hurt ? 1f : 0);
+            spriteRenderer.SetPropertyBlock(reactionProperties);
             if (attackShape != null)
             {
                 attackShape.enabled = showAttackArea && !underground &&
@@ -119,14 +210,57 @@ namespace ActionPlatformer.Player
                 }
             }
             UpdateGlitchPreview(underground);
-            UpdateShockwave(underground);
+            UpdateLockOn(underground);
+            if (glitchRange != null)
+            {
+                float range = actions.GlitchMaxDistance;
+                glitchRange.enabled = showGlitchRange && !underground && range > 0f;
+                if (glitchRange.enabled)
+                {
+                    glitchRange.transform.position = transform.position;
+                    glitchRange.transform.localScale = new Vector3(range * 2f, range * 2f, 1f);
+                }
+            }
+            while (pendingHits.Count > 0) { var hit = pendingHits.Dequeue(); effects?.PlayContact(effectOwner,hit); audioEffects?.Hit(hit); }
+            var wave = actions?.Shockwave ?? default;
+            bool slamLanding = wave.Visible && wave.Version != landingVersion;
+            if (slamLanding)
+            {
+                landingVersion = wave.Version;
+                effects?.PlayDust(effectOwner,wave.Center,true);
+                audioEffects?.Land(wave.Center,true);
+            }
+            Vector2 feet=transform.TransformPoint(vfxProfile!=null?vfxProfile.DustFootOffset:new Vector2(0,-.83f));
+            movementObserver?.Tick(feet,velocity,motionState.IsGrounded,
+                underground || reaction.Kind!=PlayerReaction.None,actions?.GlitchPresentation.Version??0,
+                slamLanding,Time.unscaledTimeAsDouble);
+            if(actions!=null && observedGlitch!=actions.GlitchPresentation.Version) {
+                observedGlitch=actions.GlitchPresentation.Version;
+                effects?.PlayGlitch(effectOwner,actions.GlitchPresentation);
+            }
+            effects?.SubmitAttack(effectOwner,actions,alternation.Variant,
+                reaction.Kind==PlayerReaction.Die || (hurt && !newAttack));
+        }
+
+        private void EnsureEffects()
+        {
+            if(actions==null || vfxProfile==null || (effects!=null && effects.IsValid(effectOwner)))return;
+            effects=EffectsRuntime.Vfx;
+            if(effects!=null) {
+                effectOwner=effects.RegisterOwner(transform,vfxProfile,spriteRenderer);
+                effects.ResetOwner(effectOwner,actions.GlitchPresentation.Version);
+                observedGlitch=actions.GlitchPresentation.Version;
+                audioEffects?.Reset(actions);
+            }
         }
 
         private void UpdateAttackAnimation(bool underground, bool moving, bool rising)
         {
             if (!hasActionAnimations) return;
             var reaction = actions?.ReactionPresentation ?? default;
-            if (reaction.Kind != PlayerReaction.None)
+            bool newAttack = actions != null && actions.AttackPhase != PlayerAttackPhase.Ready &&
+                actions.AttackPresentation.Version != reactionAttackVersion;
+            if (reaction.Kind == PlayerReaction.Die || (reaction.Kind == PlayerReaction.Hit && !newAttack && reaction.HasDirection))
             {
                 int reactionState = reaction.Kind == PlayerReaction.Die ? Die : Hit;
                 animator.SetBool(ActionOverride, true);
@@ -151,13 +285,13 @@ namespace ActionPlatformer.Player
                 currentAction = 0;
                 return;
             }
-            int strike = Mathf.Clamp(attack.Strike, 1, 3) - 1;
+            int strike = alternation.Variant;
             int state = attack.Kind == PlayerAttack.Slam
                 ? (phase == PlayerAttackPhase.Windup ? SlamHover : phase == PlayerAttackPhase.Descending ? SlamFall : SlamLand)
                 : attack.Kind == PlayerAttack.Lift ? Lift : attack.Kind == PlayerAttack.Emergence ? Emergence
                 : attack.Kind == PlayerAttack.Air ? AirAttacks[strike] : GroundAttacks[strike];
             // Clips place their impact at 0.35 and recovery at 0.6. Combat owns all real timing.
-            float progress = phase == PlayerAttackPhase.Windup ? attack.PhaseProgress * 0.35f
+            float progress = phase == PlayerAttackPhase.Windup ? 0.35f
                 : phase == PlayerAttackPhase.Active ? Mathf.Lerp(0.35f, 0.6f, attack.PhaseProgress)
                 : Mathf.Lerp(0.6f, 0.999f, attack.PhaseProgress);
             if (attack.Kind == PlayerAttack.Slam && phase == PlayerAttackPhase.Active)
@@ -169,25 +303,18 @@ namespace ActionPlatformer.Player
             previousAttackVersion = attack.Version;
         }
 
-        private void UpdateShockwave(bool underground)
+        // Reticle round the locked monster: native pixel size, scaled up only so it still encloses a big body.
+        private void UpdateLockOn(bool underground)
         {
-            if (actions == null) return;
-            var wave = actions.Shockwave;
-            float radius = wave.Radius * Mathf.Lerp(0.15f, 1f, wave.Progress);
-            Color color = new Color(1f, 0.8f, 0.25f, 1f - wave.Progress);
-            for (int i = 0; i < shockwaveEdges.Length; i++)
-            {
-                var edge = shockwaveEdges[i];
-                if (edge == null) continue;
-                edge.enabled = wave.Visible && !underground;
-                if (!edge.enabled) continue;
-                float a = Mathf.PI * i / shockwaveEdges.Length;
-                float b = Mathf.PI * (i + 1) / shockwaveEdges.Length;
-                Vector2 from = wave.Center + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * radius;
-                Vector2 to = wave.Center + new Vector2(Mathf.Cos(b), Mathf.Sin(b)) * radius;
-                SetPreviewShape(edge, (from + to) * 0.5f, new Vector2(Vector2.Distance(from, to) + 0.015f, 0.065f), color);
-                edge.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(to.y - from.y, to.x - from.x) * Mathf.Rad2Deg);
-            }
+            if (lockOnMarker == null) return;
+            var frames = vfxProfile == null ? null : vfxProfile.LockOnFrames;
+            bool visible = actions.HasLockOn && !underground && frames != null && frames.Length > 0;
+            lockOnMarker.enabled = visible;
+            if (!visible) return;
+            var bounds = actions.LockOnBounds;
+            lockOnMarker.sprite = frames[(int)(Time.unscaledTimeAsDouble * vfxProfile.LockOnFps) % frames.Length];
+            float size = Mathf.Max(1f, Mathf.Max(bounds.size.x, bounds.size.y) / 1.2f);
+            SetPreviewShape(lockOnMarker, bounds.center, Vector2.one * size, Color.white);
         }
 
         private void UpdateGlitchPreview(bool underground)
@@ -196,20 +323,50 @@ namespace ActionPlatformer.Player
             var preview = actions.GlitchPreview;
             bool visible = preview.Visible && !underground;
             glitchFill.enabled = visible;
-            for (int i = 0; i < glitchEdges.Length; i++) glitchEdges[i].enabled = visible;
+            glitchRing.enabled = visible;
             if (!visible) return;
 
-            Color color = preview.CanExecute ? new Color(0.15f, 1f, 1f, 0.95f) : new Color(1f, 0.25f, 0.2f, 0.95f);
             var bounds = preview.Bounds;
             Vector2 center = bounds.center;
             if (preview.IsUnderground) center.y += 0.04f;
-            SetPreviewShape(glitchFill, center, bounds.size, new Color(color.r, color.g, color.b, 0.12f));
-            const float thickness = 0.035f;
-            Vector2 size = bounds.size;
-            SetPreviewShape(glitchEdges[0], center + Vector2.up * size.y * 0.5f, new Vector2(size.x, thickness), color);
-            SetPreviewShape(glitchEdges[1], center + Vector2.down * size.y * 0.5f, new Vector2(size.x, thickness), color);
-            SetPreviewShape(glitchEdges[2], center + Vector2.left * size.x * 0.5f, new Vector2(thickness, size.y), color);
-            SetPreviewShape(glitchEdges[3], center + Vector2.right * size.x * 0.5f, new Vector2(thickness, size.y), color);
+            // Authored glitch marker on the player's pixel grid: one looping renderer at native size.
+            // A lethal glitch (into or out of an active domain) is still allowed but shown with the red marker.
+            bool safe = preview.CanExecute && !preview.Lethal;
+            var frames = vfxProfile == null ? null
+                : safe ? vfxProfile.GlitchMarkerReadyFrames : vfxProfile.GlitchMarkerBlockedFrames;
+            if (frames != null && frames.Length > 0)
+            {
+                glitchRing.enabled = false;
+                glitchFill.sprite = frames[(int)(Time.unscaledTimeAsDouble * vfxProfile.GlitchMarkerFps) % frames.Length];
+                SetPreviewShape(glitchFill, center, Vector2.one, Color.white);
+                return;
+            }
+            glitchFill.sprite = previewDiscSprite;
+            Color color = safe ? new Color(0.15f, 1f, 1f, 0.95f) : new Color(1f, 0.25f, 0.2f, 0.95f);
+            // A destination marker, not a depiction of the unchanged body collision bounds.
+            Vector2 size = Vector2.one * .8f;
+            SetPreviewShape(glitchFill, center, size, new Color(color.r, color.g, color.b, 0.12f));
+            SetPreviewShape(glitchRing, center, size, color);
+        }
+
+        private static Sprite CreatePreviewCircle(bool ring, out Texture2D texture, int resolution = 64, float band = 4f)
+        {
+            texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false);
+            texture.name = ring ? "Glitch preview ring" : "Glitch preview disc";
+            texture.filterMode = FilterMode.Bilinear; texture.wrapMode = TextureWrapMode.Clamp;
+            var pixels = new Color32[resolution * resolution];
+            float outer = resolution * .5f - .5f;
+            for (int y = 0; y < resolution; y++)
+                for (int x = 0; x < resolution; x++)
+                {
+                    float distance = new Vector2(x + .5f - resolution * .5f, y + .5f - resolution * .5f).magnitude;
+                    float alpha = Mathf.Clamp01(outer - distance);
+                    if (ring) alpha *= Mathf.Clamp01(distance - (outer - band));
+                    pixels[y * resolution + x] = new Color32(255, 255, 255, (byte)(alpha * 255));
+                }
+            texture.SetPixels32(pixels); texture.Apply(false, true);
+            return Sprite.Create(texture, new Rect(0, 0, resolution, resolution), Vector2.one * .5f, resolution,
+                0, SpriteMeshType.FullRect);
         }
 
         private void SetPreviewShape(SpriteRenderer shape, Vector2 center, Vector2 size, Color color)
@@ -236,13 +393,23 @@ namespace ActionPlatformer.Player
 
         public void ResetActions()
         {
-            if (spriteRenderer == null) return;
+            if (spriteRenderer == null || reactionProperties == null) return;
             transform.localPosition = originalPosition;
+            transform.localRotation = originalRotation;
             spriteRenderer.enabled = true;
             spriteRenderer.color = originalColor;
             currentAction = 0;
             previousAttackVersion = 0;
             previousReactionVersion = 0;
+            observedReactionVersion = 0;
+            alternationVersion = actions?.AttackPresentation.Version ?? 0;
+            landingVersion = actions?.Shockwave.Version ?? 0;
+            alternation.Reset(); pendingHits.Clear(); movementObserver?.Reset(); observedGlitch=actions?.GlitchPresentation.Version??0;
+            audioEffects?.Reset(actions);
+            spriteRenderer.GetPropertyBlock(reactionProperties);
+            reactionProperties.SetFloat("_HitFlash", 0); reactionProperties.SetFloat("_OutlineWidth", 0);
+            spriteRenderer.SetPropertyBlock(reactionProperties);
+            effects?.ResetOwner(effectOwner,actions?.GlitchPresentation.Version ?? 0);
             if (hasActionAnimations)
             {
                 animator.SetBool(ActionOverride, false);
@@ -252,13 +419,23 @@ namespace ActionPlatformer.Player
             if (attackShape != null) attackShape.enabled = false;
             if (groundMarker != null) groundMarker.enabled = false;
             if (glitchFill != null) glitchFill.enabled = false;
-            for (int i = 0; i < glitchEdges.Length; i++)
-                if (glitchEdges[i] != null) glitchEdges[i].enabled = false;
-            for (int i = 0; i < shockwaveEdges.Length; i++)
-                if (shockwaveEdges[i] != null) shockwaveEdges[i].enabled = false;
+            if (glitchRing != null) glitchRing.enabled = false;
+            if (lockOnMarker != null) lockOnMarker.enabled = false;
         }
 
-        private void OnDisable() => ResetActions();
-        private void OnDestroy() { if (shapeSprite != null) Destroy(shapeSprite); }
+        private void OnDisable()
+        {
+            ResetActions(); effects?.ReleaseOwner(effectOwner); effectOwner=default; audioEffects?.Release();
+        }
+        private void OnDestroy()
+        {
+            if (shapeSprite != null) Destroy(shapeSprite);
+            if (previewDiscSprite != null) Destroy(previewDiscSprite);
+            if (previewRingSprite != null) Destroy(previewRingSprite);
+            if (previewDiscTexture != null) Destroy(previewDiscTexture);
+            if (previewRingTexture != null) Destroy(previewRingTexture);
+            if (rangeRingSprite != null) Destroy(rangeRingSprite);
+            if (rangeRingTexture != null) Destroy(rangeRingTexture);
+        }
     }
 }

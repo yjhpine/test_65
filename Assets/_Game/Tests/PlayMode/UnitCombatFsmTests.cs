@@ -129,6 +129,36 @@ namespace ActionPlatformer.Tests
             Assert.That(enemy.GetComponent<Rigidbody2D>().linearVelocity.x, Is.Zero.Within(0.001f));
         }
 
+        // The shared red danger zone covers the reach in front only while the attack winds up.
+        [Test] public void AttackWindupShowsTheDangerZoneInFrontUntilImpact()
+        {
+            var visual = enemy.GetComponentInChildren<UnitVisual2D>();
+            SpriteRenderer Zone()
+            {
+                visual.SendMessage("LateUpdate"); ActionPlatformer.Presentation.EffectsRuntime.Vfx.SendMessage("LateUpdate");
+                return visual.AttackZoneRoot == null ? null : visual.AttackZoneRoot.Find("Attack zone").GetComponent<SpriteRenderer>();
+            }
+            Assert.That(Zone(), Is.Null.Or.Property("enabled").False, "no zone while patrolling");
+            StartAttack();
+            float windup = new SerializedObject(settings).FindProperty("attackWindup").floatValue;
+            Assert.That(windup, Is.GreaterThan(0f));
+            var zone = Zone();
+            Assert.That(zone.enabled, Is.True);
+            Assert.That(zone.drawMode, Is.EqualTo(SpriteDrawMode.Tiled));
+            float x = enemy.transform.position.x;
+            Assert.That(zone.bounds.min.x, Is.EqualTo(x).Within(.002f));
+            Assert.That(zone.bounds.max.x, Is.EqualTo(x + settings.AttackRange).Within(.002f), "Attack Range, toward the target on the right");
+            var body = enemy.GetComponent<Collider2D>().bounds;
+            Assert.That(zone.bounds.size.y, Is.EqualTo(body.size.y).Within(.002f));
+            Assert.That(zone.bounds.center.y, Is.EqualTo(body.center.y).Within(.002f));
+            Assert.That(zone.color.a, Is.EqualTo(.2f).Within(.002f));
+            enemy.Fsm.Tick(windup * .5f);
+            Assert.That(Zone().color.a, Is.EqualTo(.45f).Within(.002f), "halfway through the windup");
+            enemy.Fsm.Tick(windup * .6f);
+            Assert.That(target.CurrentHealth, Is.LessThan(target.MaxHealth), "the swing landed");
+            Assert.That(Zone().enabled, Is.False, "gone once the hit lands");
+        }
+
         [Test] public void AttackWaitsForWindupDamagesOnceAndRespectsCooldown()
         {
             StartAttack();
@@ -169,10 +199,20 @@ namespace ActionPlatformer.Tests
             Assert.That(target.CurrentHealth, Is.EqualTo(100));
         }
 
-        [Test] public void HitInterruptsAttackAndRepeatedDamageRestartsStun()
+        [Test] public void OrdinaryHitLeavesAnAttackInProgressRunning()
         {
             StartAttack();
             Health.ApplyDamage(1);
+            enemy.Fsm.Tick(0f);
+            Assert.That(State, Is.EqualTo("AttackState"));
+            enemy.Fsm.Tick(0.21f);
+            Assert.That(target.CurrentHealth, Is.EqualTo(95), "A basic hit does not cancel the windup.");
+        }
+
+        [Test] public void InterruptingHitStopsAttackAndRepeatedDamageRestartsStun()
+        {
+            StartAttack();
+            Health.ApplyDamage(1, Health.transform.position, true, true);
             enemy.Fsm.Tick(0f);
             Assert.That(State, Is.EqualTo("HitState"));
             enemy.Fsm.Tick(0.15f);
@@ -275,7 +315,7 @@ namespace ActionPlatformer.Tests
             var animator = enemy.GetComponentInChildren<Animator>();
             var renderer = enemy.GetComponentInChildren<SpriteRenderer>();
             yield return WaitForPresentation(() => animator.GetCurrentAnimatorStateInfo(0).IsName("Attack"), "Attack entry");
-            Health.ApplyDamage(1);
+            Health.ApplyDamage(1, Health.transform.position, true, true);
             yield return WaitForPresentation(() => animator.GetCurrentAnimatorStateInfo(0).IsName("Hit"), "Hit interruption");
             enemy.Fsm.Tick(0.16f);
             yield return WaitForPresentation(() => renderer.sprite.name == "Hit_1", "Hit final frame");

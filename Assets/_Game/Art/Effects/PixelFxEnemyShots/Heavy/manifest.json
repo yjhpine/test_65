@@ -1,0 +1,24 @@
+{
+  "id": "custom/enemy-heavy",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "8b07f5176a8e9d4b19ff528543ffee6dc9b8c7c1e63faa33b6c798092148359c",
+  "seed": 7,
+  "fps": 10,
+  "options": {},
+  "frames": 6,
+  "frameSize": [
+    19,
+    19
+  ],
+  "duration": 0.6,
+  "loop": true,
+  "unityPivot": [
+    0.47368421052631576,
+    0.5263157894736843
+  ],
+  "rgbaSha256": "16d2cf44f2e467c524d429b0fa96659f14ba20ace1ac0b845a070782c34b4b6f",
+  "deterministic": true,
+  "edgePixels": 120,
+  "lastFrameEmpty": false
+}

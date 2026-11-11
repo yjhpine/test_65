@@ -1,0 +1,9 @@
+COMPLETED
+frames=4692
+fps=60
+seconds=78.20
+glitches=43
+attacks=106
+health=84
+record=True
+size=1280x720

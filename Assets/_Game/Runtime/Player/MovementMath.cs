@@ -15,11 +15,7 @@ namespace ActionPlatformer.Player
             float target = Mathf.Clamp(input, -1f, 1f) * tuning.RunSpeed;
             float acceleration = grounded
                 ? (Mathf.Abs(input) < 0.01f ? tuning.GroundBraking : tuning.GroundAcceleration)
-                : tuning.AirAcceleration;
-
-            // Preserve gentle coasting when directional input is released in the air.
-            if (!grounded && Mathf.Abs(input) < 0.01f)
-                acceleration = 3f;
+                : (Mathf.Abs(input) < 0.01f ? tuning.AirBraking : tuning.AirAcceleration);
 
             return Mathf.MoveTowards(current, target, acceleration * deltaTime);
         }

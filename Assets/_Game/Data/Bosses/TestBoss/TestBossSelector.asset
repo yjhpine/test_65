@@ -1,0 +1,118 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 427131ad6cc2e2d4199972c2b5b6f4e9, type: 3}
+  m_Name: TestBossSelector
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Bosses.BossPatternSelector
+  root:
+    rid: 7265608113602167314
+  references:
+    version: 2
+    RefIds:
+    - rid: 7265608113602167118
+      type: {class: BossSequenceBranch, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        children:
+        - rid: 7265608113602167120
+        - rid: 7265608113602167121
+    - rid: 7265608113602167119
+      type: {class: BossSequenceBranch, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        children:
+        - rid: 7265608113602167122
+        - rid: 7265608113602167123
+        - rid: 7265608113602167124
+    - rid: 7265608113602167120
+      type: {class: BossDistanceCondition, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        minHorizontal: 0
+        maxHorizontal: 3.5
+        minVertical: -1.5
+        maxVertical: 2.5
+    - rid: 7265608113602167121
+      type: {class: BossWeightedBranch, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        children:
+        - weight: 3
+          node:
+            rid: 7265608113602167125
+        - weight: 1
+          node:
+            rid: 7265608113602167126
+    - rid: 7265608113602167122
+      type: {class: BossDistanceCondition, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        minHorizontal: 5
+        maxHorizontal: 12
+        minVertical: -1.5
+        maxVertical: 1.5
+    - rid: 7265608113602167123
+      type: {class: BossPlayerStateCondition, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        state: 0
+        withinSeconds: 1
+    - rid: 7265608113602167124
+      type: {class: BossPatternLeaf, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        pattern: {fileID: 11400000, guid: 580d74677be80584596353945656c08c, type: 2}
+        avoidLast: 0
+    - rid: 7265608113602167125
+      type: {class: BossPatternLeaf, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        pattern: {fileID: 11400000, guid: 5ef73038acc7c394097704ff43bffb54, type: 2}
+        avoidLast: 0
+    - rid: 7265608113602167126
+      type: {class: BossPatternLeaf, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        pattern: {fileID: 11400000, guid: dcc6327c878896749b8841865f14240e, type: 2}
+        avoidLast: 1
+    - rid: 7265608113602167314
+      type: {class: BossSelectorBranch, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        children:
+        - rid: 7265608113602167315
+        - rid: 7265608113602167118
+        - rid: 7265608113602167119
+        - rid: 7265608113602167316
+    - rid: 7265608113602167315
+      type: {class: BossSequenceBranch, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        children:
+        - rid: 7265608113602167317
+        - rid: 7265608113602167318
+    - rid: 7265608113602167316
+      type: {class: BossSequenceBranch, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        children:
+        - rid: 7265608113602167319
+        - rid: 7265608113602167320
+    - rid: 7265608113602167317
+      type: {class: BossPhaseCondition, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        minPhase: 1
+        maxPhase: 9
+    - rid: 7265608113602167318
+      type: {class: BossPatternLeaf, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        pattern: {fileID: 11400000, guid: bdf77d19b44eae24292d281b3d5830c8, type: 2}
+        avoidLast: 0
+    - rid: 7265608113602167319
+      type: {class: BossDistanceCondition, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        minHorizontal: 3.5
+        maxHorizontal: 12
+        minVertical: -2
+        maxVertical: 6
+    - rid: 7265608113602167320
+      type: {class: BossPatternLeaf, ns: ActionPlatformer.Units.Bosses, asm: ActionPlatformer.Runtime}
+      data:
+        pattern: {fileID: 11400000, guid: 01298ef2f730c974481bf27b8a170a71, type: 2}
+        avoidLast: 0

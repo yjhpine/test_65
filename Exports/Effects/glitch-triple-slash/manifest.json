@@ -1,0 +1,24 @@
+{
+  "id": "custom/glitch-triple-slash",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "ddaf30e21bdf5e7879cb9298694a3dba1ce4cfee4f313fbb91de70173ab33280",
+  "seed": 7,
+  "fps": 60,
+  "options": {},
+  "frames": 82,
+  "frameSize": [
+    240,
+    192
+  ],
+  "duration": 1.35,
+  "loop": false,
+  "unityPivot": [
+    0.4,
+    0.5
+  ],
+  "rgbaSha256": "1c6b7797e930e544810306149ce43310e2a012e774a004d80a15d675d5ae5ea2",
+  "deterministic": true,
+  "edgePixels": 0,
+  "lastFrameEmpty": true
+}

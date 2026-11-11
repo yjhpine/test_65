@@ -1,0 +1,122 @@
+{
+  "duration": 18.5,
+  "fps": 60,
+  "resolution": "1280x720",
+  "bytes": 763537,
+  "attacks": [
+    {
+      "time": "8.033",
+      "attack": "Side",
+      "facing": "1",
+      "vx": "0.000",
+      "x": "3.456",
+      "y": "0.805"
+    },
+    {
+      "time": "8.483",
+      "attack": "Side",
+      "facing": "1",
+      "vx": "0.000",
+      "x": "3.456",
+      "y": "0.805"
+    },
+    {
+      "time": "8.933",
+      "attack": "Side",
+      "facing": "1",
+      "vx": "0.000",
+      "x": "3.456",
+      "y": "0.805"
+    },
+    {
+      "time": "10.433",
+      "attack": "Side",
+      "facing": "-1",
+      "vx": "0.000",
+      "x": "3.456",
+      "y": "0.805"
+    },
+    {
+      "time": "10.883",
+      "attack": "Side",
+      "facing": "-1",
+      "vx": "0.000",
+      "x": "3.456",
+      "y": "0.805"
+    },
+    {
+      "time": "11.333",
+      "attack": "Side",
+      "facing": "-1",
+      "vx": "0.000",
+      "x": "3.456",
+      "y": "0.805"
+    },
+    {
+      "time": "12.183",
+      "attack": "Side",
+      "facing": "-1",
+      "vx": "12.000",
+      "x": "5.424",
+      "y": "0.805"
+    },
+    {
+      "time": "12.483",
+      "attack": "Side",
+      "facing": "-1",
+      "vx": "12.000",
+      "x": "9.024",
+      "y": "0.805"
+    },
+    {
+      "time": "13.183",
+      "attack": "Side",
+      "facing": "1",
+      "vx": "-12.000",
+      "x": "8.616",
+      "y": "0.805"
+    },
+    {
+      "time": "13.483",
+      "attack": "Side",
+      "facing": "1",
+      "vx": "-12.000",
+      "x": "5.016",
+      "y": "0.805"
+    },
+    {
+      "time": "14.533",
+      "attack": "Air",
+      "facing": "-1",
+      "vx": "12.000",
+      "x": "5.808",
+      "y": "4.093"
+    },
+    {
+      "time": "14.833",
+      "attack": "Air",
+      "facing": "-1",
+      "vx": "12.000",
+      "x": "9.408",
+      "y": "3.355"
+    },
+    {
+      "time": "15.733",
+      "attack": "Air",
+      "facing": "1",
+      "vx": "-12.000",
+      "x": "7.896",
+      "y": "4.093"
+    },
+    {
+      "time": "16.033",
+      "attack": "Air",
+      "facing": "1",
+      "vx": "-12.000",
+      "x": "4.296",
+      "y": "3.355"
+    }
+  ],
+  "source": "Unity Game View, real gameplay with automated input; labels and aim marker added in video only",
+  "decode": "passed"
+}

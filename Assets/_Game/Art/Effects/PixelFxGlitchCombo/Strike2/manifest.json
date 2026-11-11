@@ -1,0 +1,24 @@
+{
+  "id": "custom/glitch-slash-2",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "30dd994521de7ce02de67ee16c85be75e9a60b5c4ec264bf49bb89adbf0baf2c",
+  "seed": 7,
+  "fps": 60,
+  "options": {},
+  "frames": 20,
+  "frameSize": [
+    240,
+    192
+  ],
+  "duration": 0.32,
+  "loop": false,
+  "unityPivot": [
+    0.4,
+    0.5
+  ],
+  "rgbaSha256": "c439c637b4309acb2d1ac633cf3c69c51f22ec8b99876c6a9a77f6cd55892c76",
+  "deterministic": true,
+  "edgePixels": 0,
+  "lastFrameEmpty": true
+}

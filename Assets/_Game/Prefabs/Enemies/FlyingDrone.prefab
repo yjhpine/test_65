@@ -12,6 +12,8 @@ GameObject:
   - component: {fileID: 2896052537333098609}
   - component: {fileID: 3669897214511172549}
   - component: {fileID: 3999183041831898487}
+  - component: {fileID: 6776591724286171343}
+  - component: {fileID: 5782135646898581645}
   m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
@@ -60,7 +62,7 @@ SpriteRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: ebc552b0c3051374384636e54939a9cb, type: 2}
+  - {fileID: 2100000, guid: fecbbf066d82ddc4eb662a3c14724bcd, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -83,9 +85,9 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 1505308744, guid: 7bb53bb373106ed4483418685df02048, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 3f65a86fbb3aa0149873278d8d409683, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_FlipX: 1
+  m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
   m_Size: {x: 1.6, y: 1.6}
@@ -128,8 +130,34 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.EnemyVisual2D
   stateSource: {fileID: 579601378861716767}
-  shapeSprite: {fileID: 2537882373423050008, guid: 388ad2e908298d04bad8c352166b49ad, type: 3}
   spriteFacesRight: 0
+  vfxProfile: {fileID: 11400000, guid: 72b1f8db65a37d6409bae0a39187c143, type: 2}
+  sfxProfile: {fileID: 11400000, guid: 0728a1a1c40389b499aa10ef614b72f7, type: 2}
+  attackZone: {fileID: 11400000, guid: b4d2f719d68bf914e85ae2c6bc04526d, type: 2}
+--- !u!114 &6776591724286171343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4750932147558464675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 31a8ada3cc52d1d419dc9e5613fa0079, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.UnitDamageFlash
+--- !u!114 &5782135646898581645
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4750932147558464675}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2ed168041bce16d4aa4c73953fcb5408, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Units.Features.EnemyLaserVisual
 --- !u!1 &7229310079564709296
 GameObject:
   m_ObjectHideFlags: 0
@@ -303,3 +331,5 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 1
   initiallyFacesRight: 0
+  aimPivotOffset: {x: 0, y: 0}
+  muzzleDistance: 0

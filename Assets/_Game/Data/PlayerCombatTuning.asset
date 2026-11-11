@@ -21,15 +21,17 @@ MonoBehaviour:
   activeDuration: 0.1
   recovery: 0.08
   comboWindow: 1
-  reach: 1.2
-  width: 1.6
+  reach: 2.4
+  width: 3.2
   lightKnockbackSpeed: 3
   lightKnockbackDeceleration: 30
   knockbackSpeed: 12
   knockbackDeceleration: 18
   launchSpeed: 20
+  finisherDamageMultiplier: 2
+  finisherLaunchMultiplier: 1.5
   slamHoverDuration: 0
-  slamSpeed: 28
+  slamSpeed: 36
   slamKnockdownSpeed: 36
   shockwaveRadius: 2
   shockwaveDuration: 0.22
@@ -37,26 +39,40 @@ MonoBehaviour:
   emergenceSpeed: 25
   forcedDuration: 0.35
   hitStun: 0.25
+  damageInvulnerability: 1.5
+  damageKnockbackSpeed: 10
+  damageKnockbackDuration: 0.25
+  damageKnockbackLift: 7
+  recoilSpeed: 4
+  recoilDuration: 0.1
+  finisherRecoilSpeed: 7
+  finisherRecoilDuration: 0.12
+  airRecoilMultiplier: 0.6
   attackBufferTime: 0.1
   hitStopDuration: 0.035
   heavyHitStopDuration: 0.055
   slamHitStopDuration: 0.08
-  shakeAmplitude: 0.025
-  heavyShakeAmplitude: 0.075
-  slamShakeAmplitude: 0.14
-  shakeDuration: 0.14
+  shakeAmplitude: 1.5
+  heavyShakeAmplitude: 2
+  slamShakeAmplitude: 3
+  shakeDuration: 0.06
   shakeFrequency: 22
-  damageSlowTimeScale: 0.2
-  damageSlowDuration: 0.15
+  killHitStopBonus: 0.04
+  finalBlowSlowTimeScale: 0.3
+  finalBlowSlowDuration: 0.2
+  finalBlowSlowRecovery: 0.15
+  finisherGlitchDuration: 0.1
+  damageSlowTimeScale: 0
+  damageSlowDuration: 0.35
   damageSlowRecovery: 0.1
-  damageShakeAmplitude: 0.22
-  damageShakeDuration: 0.28
-  damageZoom: 0.035
+  damageShakeAmplitude: 8
+  damageShakeDuration: 0.12
+  damageZoom: 0
   damageZoomDuration: 0.18
-  damageFlashOpacity: 0.7
+  damageFlashOpacity: 0
   damageFlashDuration: 0.065
-  damageVignetteOpacity: 0.8
-  damageScreenDuration: 0.45
+  damageVignetteOpacity: 0.12
+  damageScreenDuration: 0.16
   targetMask:
     serializedVersion: 2
     m_Bits: 4

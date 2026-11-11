@@ -1,0 +1,15 @@
+ARCBIT - credits and provenance
+
+- Every image in this pack (sprite sheets, frames, GIF previews, palette swatches) was
+  produced by a Python program written specifically for ARCBIT. The program computes each
+  frame pixel by pixel from fixed random seeds (midpoint-displacement lightning paths,
+  distance-based rings and discs, ordered dithering) and maps the result to a 4-colour ramp.
+- No generative-AI images, no stock art, no third-party assets, and nothing traced or
+  copied from other packs.
+- The generator, the Godot scripts and the documentation were written with the help of an
+  AI coding assistant, then reviewed and tested (Godot 4.4.1 and 4.7.2, scripted checks of
+  every sheet and JSON file).
+- Store and demo text uses a 5x7 pixel font drawn in code; the Godot demo uses Godot's
+  built-in default font.
+- Made with Godot Engine (MIT license, https://godotengine.org/license) for the demo.
+  Godot is not included in this pack.

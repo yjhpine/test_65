@@ -95,3 +95,112 @@ Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / D
 - SHA-256: `69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68`.
 
 - 2026-10-07: CoreLoopStage의 안내 NPC는 위 Adventurer의 기존 Idle 스프라이트/클립을 색상 변경하여 재사용한다. 새 외부 에셋이나 라이선스는 추가하지 않았다.
+
+
+## Project-supplied player art — 2026-10-15
+
+- The user supplied the character PNGs and animation assets already present under `Assets/Art`; this integration downloaded no additional art and does not infer an author or license for those files.
+- Original image bytes and import settings are unchanged. Player-specific integration clips live in `Assets/_Game/Animations/Player/ArtCharacter` and reuse these sprites with gameplay-aligned timing.
+- These clips replace the player's Adventurer presentation. The original Adventurer assets and their notices remain because the guide NPC still uses its Idle clip.
+
+## Project-supplied monster art — 2026-10-21
+
+- Supplied by the user in the desktop `몬스터 애님` folder. No additional art was downloaded; author and license are not inferred from the filenames. Original PNG bytes are unchanged.
+- Monster1 replaces SurveillanceTurret, Monster2 replaces FlyingDrone, and Monster3 replaces ShieldSoldier. Existing Pig art and all gameplay settings remain unchanged. Previous enemy art and its notices are retained.
+- Imported 130 individual 64×64 PNGs into `Assets/_Game/Art/Characters/Monster1`, `Monster2`, and `Monster3`. Import settings: Single Sprite, Point, uncompressed, no mipmaps, full rectangle mesh. Monster1 uses 32 PPU and pivot `(32/64,13/64)`; Monster2 uses 32 PPU and pivot `(32/64,32/64)`; Monster3 uses 30 PPU and pivot `(32/64,7/64)`. Source frames face left; the existing visual component mirrors them for right-facing actions.
+- Existing Idle/Run/Attack/Death clips and controllers retain their GUIDs. Idle/Run loop at 10 FPS. Attack/Death retain the existing FSM-driven normalized playback and timing; clips change only the SpriteRenderer sprite and contain no animation events.
+
+| Enemy | Idle / Run | Attack | Death |
+|---|---|---|---|
+| SurveillanceTurret | `Monster1_PNG.zip: PNG/normal/Idle` (frame 1 held for Idle/Run; frames 1→5 in IdleTurn; frame 5 held in IdleOpposite; frames 5→1 in IdleTurnBack); `PNG/angry/Idle` (frame 1 for aimed AngryIdle) | `PNG/angry/Attack_Left` (10) | `Monster1Death_PNG.zip: PNG/angry/Death_Base` (10) |
+| FlyingDrone | `Monster2_Idle.zip: Monster2_Idle/Monster2_Idle/Idle_Normal` (32, shared for Run) | `Monster2AttackPNG.zip: PNG/Attack_Angry_Left` (10) | `Monster2Death_PNG.zip: PNG/Death` (8) |
+| ShieldSoldier | `Monster3Left_Idle+Walk_PNG.zip: PNG/Normal/Idle` (10) / `PNG/Normal/Walk` (16) | `PNG/Angry/Walk` (16), used for the existing shield dash | `PNG/Angry/WalkStopB` (8), stop/hold fallback until the existing death timer deactivates the enemy |
+
+`Monster3Hit_PNG.zip` was visually inspected and contains UFO/drone frames despite its name, so it is not used for ShieldSoldier. The initial archives had no dedicated shield death sequence; the 2026-10-22 follow-up below replaces that fallback. The right-facing archive, pose banks, duplicate Monster2 death archive, and bundled scripts/shader were not imported.
+
+The turret follow-up imported 20 additional unchanged PNGs into `Monster1/AngryIdle` and `Monster1/AngryDeath` (32 PPU, original 64×64 layout, pivot 32/64,13/64). The previous normal death frames remain available. Project-authored `SurveillanceTurretVisual` slices the referenced textures into a stationary pedestal and aiming upper part at runtime; source image bytes are unchanged. The source package's Unity scripts/shader and its variable frame timing were not imported.
+
+Archive SHA-256:
+
+| Archive | SHA-256 |
+|---|---|
+| Monster1_PNG.zip | `de58e355917a550f6c65ec95d4131360d2a564eeab9f3da1c1617c76adcaae1d` |
+| Monster1Death_PNG.zip | `bd84ef94957397f2faf2a887836c6a54fdbf31dff6ee11769c043ed37d94bd2c` |
+| Monster2_Idle.zip | `5881cfdb3ac689d589c613ecc12f48daefd1f1436826d4a666e7822d701c2185` |
+| Monster2AttackPNG.zip | `1e52ea5ae55d9aa8375fc51b1cbf3cabb66f74365f3962b273cdb01fde9ece7b` |
+| Monster2Death_PNG.zip | `7592c171cff7ae22b90afabecbc8565c63d1292486347a1155f001097f6dac1b` |
+| Monster3Left_Idle+Walk_PNG.zip | `929032f0105d1ea84a33a4283768868922c831a18ef58b469813ce305e133610` |
+
+## Project-supplied shield animations — 2026-10-22
+
+- Supplied by the user in the Desktop `벽,바닥` folder. No download or author/license inference was made. Imported 66 unchanged PNGs into additional `Monster3` subfolders, retaining 30 PPU, Point, no compression/mipmaps, Full Rect and pivot `(32/64,7/64)`.
+- Attack uses `Monster3Attack_PNG.zip: PNG/Left/AttackFromIdle` (14). Death uses `Monster3Death_PNG.zip: PNG/Left/Angry` (10), replacing the stop-pose fallback. Hit uses the new **`Monster3_Hit_PNG.zip`** (underscore included), `PNG/Left` (10); the old incorrectly named drone archive remains excluded.
+- `Monster3Siled_PNG.zip: Monster3Siled_PNG/Core/Left/Angry` supplies Enter/Hold/Exit/BlockImpact (8 each). Right-facing copies and alternative walk-entry transitions are not imported; existing SpriteRenderer flipping handles direction. Original Idle/Run remain unchanged.
+- Existing Attack/Death clip GUIDs are retained. Five clips/states are added for Hit, GuardEnter, GuardHold, GuardExit and Block. Source PNGs are not recolored, rescaled or cropped. The 2026-10-21 attack/death mappings above describe the prior integration.
+
+| Archive | SHA-256 |
+|---|---|
+| Monster3Attack_PNG.zip | `4b7625be1d77eede68bc30d6aaac1feb94f375069c24fe1ccd2be74e1b861147` |
+| Monster3Death_PNG.zip | `ef76f5b2c67f9fd56cf53fe32f6df0de4a638184372ac8974560fc6a9ec96463` |
+| Monster3_Hit_PNG.zip | `7ad541209d19fede8c4b55704248b64d059a3e9c6525bb215bef760102a4d708` |
+| Monster3Siled_PNG.zip | `1494a43df7abacf7aa2d2345ceb9c5dc56606ed5daf9bbeaafa8c9b2061a0a0a` |
+
+## Combat FX Free — player slash and glitch spark (2026-10-21)
+
+- Creator/source: [heyheythere — Combat FX Free](https://heyheythere.itch.io/combat-fx-free), version 1.1.1. This is the pack matching the user's reference image and `white slash` / `white spark` names. The supplied ParticleFX Digital Explosion URL describes a different effect and was not imported.
+- License: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Original `LICENSE.txt` is retained beside the sheets. Credit: **Combat FX Free by heyheythere - https://heyheythere.itch.io/combat-fx-free - CC BY 4.0**. Retain this attribution in distributed game credits.
+- Downloaded archive: `combat-fx-free-assets.zip`, 1,661,356 bytes, SHA-256 `fead596e08728bf69ab1385ca2822dac7da93160aec07dc5e31fea69d43c0755`.
+- Only `sheets/128/white/white_slash.png` and `white_spark.png` were imported into `Assets/_Game/Art/Effects/CombatFxFree`. Original PNG bytes are unchanged. No bundled Godot scripts or unrelated effects were imported.
+- Each sheet has 16 frames, 128×128 cells, 8 columns, left-to-right/top-to-bottom order, centered anchor. Unity uses Multiple Sprite, 128 PPU, full rectangle, Bilinear, no mipmaps/compression. The provided HD artwork matches the reference's smooth edges.
+- Project-authored presentation retimes the slash to the existing basic attack Active/Recovery phases. Spark plays once at the source 30 FPS at successful glitch departure/arrival points. No gameplay timing or damage values are changed.
+- Project-authored `PlayerActionTwoTone.shader` / `PlayerActionTealRed.mat` recolor the rendered effects with teal `#79D9DF` and red `#D84255`, plus a subdued white highlight. This is a presentation modification; the original PNG files, frame geometry, and transparency remain unchanged.
+
+## User-supplied industrial terrain and background (2026-10-21)
+
+- Source: the user's Desktop `벽,바닥` folder. `terrain_tiles.zip` contains 32 terrain PNGs; `Background_runtime.zip` contains `01_base.png`, `02_far.png`, and `03_mid.png`. Imported into `Assets/_Game/Art/Environment/Industrial` for CoreLoopStage.
+- All PNG bytes are preserved. Import settings and scene placement are project-authored. The archives contain no creator or license document; no third-party license has been inferred.
+- `terrain_tiles.zip` SHA-256: `6fd1f72204b2bf21aa8c506ca98bbe7d90899ba504bbe6640b2dd22726de5f56`.
+- `Background_runtime.zip` SHA-256: `4bf229103940edfaff5d8f932f3c1f33548aef7ba71d6b432dc9c13c2af6d200`.
+
+## ARCBIT Lite — enemy lasers (2026-10-25)
+
+- Creator/source: [gennai — ARCBIT Lite](https://gennai.itch.io/arcbit-lite), download version 1.0.2, `arcbit-lite-lite.zip`, SHA-256 `10915e07e80a6cbbe3375a3240c4bd58e66b9b17e1c850227bb5b59c63832585`.
+- Free use and modification in commercial/non-commercial games, apps and media; attribution optional. The pack and its parts may not be redistributed on their own or in another asset pack, template or tool, resold, used to train machine-learning models, or claimed as original work. Exported product builds are permitted. Original `LICENSE.txt` and `CREDITS.txt` are retained in `Assets/_Game/Art/Effects/ArcbitLite`.
+- Imported only the six unchanged `sprites/laser/laser_{start,body,end}_32x32_{blue,red}.png` strips and their source JSON. Turret uses blue, FlyingDrone uses red. No Godot scripts/project, orb or zap effects were imported.
+- Unity slices 21 start frames and 13 body/end frames per color (94 sprites total), 32 PPU, Point, Full Rect, no mipmaps/compression. Pivots are converted from the source top-left coordinates: start `(12,17)`, body `(0,17)`, end `(17,17)` in Unity pixel coordinates.
+- Project-authored `EnemyLaserVisual` uses the original palettes with an unlit sprite material. Charge follows existing preparation/lock; on/loop/off frames are retimed to the existing 0.16-second beam display. Tiled body fills the gap between source/impact caps; native source dimensions are retained and render scale fits the existing beam width. Very short clipped beams shrink caps together.
+- Enemy targeting, aim lock, muzzle position, wall clipping, attack timing, damage, and the player's glitch spark effects are unchanged. FlyingDrone's existing bidirectional vertical shot is displayed as two segments from the emitter to the already-calculated endpoints.
+
+
+## Movement dust and contact impacts (2026-10-29)
+
+- [pimen ? Smoke N Dust 01](https://pimen.itch.io/smoke-vfx-1): imported original Smoke VFX 1 and VFX 3 sheets as JumpSmoke and GroundDust. 8 nonempty 48x32 jump frames, 7 nonempty 32x16 ground frames; trailing empty cells omitted.
+- [kekkorider ? Pixel Art Impact VFX](https://kekkorider.itch.io/free-pixel-art-impact-vfx): imported original variants 02 and 03, grey/spritesheet.png, as HitImpact and FinisherImpact. Each uses 8 nonempty 128x128 cells in row-major order; empty padding cells omitted.
+- Both permit personal/commercial use and modification, attribution optional; standalone sprite resale/redistribution prohibited. Source terms retained beside imported sheets.
+- Original PNG bytes are unchanged. Point filtering, Full Rect geometry, no compression/mipmaps. Smoke anchors at bottom center; impact anchors at center. Runtime source-color neutralization is applied only to contact effects, preserving the existing slash/glitch palette.
+- Source archive `smoke.rar` SHA-256: `1a434aecd39e404fbc07cb8272bca477a2d78eb678a29f65906de19e0fdfa415`.
+- Source archive `impact.zip` SHA-256: `ba76006fa8d6987a6cc4b92314ec386401f531e7614a88a688a931e4fa89265a`.
+
+
+## Combat SFX (2026-10-29)
+
+- Swishes Sound Pack by artisticdude: https://opengameart.org/content/swishes-sound-pack ? CC0.
+- Impact Sounds 1.0 by Kenney: https://kenney.nl/assets/impact-sounds ? CC0.
+- Sci-fi Sounds 1.0 by Kenney: https://kenney.nl/assets/sci-fi-sounds ? CC0.
+- Downloaded archives and unchanged extracted sources are retained in Library/SfxDownloads. The 12 selected/derived mono 44.1 kHz PCM clips are under Assets/_Game/Audio/Combat, with original Kenney license notices and a Swishes source notice. Sources.json maps every game clip to its source recording.
+- Project processing: leading silence removal, short tails, fade-out, peak normalization to 0.8. Glitch combines a 0.32-second force-field excerpt with filtered/tremolo computer noise. No other packs, music, voices or UI sounds were imported.
+- Player hit sounds (2026-11-03): HitA/HitB/HitC layer an Impact Sounds punch (impactPunch_medium_000/001/003, low-passed), a short high-passed metal tick (impactMetal_light_000/001/002) and a 0.07-second bit-crushed Sci-fi explosionCrunch_000 excerpt; HitHeavy layers impactPunch_heavy_000, impactPlate_heavy_000 and a 0.24-second crushed explosionCrunch_000 excerpt. Same packs and licenses, now 13 clips; recipes in Library/SfxDownloads/PrepareSfx.py, sources listed in Sources.json.
+- Player hurt sound (2026-11-04): Hurt layers Impact Sounds impactPunch_heavy_002 (low-passed), Sci-fi laserRetro_004 (pitched down 25%, bit-crushed) and a 0.3-second low-passed Sci-fi lowFrequency_explosion_000 excerpt. Same packs and licenses, now 14 clips; recipe in Library/SfxDownloads/PrepareSfx.py, sources in Sources.json.
+- `swishes.zip` SHA-256: `7980215241b739a787dcf26f660ce510bb237900968789395a86911619795693`.
+- `impact.zip` SHA-256: `029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8`.
+- `scifi.zip` SHA-256: `119340f351a5098ad814f78719438c0da355a9ce8a4c8a3af6a8d48aa3d49e04`.
+
+## PixelFX glitch combo (2026-11-01)
+
+- Generator: https://github.com/patch-gg/pixelfx, MIT; pinned commit a84159688af3ca37a4be05a0d422b94451b2e24e.
+- Project-authored effect: Tools/PixelFx/effects/glitch-triple-slash.mjs and glitch-slash-1/2/3.mjs. Cyan/red procedural crescents and pixel fragments rendered using PixelFX core.
+- Imported frames: Assets/_Game/Art/Effects/PixelFxGlitchCombo/Strike1, Strike2, Strike3. Each includes the upstream LICENSE and NOTICE.md plus a reproducibility manifest.
+- Patch Pixel gallery font is not imported. Original gameplay timing and hit-stop data are not imported from PixelFX.
+- Glitch streak (2026-11-05): project-authored Tools/PixelFx/effects/glitch-streak.mjs, an 8-frame 32x16 teal/red tile (speed line, channel split, breaking fragments) rendered with the same pinned PixelFX core. Imported to Assets/_Game/Art/Effects/PixelFxGlitchStreak with the upstream LICENSE, NOTICE.md and manifest.
+- Ranged enemy effects (2026-11-05): project-authored Tools/PixelFx/effects/enemy-shot.mjs (shared) with enemy-bolt, enemy-pellet, enemy-heavy, enemy-shell, enemy-blast, enemy-shot-pop and domain-field.mjs, rendered with the same pinned PixelFX core. Imported to Assets/_Game/Art/Effects/PixelFxEnemyShots and PixelFxDomainField with the upstream LICENSE, NOTICE.md and manifest.
+- Attack zone (2026-11-05): project-authored Tools/PixelFx/effects/attack-zone.mjs, a looping 32x32, 8-frame red glitch tile (scanlines, missing pixels, displaced blocks, broken rim; reds only) rendered with the same pinned PixelFX core. Imported to Assets/_Game/Art/Effects/PixelFxAttackZone with the upstream LICENSE, NOTICE.md and manifest.

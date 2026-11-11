@@ -1,0 +1,24 @@
+{
+  "id": "custom/attack-zone",
+  "repository": "https://github.com/patch-gg/pixelfx.git",
+  "commit": "a84159688af3ca37a4be05a0d422b94451b2e24e",
+  "sourceSha256": "f43beea659670f747fb1949a61aa598ec3ea5586cfd0e1d4f201156d42478270",
+  "seed": 7,
+  "fps": 12,
+  "options": {},
+  "frames": 8,
+  "frameSize": [
+    32,
+    32
+  ],
+  "duration": 0.6666666666666666,
+  "loop": true,
+  "unityPivot": [
+    0.5,
+    0.5
+  ],
+  "rgbaSha256": "1fb5a05f182ba2c2ea61a897015fe4ea7ed1beede5d3721dc78d3385444e8799",
+  "deterministic": true,
+  "edgePixels": 992,
+  "lastFrameEmpty": false
+}

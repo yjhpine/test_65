@@ -72,6 +72,12 @@ namespace ActionPlatformer.Tests
             testKeyboard = null; testMouse = null; testGamepad = null;
             if (testLedge != null) Object.Destroy(testLedge);
             yield return null;
+            // Leave no live lab behind: its enemy samples (the rush shield dashes toward the player) would keep
+            // acting, and hitting the player, during the classes that run after this one.
+            var lab = SceneManager.GetSceneByName("MovementLab");
+            var empty = SceneManager.CreateScene("PlayerCourseCleanup");
+            SceneManager.SetActiveScene(empty);
+            if (lab.IsValid() && lab.isLoaded) yield return SceneManager.UnloadSceneAsync(lab);
         }
 
         private static IEnumerator Steps(int count) { for (int i = 0; i < count; i++) yield return FixedStep; }

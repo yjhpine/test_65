@@ -32,6 +32,7 @@ namespace ActionPlatformer.Units.Fsm
         public float MoveSpeed => moveSpeed;
         public float PatrolDistance => patrolDistance;
         public float WaitDuration => waitDuration;
+        public float AttackRange => attackRange;
 
         public bool TryValidate(out string error)
         {
@@ -86,12 +87,13 @@ namespace ActionPlatformer.Units.Fsm
             public readonly DeathState Death;
             public float Clock;
             public float NextAttackAt;
-            public uint ObservedDamage;
+            public uint ObservedDamage, ObservedInterrupt;
             private float nextScanAt;
 
             public Context(Unit owner, GroundMovement2D movement, UnitHealth health, UnitCombat2D combat, GroundUnitFsmDefinition settings)
             {
                 Owner = owner; Movement = movement; Health = health; Combat = combat; Settings = settings;
+                if (health != null) ObservedInterrupt = health.InterruptVersion;
                 WaitRight = new WaitState(this);
                 var walkRight = new WalkState(this, 1f);
                 var waitLeft = new WaitState(this);
@@ -140,11 +142,18 @@ namespace ActionPlatformer.Units.Fsm
                     if (context.Health.DamageVersion != context.ObservedDamage)
                     {
                         context.ObservedDamage = context.Health.DamageVersion;
-                        if (this != context.Hit) return context.Hit;
-                        context.Hit.RestartStun();
+                        bool interrupted = context.Health.InterruptVersion != context.ObservedInterrupt;
+                        context.ObservedInterrupt = context.Health.InterruptVersion;
+                        // Ordinary hits leave an attack in progress running; launches and slams stop it.
+                        if (this != context.Attack || interrupted)
+                        {
+                            if (this != context.Hit) return context.Hit;
+                            context.Hit.RestartStun();
+                        }
                     }
                 }
-                if (context.Movement.IsForcedMoving && this != context.Hit && this != context.Death)
+                // An attack in progress also rides out ordinary knockback.
+                if (context.Movement.IsForcedMoving && this != context.Hit && this != context.Death && this != context.Attack)
                     return this == context.WaitRight ? null : context.WaitRight;
                 context.RefreshTarget();
                 return Step(deltaTime);
