@@ -359,6 +359,94 @@ namespace ActionPlatformer.Tests
             Assert.That(game.OutGame.Title.Continue.UnavailableReason, Is.EqualTo(ProgressRules.AllClearedReason));
         }
 
+        // Planning doc 7.3: after a failed save, leaving for the title explains the loss again and can retry the save.
+        [UnityTest] public IEnumerator ResultScreenTitleAsksAgainAfterAFailedSaveAndCanRetryIt()
+        {
+            SceneManager.sceneLoaded += UseSingleEnemyObjective;
+            try { yield return LoadStage(); }
+            finally { SceneManager.sceneLoaded -= UseSingleEnemyObjective; }
+            storage.FailWrites = true;
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("Progress could not be saved"));
+            var enemy = game.ActiveEnemies.Single();
+            enemy.ApplyDamage(enemy.MaxHealth);
+            var goal = Object.FindFirstObjectByType<StageGoal>();
+            game.Player.Motor.Teleport(new Vector2(goal.transform.position.x, .82f));
+            Physics2D.SyncTransforms();
+            yield return Until(() => game.State == StageState.Completed, "The stage should clear.");
+            var dialog = game.OutGame.Dialog;
+            Assert.That(dialog.Title, Is.EqualTo("저장 실패"), "The clear could not be saved.");
+            dialog.Item("save-continue").Activate();
+            Assert.That(game.HasUnsavedRecords, Is.True);
+
+            game.View.ResultItem("result-title").Activate();
+            Assert.That(game.Transition.IsBusy, Is.False, "Leaving waits for an answer.");
+            Assert.That(game.OutGame.IsOpen(dialog), Is.True);
+            Assert.That(dialog.Message, Does.Contain("저장하지 못한 기록"));
+            Assert.That(dialog.ChoiceNames, Is.EqualTo(new[] { "leave-save-retry", "title-confirm", "title-cancel" }));
+            yield return Until(() => dialog.Focused?.name == "title-cancel", "취소 is selected first.", 2f);
+            Assert.That(game.OutGame.HandleBack(), Is.True);
+            Assert.That(game.Transition.IsBusy, Is.False);
+
+            game.View.ResultItem("result-title").Activate();
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("Save retry failed"));
+            dialog.Item("leave-save-retry").Activate();
+            Assert.That(game.Transition.IsBusy, Is.False, "A retry that fails stays and asks again.");
+            Assert.That(game.OutGame.IsOpen(dialog), Is.True);
+
+            storage.FailWrites = false;
+            dialog.Item("leave-save-retry").Activate();
+            Assert.That(game.HasUnsavedRecords, Is.False);
+            Assert.That(ProgressData.FromJson(storage.Entries[OutGameSaves.ProgressName], game.Catalog).allCleared, Is.True);
+            Assert.That(game.Transition.IsBusy, Is.True, "A retry that works goes on to the title.");
+            yield return Until(() => game.IsTitle, "The title should load.");
+            yield return OutGameTestSupport.WaitForTransition(game);
+        }
+
+        // Planning doc 3.2: the scene change and the title background carry the glitch look; the distortion setting turns it off.
+        [UnityTest] public IEnumerator TransitionsAndTheTitleShowGlitchBandsUnlessDistortionIsOff()
+        {
+            yield return LoadTitle();
+            var view = game.OutGame;
+            view.UpdateGlitch(OutGameView.TitleBurstPeriod * 10 + .05);
+            Assert.That(view.TitleGlitchBands, Is.GreaterThan(0), "A short burst behind the title menu.");
+            view.UpdateGlitch(OutGameView.TitleBurstPeriod * 10 + 1.0);
+            Assert.That(view.TitleGlitchBands, Is.Zero, "Most of the time the background is still.");
+            view.SetCover(.5f, false);
+            view.UpdateGlitch(5.0);
+            Assert.That(view.TransitionGlitchBands, Is.GreaterThan(0), "Halfway through a fade the cover tears.");
+            view.SetCover(1f, true);
+            view.UpdateGlitch(5.1);
+            Assert.That(view.TransitionGlitchBands, Is.Zero, "The full cover with the loading text stays clean.");
+            view.SetCover(0f, false);
+            view.UpdateGlitch(5.2);
+
+            int most = 0;
+            bool textWithBands = false;
+            game.OutGame.Title.NewGame.Activate();
+            while (game.Transition.IsBusy)
+            {
+                most = Mathf.Max(most, view.TransitionGlitchBands);
+                if (view.IsLoadingVisible && game.Transition.Cover >= 1f && view.TransitionGlitchBands > 0) textWithBands = true;
+                yield return null;
+            }
+            Assert.That(most, Is.GreaterThan(0), "The fades tear with glitch bands.");
+            Assert.That(textWithBands, Is.False, "The full cover with the loading text stays clean.");
+
+            PresentationSettings.Set(1f, 0f, 1f);
+            try
+            {
+                most = 0;
+                Assert.That(game.TryPause(), Is.True);
+                game.PauseMenu.Item(PauseMenuView.TitleName).Activate();
+                game.OutGame.Dialog.Item("title-confirm").Activate();
+                while (game.Transition.IsBusy) { most = Mathf.Max(most, view.TransitionGlitchBands); yield return null; }
+                Assert.That(most, Is.Zero, "Distortion 0 turns the bands off.");
+                view.UpdateGlitch(OutGameView.TitleBurstPeriod * 10 + .05);
+                Assert.That(view.TitleGlitchBands, Is.Zero);
+            }
+            finally { PresentationSettings.Reset(); }
+        }
+
         [UnityTest] public IEnumerator SettingsApplyAtOnceSaveSeparatelyAndResetOnlyTheirTab()
         {
             yield return LoadTitle();

@@ -1089,3 +1089,11 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 열린 Editor 전체 실행: EditMode 142/142(새 `TextRenderingTests` 4), PlayMode 464/465(새 `OutGameFlowTests.EveryShownUiTextUsesTheSdfFontAsset` 포함). 실패 1개는 기존 `CutsceneTests.VirtualKeyboard…`(290줄).
 - 실행 중 새 글자가 추가되지 않아 두 폰트 에셋 파일은 테스트·Play Mode 뒤에도 바뀌지 않았다.
 - 캡처(`Library/PrototypeValidation/OutGame/`): `ZoomBefore.png`(카메라 5배 확대, 구형 TextMesh), `ZoomAfter.png`(같은 조건, TMP SDF), `ZoomUiAfter.png`(일시정지 메뉴 4배 확대, UI Toolkit SDF).
+
+## 2026-11-11 — 기획서 대조 후 보완 (저장 실패 뒤 타이틀 안내, 전환·타이틀 글리치)
+
+- 대조 방법: 기획서 장별로 코드를 읽고, 열린 Editor Play Mode에서 메뉴 내비게이션(Navigation 이벤트를 패널에 직접 보냄)과 스테이지 2개 임시 카탈로그 흐름(다음 스테이지·스테이지 선택 잠김/클리어·재플레이·최종 클리어)을 실행해 확인했다. 가상 키보드 입력은 Editor가 포커스를 갖지 않으면 UI까지 오지 않아 실제 키→UI 연결은 확인하지 못했다.
+- 보완 뒤 열린 Editor 전체 실행: EditMode 143/143, PlayMode 464/467. 실패 3개 중 `CutsceneTests.VirtualKeyboard…`는 기존 실패, `RangedEnemyTests`의 `SelfDomainFollowsItsOwner…`·`ShotgunFiresThreeSpreadShots…` 2개는 이 실행에서만 실패했다(전체 668초로 평소보다 느렸음). `RangedEnemyTests` 클래스 재실행 16/16.
+- 새 테스트: EditMode `GlitchBandsFollowTheirStrength…`, 느린 프레임 페이드 검사. PlayMode `ResultScreenTitleAsksAgainAfterAFailedSaveAndCanRetryIt`, `TransitionsAndTheTitleShowGlitchBandsUnlessDistortionIsOff`.
+- 캡처: `Library/PrototypeValidation/OutGame/TransitionGlitch.png`(전환 중 찢김 띠), `StageClearTwoStages.png`(스테이지 2개 구성의 클리어 화면).
+- 전체 실행 전후 두 SDF 폰트 에셋 해시가 같았다(실행 중 글자 추가 없음).

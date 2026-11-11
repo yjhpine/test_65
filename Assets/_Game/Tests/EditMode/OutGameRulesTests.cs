@@ -207,6 +207,10 @@ namespace ActionPlatformer.Tests
             for (int i = 0; i < 20 && transition.Phase != TransitionPhase.Failed; i++) transition.Tick(.05f);
             Assert.That(loads, Is.EqualTo(1));
             Assert.That(failure, Is.EqualTo(SceneTransition.LoadFailedMessage), "A scene that cannot load is reported.");
+            var slow = new SceneTransition(_ => null);
+            slow.Begin("A", null);
+            slow.Tick(1f);
+            Assert.That(slow.Cover, Is.InRange(.1f, .3f), "A slow frame cannot skip the fade.");
             Assert.That(transition.IsBusy, Is.True, "The failure waits to be acknowledged.");
             transition.Acknowledge();
             Assert.That(transition.IsBusy, Is.False);
@@ -278,6 +282,20 @@ namespace ActionPlatformer.Tests
             Assert.That(cancelled, Is.EqualTo(1));
             Assert.That(confirmed, Is.Zero);
             Assert.That(stack.Count, Is.Zero);
+        }
+
+        [Test] public void GlitchBandsFollowTheirStrengthAndKeepAPatternWithinAFrame()
+        {
+            var bands = new GlitchBands("test", 8, .5f);
+            Assert.That(bands.Show(0f, 1.0), Is.Zero);
+            Assert.That(bands.Show(1f, 1.0), Is.EqualTo(8));
+            Assert.That(bands.Show(.5f, 2.0), Is.EqualTo(4));
+            var first = bands.Layer[0].style.top.value;
+            Assert.That(bands.Show(.5f, 2.0 + .1 / GlitchBands.PatternRate), Is.EqualTo(4));
+            Assert.That(bands.Layer[0].style.top.value, Is.EqualTo(first), "The same 1/30 s keeps its pattern.");
+            Assert.That(bands.Show(0f, 3.0), Is.Zero);
+            Assert.That(bands.Layer.Children().All(b => b.style.display.value == DisplayStyle.None), Is.True);
+            Assert.That(bands.Layer.pickingMode, Is.EqualTo(PickingMode.Ignore), "Bands never take clicks.");
         }
 
         // ---- 5.4 keys ----

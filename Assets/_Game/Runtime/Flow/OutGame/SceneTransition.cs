@@ -11,6 +11,8 @@ namespace ActionPlatformer.Flow
     public sealed class SceneTransition
     {
         public const float FadeDuration = .18f;
+        // A slow frame advances a fade by at most this much, so the fade (and its glitch) is always seen over a few frames.
+        public const float MaxFadeStep = 1f / 30f;
         public const float PrepareTimeout = 6f;
         public const string LoadFailedMessage = "화면을 불러오지 못했습니다.";
         public const string PrepareFailedMessage = "스테이지를 준비하지 못했습니다.";
@@ -54,7 +56,7 @@ namespace ActionPlatformer.Flow
             switch (Phase)
             {
                 case TransitionPhase.Covering:
-                    Cover = Mathf.MoveTowards(Cover, 1f, unscaledDeltaTime / FadeDuration);
+                    Cover = Mathf.MoveTowards(Cover, 1f, Mathf.Min(unscaledDeltaTime, MaxFadeStep) / FadeDuration);
                     if (Cover < 1f) return;
                     operation = loadScene(TargetScene);
                     if (operation == null) { Fail(LoadFailedMessage); return; }
@@ -71,7 +73,7 @@ namespace ActionPlatformer.Flow
                     if (elapsed >= PrepareTimeout) Fail(PrepareFailedMessage);
                     return;
                 case TransitionPhase.Revealing:
-                    Cover = Mathf.MoveTowards(Cover, 0f, unscaledDeltaTime / FadeDuration);
+                    Cover = Mathf.MoveTowards(Cover, 0f, Mathf.Min(unscaledDeltaTime, MaxFadeStep) / FadeDuration);
                     if (Cover > 0f) return;
                     Phase = TransitionPhase.Idle;
                     ready = null; operation = null;

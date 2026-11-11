@@ -215,7 +215,7 @@ namespace ActionPlatformer.Flow
                 view.RetryRequested += Retry;
                 view.NextRequested += NextStage;
                 view.StageSelectRequested += OpenStageSelectFromResult;
-                view.TitleRequested += ReturnToTitle;
+                view.TitleRequested += ReturnToTitleFromResult;
             }
             else
             {
@@ -223,7 +223,7 @@ namespace ActionPlatformer.Flow
                 view.RetryRequested -= Retry;
                 view.NextRequested -= NextStage;
                 view.StageSelectRequested -= OpenStageSelectFromResult;
-                view.TitleRequested -= ReturnToTitle;
+                view.TitleRequested -= ReturnToTitleFromResult;
             }
         }
 
@@ -435,15 +435,50 @@ namespace ActionPlatformer.Flow
         {
             if (!IsPaused || outGame == null) return;
             outGame.ShowDialog("타이틀로", LeaveMessage("타이틀로 돌아가시겠습니까?"), ReturnFocusToPause,
-                new ConfirmDialog.Choice("title-confirm", "타이틀로", ReturnToTitle),
-                new ConfirmDialog.Choice("title-cancel", "취소", null, true));
+                LeaveChoices("title-confirm", "타이틀로", ReturnToTitle, "title-cancel", AskTitleFromPause));
+        }
+
+        // The result and failure screens leave at once, unless a save failed: then the loss is explained again
+        // and the save can be retried first (planning doc 7.3).
+        private void ReturnToTitleFromResult()
+        {
+            if (!HasUnsavedRecords || outGame == null) { ReturnToTitle(); return; }
+            string focus = State == StageState.Failed ? "fail-title" : "result-title";
+            outGame.ShowDialog("타이틀로", LeaveMessage("타이틀로 돌아가시겠습니까?"), () => view.ResultItem(focus)?.Focus(),
+                LeaveChoices("title-confirm", "타이틀로", ReturnToTitle, "title-cancel", ReturnToTitleFromResult));
+        }
+
+        public bool HasUnsavedRecords => saves != null && (saves.ProgressUnsaved || saves.SettingsUnsaved);
+
+        // Leave / cancel, plus "다시 저장" while a record is unsaved. A retry that works leaves; one that fails asks again.
+        private ConfirmDialog.Choice[] LeaveChoices(string confirmName, string confirmLabel, Action leave, string cancelName, Action askAgain)
+        {
+            var choices = new List<ConfirmDialog.Choice>();
+            if (HasUnsavedRecords)
+                choices.Add(new ConfirmDialog.Choice("leave-save-retry", "다시 저장", () =>
+                {
+                    if (RetryUnsavedRecords()) leave();
+                    else askAgain?.Invoke();
+                }));
+            choices.Add(new ConfirmDialog.Choice(confirmName, confirmLabel, leave));
+            choices.Add(new ConfirmDialog.Choice(cancelName, "취소", null, true));
+            return choices.ToArray();
+        }
+
+        private bool RetryUnsavedRecords()
+        {
+            bool ok = true;
+            if (saves.ProgressUnsaved) ok &= saves.SaveProgress();
+            if (saves.SettingsUnsaved) ok &= saves.SaveSettings();
+            if (!ok) Debug.LogWarning("Save retry failed: " + saves.LastError);
+            return ok;
         }
 
         // What leaving now keeps and loses under the rest-area save policy (planning doc 6.1, 8.2).
         public string LeaveMessage(string question)
         {
-            if (saves != null && (saves.ProgressUnsaved || saves.SettingsUnsaved))
-                return "저장하지 못한 기록이 있습니다. 지금 나가면 그 기록은 사라집니다. " + question;
+            if (HasUnsavedRecords)
+                return "저장하지 못한 기록이 있습니다. 저장하지 않은 채 게임을 끄면 그 기록은 사라집니다. " + question;
             var p = saves?.Progress;
             if (stage == null) return question;
             if (stageId != null && p != null && p.IsCleared(stageId)) return "다시 플레이 중인 진행은 저장되지 않습니다. " + question;
@@ -788,7 +823,7 @@ namespace ActionPlatformer.Flow
         // Leaving a stage mid-run or with a failed save asks first (planning doc 8.2); otherwise the program just ends.
         private bool QuitNeedsConfirm =>
             (stage != null && initialized && (State == StageState.Playing || State == StageState.Dying)) ||
-            (saves != null && (saves.ProgressUnsaved || saves.SettingsUnsaved));
+            HasUnsavedRecords;
 
         private bool OnWantsToQuit()
         {
@@ -801,8 +836,7 @@ namespace ActionPlatformer.Flow
         {
             if (stage != null && State == StageState.Playing && !IsPaused) TryPause();
             outGame.ShowDialog("게임 종료", LeaveMessage("종료하시겠습니까?"), ReturnFocusToPause,
-                new ConfirmDialog.Choice("quit-confirm", "종료", () => { quitConfirmed = true; QuitGame(); }),
-                new ConfirmDialog.Choice("quit-cancel", "취소", null, true));
+                LeaveChoices("quit-confirm", "종료", () => { quitConfirmed = true; QuitGame(); }, "quit-cancel", AskQuit));
         }
     }
 }
