@@ -1,1 +1,6 @@
 @import url("unity-theme://default");
+
+/* Every panel text uses the SDF Noto Sans KR asset, so it stays sharp when scaled or zoomed. */
+:root {
+    -unity-font-definition: url("Cinematics/Fonts/NotoSansKR-Regular-SDF.asset");
+}

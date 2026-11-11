@@ -93,6 +93,13 @@ Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / D
 - License: SIL Open Font License 1.1. The unchanged license is included at `Assets/_Game/UI/Cinematics/Fonts/OFL.txt`.
 - Local file: `Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular.otf`, unmodified.
 - SHA-256: `69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68`.
+- 2026-11-11: 같은 폰트 파일에서 SDF 폰트 에셋 2개를 만들었다(`NotoSansKR-Regular-SDF.asset` UI Toolkit용, `NotoSansKR-Regular-TMP-SDF.asset` TextMeshPro용). 폰트 파일은 바꾸지 않았고 라이선스도 같다.
+
+## TextMesh Pro Essential Resources (2026-11-11)
+
+- Source: Unity `com.unity.ugui` 2.0.0 package, `Package Resources/TMP Essential Resources.unitypackage`, imported unchanged into `Assets/TextMesh Pro/`.
+- Contents: TMP shaders, settings, default sprite asset and the LiberationSans font with its SIL Open Font License (`Assets/TextMesh Pro/Fonts/LiberationSans - OFL.txt`).
+- License: Unity package content under the Unity Companion License; LiberationSans under SIL OFL 1.1.
 
 - 2026-10-07: CoreLoopStage의 안내 NPC는 위 Adventurer의 기존 Idle 스프라이트/클립을 색상 변경하여 재사용한다. 새 외부 에셋이나 라이선스는 추가하지 않았다.
 

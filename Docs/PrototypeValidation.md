@@ -1083,3 +1083,9 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 실패 1개: `CutsceneTests.VirtualKeyboardConfirmsAndSkipsWithoutGameplayInput`(290줄, 가상 Enter 뒤 대사 전체 표시가 안 됨). 클래스 재실행에서도 실패했다. 11-05 기록의 같은 줄 실패와 증상이 같다.
 - Play Mode 캡처(`Library/PrototypeValidation/OutGame/`): 타이틀, 일시정지 5버튼, 일시정지 위 설정, 조작 키 탭, 휴식 구역 1 재개, 실패 화면.
 - 확인하지 못한 것: 스탠드얼론 빌드에서의 화면 모드·해상도 15초 확인, 게임 종료·창 닫기 확인창, 실제 저장 파일로 재실행했을 때의 유지(Editor에서는 파일 저장·읽기만 확인).
+
+## 2026-11-11 — 글자를 SDF 폰트로
+
+- 열린 Editor 전체 실행: EditMode 142/142(새 `TextRenderingTests` 4), PlayMode 464/465(새 `OutGameFlowTests.EveryShownUiTextUsesTheSdfFontAsset` 포함). 실패 1개는 기존 `CutsceneTests.VirtualKeyboard…`(290줄).
+- 실행 중 새 글자가 추가되지 않아 두 폰트 에셋 파일은 테스트·Play Mode 뒤에도 바뀌지 않았다.
+- 캡처(`Library/PrototypeValidation/OutGame/`): `ZoomBefore.png`(카메라 5배 확대, 구형 TextMesh), `ZoomAfter.png`(같은 조건, TMP SDF), `ZoomUiAfter.png`(일시정지 메뉴 4배 확대, UI Toolkit SDF).

@@ -12,8 +12,8 @@ namespace ActionPlatformer.Flow
         public enum ResultKind { None, Clear, FinalClear, Failed }
         public const string ResultName = "stage-result";
         [SerializeField] private UIDocument document;
-        [Tooltip("Needs Korean glyphs for the result screens; the default theme font has none.")]
-        [SerializeField] private Font font;
+        [Tooltip("SDF font asset with Korean glyphs, so text stays sharp at any scale.")]
+        [SerializeField] private UnityEngine.TextCore.Text.FontAsset fontAsset;
         private VisualElement stageSection;
         private Label goalHint, glitchHint, comboReady;
         private VisualElement comboBar;
@@ -97,7 +97,7 @@ namespace ActionPlatformer.Flow
             comboPips = Array.Empty<VisualElement>();
 
             result = new ResultPanel(this);
-            if (font != null) result.Root.style.unityFontDefinition = FontDefinition.FromFont(font);
+            if (fontAsset != null) result.Root.style.unityFontDefinition = FontDefinition.FromSDFFont(fontAsset);
             stageSection.Add(result.Root);
             ShowGoalHint(false);
             ShowStage(false);

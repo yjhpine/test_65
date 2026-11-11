@@ -14,8 +14,8 @@ namespace ActionPlatformer.Flow
         public const string ContinueName = "pause-continue", SettingsName = "pause-settings", ControlsName = "pause-controls",
             RestartName = "pause-restart", TitleName = "pause-title";
         [SerializeField] private UIDocument document;
-        [Tooltip("Needs Korean glyphs; the HUD's default font has none.")]
-        [SerializeField] private Font font;
+        [Tooltip("SDF font asset with Korean glyphs, so text stays sharp at any scale.")]
+        [SerializeField] private UnityEngine.TextCore.Text.FontAsset fontAsset;
         private PausePanel panel;
         public event Action ContinueRequested, SettingsRequested, ControlsRequested, RestartRequested, TitleRequested;
         public bool IsVisible => panel != null && panel.Root.style.display == DisplayStyle.Flex;
@@ -51,7 +51,7 @@ namespace ActionPlatformer.Flow
             // Replace only this section; the root and its other sections belong to their own views.
             panel?.Root.RemoveFromHierarchy();
             panel = new PausePanel(this);
-            if (font != null) panel.Root.style.unityFontDefinition = FontDefinition.FromFont(font);
+            if (fontAsset != null) panel.Root.style.unityFontDefinition = FontDefinition.FromSDFFont(fontAsset);
             document.rootVisualElement.Add(panel.Root);
             Show(false);
         }

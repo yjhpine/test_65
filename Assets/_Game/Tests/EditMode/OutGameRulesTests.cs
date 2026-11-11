@@ -328,13 +328,14 @@ namespace ActionPlatformer.Tests
         [Test] public void GameManagerPrefabWiresTheOutGameLayer()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Resources/GameManager.prefab");
-            var font = AssetDatabase.LoadAssetAtPath<Font>("Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular.otf");
+            var font = AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>("Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular-SDF.asset");
+            Assert.That(font, Is.Not.Null);
             var outGame = prefab.GetComponent<OutGameView>();
             Assert.That(outGame, Is.Not.Null);
             var outData = new SerializedObject(outGame);
             Assert.That(outData.FindProperty("document").objectReferenceValue, Is.SameAs(prefab.GetComponent<UIDocument>()));
-            Assert.That(outData.FindProperty("font").objectReferenceValue, Is.SameAs(font));
-            Assert.That(new SerializedObject(prefab.GetComponent<StageFlowView>()).FindProperty("font").objectReferenceValue, Is.SameAs(font));
+            Assert.That(outData.FindProperty("fontAsset").objectReferenceValue, Is.SameAs(font));
+            Assert.That(new SerializedObject(prefab.GetComponent<StageFlowView>()).FindProperty("fontAsset").objectReferenceValue, Is.SameAs(font));
             var manager = new SerializedObject(prefab.GetComponent<GameManager>());
             Assert.That(manager.FindProperty("outGame").objectReferenceValue, Is.SameAs(outGame));
             Assert.That(manager.FindProperty("catalog").objectReferenceValue,

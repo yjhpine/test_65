@@ -12,8 +12,8 @@ namespace ActionPlatformer.Flow
         public const string LoadingName = "loading";
         public const string UnsavedName = "unsaved-notice";
         [SerializeField] private UIDocument document;
-        [Tooltip("Needs Korean glyphs; the default theme font has none.")]
-        [SerializeField] private Font font;
+        [Tooltip("SDF font asset with Korean glyphs, so text stays sharp at any scale.")]
+        [SerializeField] private UnityEngine.TextCore.Text.FontAsset fontAsset;
         private VisualElement section, loading, unsaved;
         private Label loadingText;
 
@@ -38,7 +38,7 @@ namespace ActionPlatformer.Flow
             section = new VisualElement { name = "out-game", pickingMode = PickingMode.Ignore };
             section.style.position = Position.Absolute;
             section.style.left = section.style.right = section.style.top = section.style.bottom = 0;
-            if (font != null) section.style.unityFontDefinition = FontDefinition.FromFont(font);
+            if (fontAsset != null) section.style.unityFontDefinition = FontDefinition.FromSDFFont(fontAsset);
             Title = Add(new TitlePanel());
             StageSelect = Add(new StageSelectPanel());
             Settings = Add(new SettingsPanel());

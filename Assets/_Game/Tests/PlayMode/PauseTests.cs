@@ -236,8 +236,9 @@ namespace ActionPlatformer.Tests
             Assert.That(buttons.All(b => b != null && b.parent != null && menu.Contains(b)), Is.True);
             Assert.That(buttons.Select(b => b.Text), Is.EqualTo(new[] { "계속하기", "설정", "조작 안내", "현재 스테이지 재시작", "타이틀로" }));
             yield return Until(() => root.panel.focusController.focusedElement == buttons[0], "계속하기 should take focus.", 2f);
-            Assert.That(buttons.All(b => b.resolvedStyle.unityFontDefinition.font != null &&
-                b.resolvedStyle.unityFontDefinition.font.name == "NotoSansKR-Regular"), Is.True, "Korean labels need the Noto Sans KR font.");
+            Assert.That(buttons.All(b => b.resolvedStyle.unityFontDefinition.fontAsset != null &&
+                b.resolvedStyle.unityFontDefinition.fontAsset.name == "NotoSansKR-Regular-SDF"), Is.True,
+                "Korean labels use the Noto Sans KR SDF font asset.");
 
             // Sub-pages and confirmations open over the pause and close back into it.
             foreach (var button in buttons.Skip(1))

@@ -548,6 +548,28 @@ namespace ActionPlatformer.Tests
             }
         }
 
+        // Every shown text in the game UI and the cutscene UI is drawn from the SDF font asset, never a bitmap font file.
+        [UnityTest] public IEnumerator EveryShownUiTextUsesTheSdfFontAsset()
+        {
+            yield return LoadStage();
+            game.View.ShowCombo(1, 3);
+            Assert.That(game.TryPause(), Is.True);
+            game.PauseMenu.Item(PauseMenuView.SettingsName).Activate();
+            yield return null;
+            yield return null;
+            int checkedTexts = 0;
+            foreach (var document in Object.FindObjectsByType<UIDocument>(FindObjectsSortMode.None))
+                foreach (var text in document.rootVisualElement.Query<TextElement>().ToList())
+                {
+                    if (!MenuKit.IsShown(text)) continue;
+                    var font = text.resolvedStyle.unityFontDefinition;
+                    Assert.That(font.fontAsset, Is.Not.Null, $"'{text.text}' ({text.name}) uses a plain font file.");
+                    Assert.That(font.fontAsset.name, Is.EqualTo("NotoSansKR-Regular-SDF"));
+                    checkedTexts++;
+                }
+            Assert.That(checkedTexts, Is.GreaterThan(10));
+        }
+
         [UnityTest] public IEnumerator PresentationStrengthZeroRemovesShakeButKeepsGameplay()
         {
             yield return LoadStage();

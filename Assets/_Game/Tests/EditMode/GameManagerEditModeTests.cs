@@ -39,8 +39,8 @@ namespace ActionPlatformer.Tests
             Assert.That(menu, Is.Not.Null);
             var menuData = new SerializedObject(menu);
             Assert.That(menuData.FindProperty("document").objectReferenceValue, Is.SameAs(prefab.GetComponent<UIDocument>()));
-            Assert.That(menuData.FindProperty("font").objectReferenceValue,
-                Is.SameAs(AssetDatabase.LoadAssetAtPath<Font>("Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular.otf")));
+            Assert.That(menuData.FindProperty("fontAsset").objectReferenceValue,
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>("Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular-SDF.asset")));
             var managerData = new SerializedObject(prefab.GetComponent<GameManager>());
             Assert.That(managerData.FindProperty("pauseMenu").objectReferenceValue, Is.SameAs(menu));
             var controls = managerData.FindProperty("controls").objectReferenceValue as InputActionAsset;

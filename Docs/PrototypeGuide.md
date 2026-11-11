@@ -971,3 +971,13 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 코드: `Runtime/Flow/GameManager.OutGame.cs`, `Runtime/Flow/OutGame/*`(카탈로그·저장·전환·키·화면 설정), `Runtime/Flow/Menus/*`(메뉴 부품·패널·`OutGameView`), `PauseMenuView`, `StageFlowView`(결과 화면), `StageProgress.TryInitialize(checkpoint)`.
 - 에셋: `Data/Flow/StageCatalog.asset`(title `Title`, `stage1` = `스테이지 1` = CoreLoopStage), `Resources/GameManager.prefab`에 `OutGameView` 추가와 `catalog`·`outGame`·`playerControls`(PrototypeControls)·`previewClip`(HitA) 연결, `StageFlowView.font`.
 - 스테이지를 늘리려면 카탈로그에 항목을 추가하고 씬을 빌드 목록에 넣는다. 2개 이상이면 스테이지 선택이 나타나고 순서대로 해금된다.
+
+## 2026-11-11 — 글자를 SDF 폰트로 (확대해도 깨지지 않게)
+
+사용자 요청: UI 글씨체가 TMP인지 확인하고, 확대해도 글자가 깨지지 않게 한다.
+
+- 확인 결과(변경 전): TextMeshPro는 쓰이지 않았다. UI Toolkit 글자(HUD, 일시정지, 아웃게임 메뉴, 결과 화면, 컷신 대사·말풍선)는 폰트 파일(`NotoSansKR-Regular.otf`, HUD는 기본 테마 폰트)을 그대로 써서 비트맵 아틀라스로 그려졌고, 휴식 구역 안내판은 구형 `TextMesh`였다. 둘 다 크게 확대하면 흐려지거나 계단이 생긴다.
+- UI Toolkit: `UI/Cinematics/Fonts/NotoSansKR-Regular-SDF.asset`(TextCore 폰트 에셋, SDFAA, 샘플링 64pt·패딩 8, 2048 아틀라스, Dynamic·멀티 아틀라스). `StageTheme.tss`의 `:root`가 패널 전체(HUD·일시정지·아웃게임·결과·컷신)에 이 에셋을 지정하고, `Cutscene.uss`도 `-unity-font-definition`으로 바꿨다. `OutGameView`·`PauseMenuView`·`StageFlowView`의 글꼴 필드는 `fontAsset`(FontAsset)이다. HUD의 영어 글자도 이제 Noto Sans KR이다.
+- 월드 글자: `Prefabs/RestArea.prefab` 안내판을 `TextMeshPro`(3D)로 바꿨다. 폰트 `NotoSansKR-Regular-TMP-SDF.asset`, 크기 3.84(예전 TextMesh와 같은 4.53×1.11 범위), 정렬 순서 4 그대로. 이 프로젝트는 Linear 색공간이라 예전 TextMesh는 지정 색 `#a6ffe6`을 더 밝게 그렸으므로, 보이던 모습대로 `#d3fff4`로 맞췄다. TMP 셰이더·설정을 위해 `Assets/TextMesh Pro/`(TMP Essential Resources)를 가져왔다.
+- 두 에셋에는 지금 게임에 쓰이는 글자 410자(한글 284자, 코드·Timeline·프리팹·씬에서 수집)를 미리 넣었다. 없는 글자는 실행 중 폰트 파일에서 추가된다(이때 에디터에서는 에셋이 바뀌어 Git 변경으로 보일 수 있다). 새 대사가 많이 늘면 에셋 Inspector의 문자 추가나 다시 만들기로 미리 채운다. `✓/✗`는 Noto Sans KR에 없지만 보스 디버그용 에디터 표시에만 쓰인다.
+- 지키는 테스트: EditMode `TextRenderingTests`(두 에셋이 SDF·Dynamic이고 주요 글자를 가짐, 프리팹·씬에 구형 TextMesh 없음, 안내판이 TMP이고 플레이어 아래, 스타일시트가 SDF 에셋을 가리킴), PlayMode `OutGameFlowTests.EveryShownUiTextUsesTheSdfFontAsset`(보이는 모든 UI 글자가 SDF 에셋으로 그려짐).
