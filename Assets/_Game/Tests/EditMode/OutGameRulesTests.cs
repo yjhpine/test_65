@@ -336,17 +336,22 @@ namespace ActionPlatformer.Tests
             Assert.That(catalog, Is.Not.Null);
             Assert.That(catalog.TryValidate(out var error), Is.True, error);
             Assert.That(catalog.TitleScene, Is.EqualTo("Title"));
-            Assert.That(catalog.Count, Is.EqualTo(1));
+            // 2026-11-12: a temporary stage 2 (a copy of stage 1) so stage select, next stage and the final clear can be seen.
+            Assert.That(catalog.Count, Is.EqualTo(2));
             Assert.That(catalog[0].Scene, Is.EqualTo("CoreLoopStage"));
+            Assert.That(catalog[1].Id, Is.EqualTo("stage2"));
+            Assert.That(catalog[1].Scene, Is.EqualTo("Stage2"));
+            Assert.That(catalog.HasStageSelect, Is.True);
             var scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => Path.GetFileNameWithoutExtension(s.path)).ToList();
             Assert.That(scenes.First(), Is.EqualTo("Title"), "The game starts at the title.");
+            Assert.That(scenes.IndexOf("Stage2"), Is.EqualTo(scenes.IndexOf("CoreLoopStage") + 1));
             for (int i = 0; i < catalog.Count; i++) Assert.That(scenes, Does.Contain(catalog[i].Scene));
         }
 
         [Test] public void GameManagerPrefabWiresTheOutGameLayer()
         {
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/_Game/Resources/GameManager.prefab");
-            var font = AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>("Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular-SDF.asset");
+            var font = AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>("Assets/_Game/UI/Fonts/Galmuri/Galmuri11-Bitmap.asset");
             Assert.That(font, Is.Not.Null);
             var outGame = prefab.GetComponent<OutGameView>();
             Assert.That(outGame, Is.Not.Null);

@@ -1128,3 +1128,10 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 첫 녹화 영상에서 일시정지 "현재 스테이지 재시작" 버튼이 두 줄로 넘치고 재시작 확인창 문장이 음절 중간에서 끊기는 것을 보고 고쳤다(버튼 폭 340, 한국어 줄바꿈 규칙). 1080p 캡처 `Library/PrototypeValidation/PixelFont/WrapPauseCrop.png`·`WrapRestartDialog.png`.
 - 테스트(관련 클래스만): PlayMode `PauseTests` 13/13, `OutGameFlowTests` 19/19, `CutsceneTests` 19/19, EditMode `GameManagerEditModeTests` 4/4.
 - 최종 영상 2080프레임(69.33초), 단계별 대기 시간 초과 0회. 미리보기 브라우저에서 재생되고, 16개 지점으로 이동해 각 장면이 시연 순서와 맞는 것을 확인했다(1초 키프레임 전에는 이동한 위치의 장면이 틀리게 보였다). 녹화 뒤 timeScale 1·captureDeltaTime 0·runInBackground false·씬 dirty 없음·실제 저장 파일 미변경을 확인했다.
+
+## 2026-11-12 — 스테이지 2 (임시)와 스테이지 선택
+
+- Play Mode(메모리 저장소)로 확인: 기록 없음 → 타이틀 `스테이지 선택` 보이지만 사용 불가(이유 표시) / 스테이지 1만 도달 → [입장 가능, 잠김], 잠긴 스테이지 입장 거부 / 스테이지 1 클리어 → STAGE CLEAR, 다음 스테이지·스테이지 선택 보임, 진행 main=stage2·해금 stage1,stage2·클리어 stage1 / 목록 [클리어, 입장 가능] / 스테이지 2 입장(씬 Stage2) / 클리어 → ALL CLEAR, 다음 없음, allCleared / 타이틀 이어하기 막힘, 목록 [클리어, 클리어]. 캡처 `Library/PrototypeValidation/Stage2/`(A~G).
+- 테스트(관련 클래스만): EditMode `OutGameRulesTests` 19/19(카탈로그 2개·빌드 순서 검사, 놓쳤던 GameManager 폰트 검사를 Galmuri로 수정), `GameManagerEditModeTests` 4/4. PlayMode `OutGameFlowTests` 20/20(새 `ClearingStageOneOpensStageTwoAndTheLastClearIsFinal`·`StageSelectShowsLockedOpenAndClearedStages`, 저장 재시도 검사는 stage1 클리어 기록으로), `StageFlowTests` 15/15(재시작 버튼에 포커스를 준 뒤 Submit — 스테이지 2가 생기자 포커스된 `다음 스테이지`가 눌려 실패했었다, 카탈로그를 메모리에서 1개로 되돌리면 통과함을 확인), `RestCycleTests` 20/20, `PauseTests` 13/13, `BossArenaTests` 4/4. `FinalWaveCutsceneTests` 4/5는 단독 실행 시의 기존 fixedDeltaTime 1 tick 문제. 전체 실행은 하지 않았다.
+- `OutGameRulesTests.GameManagerPrefabWiresTheOutGameLayer`는 도트 폰트 교체(`bd85fe75`) 때 이 클래스를 돌리지 않아 Noto를 기대한 채 실패하고 있었다. 이번에 고쳤다.
+- 시연 영상을 스테이지 선택·스테이지 2 포함 88초판(2653프레임, 대기 시간 초과 0)으로 다시 찍었다. 미리보기에서 재생되고 16개 지점이 순서대로 맞으며, 결과 화면 위 스테이지 목록이 겹치지 않는다.

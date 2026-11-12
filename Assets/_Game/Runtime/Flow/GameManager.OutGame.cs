@@ -235,7 +235,15 @@ namespace ActionPlatformer.Flow
                 EnterStage(next.Id, next.Scene, ProgressData.NoCheckpoint, false, true);
         }
 
-        private void OpenStageSelectFromResult() => OpenStageSelect(() => view.ResultItem("result-select")?.Focus());
+        private void OpenStageSelectFromResult()
+        {
+            view.SetResultCovered(true);
+            OpenStageSelect(() =>
+            {
+                view.SetResultCovered(false);
+                view.ResultItem("result-select")?.Focus();
+            });
+        }
 
         // ---- Scene changes ----
 

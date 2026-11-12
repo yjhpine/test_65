@@ -236,8 +236,19 @@ namespace ActionPlatformer.Flow
         {
             Result = ResultKind.None;
             result?.Hide();
+            SetResultCovered(false);
             SetRestartEnabled(true);
         }
+
+        // The stage list opens over the clear screen; the result heading and buttons step aside while it is open,
+        // so the two menus never draw through each other.
+        public void SetResultCovered(bool covered)
+        {
+            if (result == null) return;
+            result.Root.style.visibility = covered ? Visibility.Hidden : StyleKeyword.Null;
+        }
+
+        public bool IsResultCovered => result != null && result.Root.resolvedStyle.visibility == Visibility.Hidden;
 
         // While a save or scene change runs, the result buttons wait.
         public void SetRestartEnabled(bool value) => result?.Root.SetEnabled(value);

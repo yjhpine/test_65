@@ -268,7 +268,10 @@ namespace ActionPlatformer.Tests
                 Assert.That(Time.timeScale, Is.Zero);
                 int previous = flow.StageVersion;
                 var button = view.ResultItem("restart");
+                // Navigation events go to the focused item; with two stages 다음 스테이지 is focused first.
+                button.Focus();
                 using (var submit = NavigationSubmitEvent.GetPooled()) button.SendEvent(submit);
+                Assert.That(flow.Transition.TargetScene, Is.EqualTo("CoreLoopStage"), "다시 플레이 reloads this stage.");
                 Assert.That(flow.State, Is.EqualTo(StageState.Restarting));
                 flow.Restart();
                 yield return AwaitReload(previous);

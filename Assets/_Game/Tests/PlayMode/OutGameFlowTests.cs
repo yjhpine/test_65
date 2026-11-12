@@ -148,8 +148,9 @@ namespace ActionPlatformer.Tests
             Assert.That(TitlePanel.Logo, Is.EqualTo("치지직"));
             Assert.That(title.Continue.Available, Is.False);
             Assert.That(title.Continue.UnavailableReason, Is.EqualTo(ProgressRules.NoRecordReason));
-            Assert.That(title.StageSelect.resolvedStyle.display == DisplayStyle.None || title.StageSelect.style.display == DisplayStyle.None,
-                Is.True, "A one-stage catalog hides the stage list.");
+            Assert.That(title.StageSelect.style.display, Is.EqualTo(new StyleEnum<DisplayStyle>(DisplayStyle.Flex)), "Two stages show the stage list.");
+            Assert.That(title.StageSelect.Available, Is.False, "Without a record there is nothing to choose.");
+            Assert.That(title.StageSelect.UnavailableReason, Is.EqualTo(ProgressRules.NoRecordReason));
             yield return Until(() => title.Focused == title.NewGame, "새 게임 is selected first when nothing can be continued.", 2f);
             title.Continue.Activate();
             Assert.That(game.Transition.IsBusy, Is.False, "An unavailable item does nothing.");
@@ -322,7 +323,7 @@ namespace ActionPlatformer.Tests
 
         private static void UseSingleEnemyObjective(Scene scene, LoadSceneMode mode)
         {
-            if (scene.name != "CoreLoopStage") return;
+            if (scene.name != "CoreLoopStage" && scene.name != "Stage2") return;
             LegacyExitStage.Restore(scene);
             var stage = StageLayout.FindIn(scene);
             var enemy = stage.Encounters[0].Enemies[0];
@@ -332,17 +333,50 @@ namespace ActionPlatformer.Tests
             foreach (var gate in scene.GetRootGameObjects().SelectMany(g => g.GetComponentsInChildren<StageGate>(true))) gate.SetLocked(false);
         }
 
-        [UnityTest] public IEnumerator ClearingTheOnlyStageIsTheFinalClearAndEndsContinue()
+        private IEnumerator ClearAtTheGoal(string what)
         {
-            SceneManager.sceneLoaded += UseSingleEnemyObjective;
-            try { yield return LoadStage(); }
-            finally { SceneManager.sceneLoaded -= UseSingleEnemyObjective; }
             var enemy = game.ActiveEnemies.Single();
             enemy.ApplyDamage(enemy.MaxHealth);
             var goal = Object.FindFirstObjectByType<StageGoal>();
             game.Player.Motor.Teleport(new Vector2(goal.transform.position.x, .82f));
             Physics2D.SyncTransforms();
-            yield return Until(() => game.State == StageState.Completed, "The stage should clear at the goal.");
+            yield return Until(() => game.State == StageState.Completed, what);
+        }
+
+        // Clearing stage 1 opens stage 2 (다음 스테이지, 스테이지 선택); clearing stage 2, the last one, is the final clear.
+        [UnityTest] public IEnumerator ClearingStageOneOpensStageTwoAndTheLastClearIsFinal()
+        {
+            SceneManager.sceneLoaded += UseSingleEnemyObjective;
+            try
+            {
+                yield return LoadStage();
+                yield return ClearAtTheGoal("Stage 1 should clear at the goal.");
+                Assert.That(game.View.Result, Is.EqualTo(StageFlowView.ResultKind.Clear));
+                Assert.That(game.View.ResultItem("result-next").style.display, Is.EqualTo(new StyleEnum<DisplayStyle>(DisplayStyle.Flex)));
+                Assert.That(game.View.ResultItem("result-select").style.display, Is.EqualTo(new StyleEnum<DisplayStyle>(DisplayStyle.Flex)));
+                Assert.That(game.Saves.Progress.IsCleared("stage1"), Is.True);
+                Assert.That(game.Saves.Progress.IsUnlocked("stage2"), Is.True);
+                Assert.That(game.Saves.Progress.mainStage, Is.EqualTo("stage2"), "이어하기 moves on to the next stage.");
+                Assert.That(game.Saves.Progress.allCleared, Is.False);
+
+                // The stage list opens over the clear screen, which steps aside until the list closes.
+                game.View.ResultItem("result-select").Activate();
+                Assert.That(game.OutGame.IsOpen(game.OutGame.StageSelect), Is.True);
+                yield return null;
+                Assert.That(game.View.IsResultCovered, Is.True, "The clear screen does not draw through the stage list.");
+                Assert.That(game.OutGame.StageSelect.Entries.Select(e => e.Detail), Is.EqualTo(new[] { "클리어", "입장 가능" }));
+                Assert.That(game.OutGame.HandleBack(), Is.True);
+                yield return null;
+                Assert.That(game.View.IsResultCovered, Is.False);
+
+                int version = game.StageVersion;
+                game.View.ResultItem("result-next").Activate();
+                yield return AwaitStage(version);
+                Assert.That(game.StageId, Is.EqualTo("stage2"));
+                Assert.That(SceneManager.GetActiveScene().name, Is.EqualTo("Stage2"));
+                yield return ClearAtTheGoal("Stage 2 should clear at the goal.");
+            }
+            finally { SceneManager.sceneLoaded -= UseSingleEnemyObjective; }
             Assert.That(game.View.Result, Is.EqualTo(StageFlowView.ResultKind.FinalClear));
             Assert.That(game.View.ResultHeading, Is.EqualTo("ALL CLEAR"));
             Assert.That(game.View.ResultItem("result-next").style.display, Is.EqualTo(new StyleEnum<DisplayStyle>(DisplayStyle.None)),
@@ -358,6 +392,34 @@ namespace ActionPlatformer.Tests
             yield return Until(() => game.IsTitle, "The title should load.");
             yield return OutGameTestSupport.WaitForTransition(game);
             Assert.That(game.OutGame.Title.Continue.UnavailableReason, Is.EqualTo(ProgressRules.AllClearedReason));
+        }
+
+        // The title's stage list: locked stages say why and refuse, open and cleared ones enter from their start.
+        [UnityTest] public IEnumerator StageSelectShowsLockedOpenAndClearedStages()
+        {
+            StoreProgress(ProgressData.NoCheckpoint);
+            yield return LoadTitle();
+            var title = game.OutGame.Title;
+            Assert.That(title.StageSelect.Available, Is.True);
+            title.StageSelect.Activate();
+            var list = game.OutGame.StageSelect;
+            Assert.That(game.OutGame.IsOpen(list), Is.True);
+            Assert.That(list.Entries.Select(e => e.Text), Is.EqualTo(new[] { "1. 스테이지 1", "2. 스테이지 2" }));
+            Assert.That(list.Entries.Select(e => e.Detail), Is.EqualTo(new[] { "입장 가능", "잠김" }));
+            list.Entries[1].Activate();
+            Assert.That(game.Transition.IsBusy, Is.False, "A locked stage cannot be entered.");
+            Assert.That(list.HintText, Is.EqualTo("이전 스테이지를 클리어하면 열립니다"));
+            Assert.That(game.OutGame.HandleBack(), Is.True);
+            Assert.That(game.OutGame.IsOpen(title), Is.True, "Esc returns to the title menu.");
+
+            StoreProgress(ProgressData.NoCheckpoint, cleared: true);
+            title.StageSelect.Activate();
+            Assert.That(list.Entries.Select(e => e.Detail), Is.EqualTo(new[] { "클리어", "입장 가능" }));
+            int version = game.StageVersion;
+            list.Entries[1].Activate();
+            Assert.That(game.Transition.TargetScene, Is.EqualTo("Stage2"));
+            yield return AwaitStage(version);
+            Assert.That(game.StageId, Is.EqualTo("stage2"));
         }
 
         // Planning doc 7.3: after a failed save, leaving for the title explains the loss again and can retry the save.
@@ -397,7 +459,7 @@ namespace ActionPlatformer.Tests
             storage.FailWrites = false;
             dialog.Item("leave-save-retry").Activate();
             Assert.That(game.HasUnsavedRecords, Is.False);
-            Assert.That(ProgressData.FromJson(storage.Entries[OutGameSaves.ProgressName], game.Catalog).allCleared, Is.True);
+            Assert.That(ProgressData.FromJson(storage.Entries[OutGameSaves.ProgressName], game.Catalog).IsCleared("stage1"), Is.True, "The retried save holds the clear.");
             Assert.That(game.Transition.IsBusy, Is.True, "A retry that works goes on to the title.");
             yield return Until(() => game.IsTitle, "The title should load.");
             yield return OutGameTestSupport.WaitForTransition(game);

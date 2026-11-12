@@ -1013,8 +1013,15 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 
 ## 2026-11-12 — 아웃게임 시연 영상, 한국어 줄바꿈, 일시정지 버튼 폭
 
-- 시연 영상(교수님 시연용, 사용자 요청): `Exports/Recordings/GLITCH-OutGame-20261112/GLITCH-OutGame.mp4`(1920×1080, 30fps, 69초, H.264 Baseline·1초 키프레임, 소리 없음)와 장면 목록 `Timeline.txt`. 왼쪽 위 자막으로 단계를 설명한다: 타이틀 → 새 게임 덮어쓰기 확인 → 설정 4탭 → 조작 안내 → 이어하기(로딩·글리치 전환, 휴식 구역 1) → 일시정지 5버튼·설정·재시작/타이틀로 확인창 → 사망·실패 화면·재도전 → 클리어 화면(보스 처치 대신 클리어 처리를 바로 호출, 자막에 표시) → 클리어 후 타이틀.
+- 시연 영상(교수님 시연용, 사용자 요청): `Exports/Recordings/GLITCH-OutGame-20261112/GLITCH-OutGame.mp4`(1920×1080, 30fps, H.264 Baseline·1초 키프레임, 소리 없음)와 장면 목록 `Timeline.txt`. 왼쪽 위 자막으로 단계를 설명한다. 같은 날 스테이지 2를 넣은 뒤 다시 찍은 88초판: 타이틀 → 새 게임 덮어쓰기 확인 → 설정 4탭 → 조작 안내 → 스테이지 선택(스테이지 2 잠김·이유) → 이어하기(로딩·글리치 전환, 휴식 구역 1) → 일시정지 5버튼·설정·재시작/타이틀로 확인창 → 사망·실패 화면·재도전 → 스테이지 1 클리어(다음 스테이지·스테이지 선택) → 스테이지 2 → 최종 클리어(ALL CLEAR) → 모두 클리어한 타이틀·스테이지 선택. 클리어는 보스 처치 대신 클리어 처리를 바로 호출했다(자막에 표시). 첫 69초판은 같은 경로에 덮어썼다.
 - 녹화 방법: 열린 Editor Play Mode에서 `script eval`로 코루틴을 돌려 메뉴를 코드로 고르고(`Focus`·`Activate`) `Time.captureDeltaTime = 1/30`로 한 프레임씩 진행하며, 프레임마다 `ScreenCapture.CaptureScreenshotAsTexture`를 Editor의 `UnityEditor.Media.MediaEncoder`(H.264, `H264EncoderAttributes` gopSize 30, Baseline)에 넣었다. ffmpeg는 없다. 저장 데이터는 메모리 저장소. 자막은 별도 UIDocument(StagePanelSettings 복제, Sorting Order 1000). 스크립트는 저장소 밖(일회용)이다.
 - 주의: 자막 글자가 Play Mode 중 `Galmuri11-Bitmap` 메모리 에셋에 추가되고, 이어서 다른 작업이 에셋을 저장하면 파일에 써진다. 녹화 뒤 Git 상태로 되돌리고 다시 불러온다. High 프로필 MP4는 미리보기 브라우저에서 재생이 시작되지 않아 Baseline을 쓴다.
 - 한국어 줄바꿈: 새 `UI/StageTextSettings.asset`(PanelTextSettings, `useModernHangulLineBreakingRules` 켬)을 StagePanelSettings·CutscenePanelSettings의 Text Settings에 연결했다. 긴 문장이 음절 중간이 아니라 띄어쓰기에서 줄을 바꾼다.
 - 일시정지 버튼 폭 300 → 340(24px 도트 폰트에서 "현재 스테이지 재시작"이 한 줄).
+
+## 2026-11-12 — 스테이지 2 (임시)와 스테이지 선택
+
+- 사용자 요청: 스테이지 선택 기능을 볼 수 있게 스테이지 2를 만들었다. `Scenes/Stage2.unity`는 CoreLoopStage를 그대로 복사한 **임시 스테이지**다(레벨 구성은 아직 없음, 바꿀 때는 이 씬만 고친다). 카탈로그 `Data/Flow/StageCatalog.asset`에 `stage2` / `스테이지 2` / `Stage2`, 빌드 목록은 Title(0) → CoreLoopStage(1) → Stage2(2) → MovementLab(3).
+- 스테이지가 2개라 타이틀에 `스테이지 선택`이 나타난다(진행 기록이 없으면 이유와 함께 사용 불가). 목록은 `입장 가능`·`잠김`("이전 스테이지를 클리어하면 열립니다", 들어가지 않음)·`클리어`를 표시한다. 스테이지 1을 클리어하면 결과 화면에 `다음 스테이지`·`스테이지 선택`이 생기고 이어하기는 스테이지 2 처음으로 옮겨진다. 스테이지 2(마지막)를 클리어하면 ALL CLEAR, 이어하기는 "모든 스테이지를 클리어했습니다"로 막힌다.
+- 결과 화면에서 `스테이지 선택`을 열면 결과 제목·버튼이 목록 뒤로 비쳐 겹쳤다. 목록이 열려 있는 동안 결과 화면을 숨기고(`StageFlowView.SetResultCovered`), 닫으면 다시 보이며 `스테이지 선택`에 포커스가 돌아온다.
+- 결과 화면의 기본 포커스는 `다음 스테이지`(있을 때)다. UI Toolkit의 Navigation Submit은 포커스된 버튼으로 가므로, 테스트에서 다른 버튼을 누르려면 먼저 `Focus()`한다.

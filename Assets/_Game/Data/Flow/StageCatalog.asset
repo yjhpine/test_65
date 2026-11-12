@@ -17,3 +17,6 @@ MonoBehaviour:
   - id: stage1
     displayName: "\uC2A4\uD14C\uC774\uC9C0 1"
     scene: CoreLoopStage
+  - id: stage2
+    displayName: "\uC2A4\uD14C\uC774\uC9C0 2"
+    scene: Stage2
