@@ -48,7 +48,7 @@ namespace ActionPlatformer.Flow
             Shake = Row(presentation, new ValueRow("settings-shake", "화면 흔들림"));
             Distortion = Row(presentation, new ValueRow("settings-distortion", "글리치 화면 왜곡"));
             Flash = Row(presentation, new ValueRow("settings-flash", "섬광 강도"));
-            var note = MenuKit.Label("0이면 해당 장식 연출을 끕니다. 글리치 사거리·충돌·공격 판정·쿨타임은 바뀌지 않습니다.", 15, MenuKit.DimText);
+            var note = MenuKit.Label("0이면 해당 장식 연출을 끕니다.\n글리치 사거리·충돌·공격 판정·쿨타임은 바뀌지 않습니다.", 15, MenuKit.DimText);
             note.style.width = 560; note.style.marginTop = 6; note.style.marginBottom = 6;
             presentation.Add(note);
             ResetPresentation = Row(presentation, new MenuEntry("settings-reset-presentation", "연출 설정 기본값 복원", null, 560));
@@ -73,6 +73,8 @@ namespace ActionPlatformer.Flow
             var item = Track(new MenuEntry("settings-tab-" + tab.ToString().ToLowerInvariant(), text, () => Select(tab, false), 130));
             item.style.marginLeft = item.style.marginRight = 4;
             item.style.minHeight = 42;
+            // Pixel-font sizes round up to 24 screen pixels at 1080p; a narrower side padding keeps 조작 키 on one line.
+            MenuKit.Pad(item, 6, 6);
             tabs[tab] = item;
             row.Add(item);
         }

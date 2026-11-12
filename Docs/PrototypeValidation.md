@@ -1097,3 +1097,24 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 새 테스트: EditMode `GlitchBandsFollowTheirStrength…`, 느린 프레임 페이드 검사. PlayMode `ResultScreenTitleAsksAgainAfterAFailedSaveAndCanRetryIt`, `TransitionsAndTheTitleShowGlitchBandsUnlessDistortionIsOff`.
 - 캡처: `Library/PrototypeValidation/OutGame/TransitionGlitch.png`(전환 중 찢김 띠), `StageClearTwoStages.png`(스테이지 2개 구성의 클리어 화면).
 - 전체 실행 전후 두 SDF 폰트 에셋 해시가 같았다(실행 중 글자 추가 없음).
+
+
+## 2026-11-12 — UI 40% 축소, 타이틀로 확인 문구 정리
+
+- 열린 Editor에서 재컴파일 성공(콘솔 오류는 잘못 친 CLI 명령 로그 1개뿐). 관련 클래스만 실행: EditMode `GameManagerEditModeTests` 4/4(패널 Scale 0.6 검사 추가), PlayMode `OutGameFlowTests` 18/18(타이틀로 문구 검사 수정), `PauseTests` 13/13. 전체 실행은 하지 않았다.
+- 두 SDF 폰트 에셋이 이번 작업 전(11-12 12:00:44, 그 뒤 12:03에 Editor 재시작)에 비워져 있어 `TextRenderingTests` 1개가 '치' 누락으로 실패했다(`m_ClearDynamicDataOnBuild: 1`, 원인 미확정). 사용자 결정으로 Git의 411자 상태로 되돌리고 Editor에서 강제 재임포트했다. TMP 에셋은 재임포트 뒤에도 메모리의 글자 조회표가 비워진 상태로 남아 `ReadFontAssetDefinition()`으로 다시 읽혔다. 새 문구의 '후'를 두 에셋에 더해 412자다. 그 뒤 `TextRenderingTests` 4/4, `OutGameFlowTests` 18/18 재실행 전후 두 폰트 에셋 해시 동일.
+- PanelSettings Scale 0.6은 Editor에서 스크립트를 다시 불러올 때마다(재컴파일·`RequestScriptReload`) 메모리에서 1로 돌아가고 dirty가 켜졌다. 강제 재임포트로 디스크와 맞춘 뒤에도 같았고, 기준 해상도·Scale Mode는 그대로였다. 프로젝트·패키지 코드에서 원인을 찾지 못해, 축소를 기준 해상도 2133×1200(Scale 1)으로 옮겼다. 이 값은 리로드 2회 뒤에도 유지되고 dirty가 아니었다. `GameManagerEditModeTests`는 Scale 1·기준 해상도 2133×1200을 검사한다.
+- Play Mode 캡처(2560×1440): `Library/PrototypeValidation/UiScale/`(Title·Hud·Pause·PauseTitleDialog). 캡처 중 진행 저장은 메모리 저장소를 써서 디스크 저장 파일은 건드리지 않았다.
+
+## 2026-11-12 — 도트 폰트 Galmuri11 적용
+
+- 내려받은 두 TTF가 TrueType 서명(00 01 00 00)인지와 크기(5,376,428 / 2,613,660 바이트)를 확인했다. 12px에서 '가'가 11×11·간격 12로 정수 격자임을 FontEngine으로 확인했다.
+- 열린 Editor에서 재컴파일 성공. 관련 클래스만 실행: EditMode `TextRenderingTests` 4/4(경로·Bold 연결·Noto 대체 검사로 수정), `GameManagerEditModeTests` 4/4. PlayMode `PauseTests` 13/13, `OutGameFlowTests` 18/18(확인창 폭·안내문 수정 뒤 재실행 포함), `CutsceneTests` 19/19. 전체 실행은 하지 않았다. 테스트 전후 세 Galmuri 에셋 해시 동일(실행 중 글자 추가 없음).
+- 1920×1080 Play Mode 캡처: `Library/PrototypeValidation/Galmuri/`(Title·Settings·SettingsPresentation·SettingsKeys·Controls·RestHud·PauseDialog, 4배 확대 `SettingsZoom4x.png`). 대부분의 캡처는 메모리 저장소로 돌렸는데, 첫 캡처 때 타이틀에서 설정을 닫으면서 디스크 `settings.json`을 한 번 같은 내용으로 다시 썼다. 사망 실패 화면과 컷신 말풍선은 캡처하지 않았다(컷신은 `CutsceneTests`로만 확인).
+
+## 2026-11-12 — 도트 폰트 정수 배율 (비트맵 + 12의 배수 크기)
+
+- 실험(1920×1080, 설정 화면 글자 하나를 정확히 24px로): SDF 에셋은 세로 위치가 반 픽셀 어긋나 가로획에 회색 줄이 생겼고, 12px RASTER·Point 비트맵 에셋은 폰트 한 픽셀이 화면 2×2픽셀로 고르게 찍혔다(6배 확대 `Library/PrototypeValidation/Galmuri/PxExp*.png`, `PxExp2*.png`). 크기를 맞추지 않은 19.8px 글자는 비트맵도 1~2픽셀로 들쭉날쭉했다.
+- 열린 Editor에서 재컴파일 성공. 관련 클래스만 실행: EditMode `TextRenderingTests` 5/5(새 `PixelTextDrawsWholeMultiplesOfTheNativeSize`), `GameManagerEditModeTests` 4/4. PlayMode `OutGameFlowTests` 18/18(보이는 모든 UI 글자가 12의 배수 픽셀인지 검사 추가), `PauseTests` 13/13, `CutsceneTests` 19/19. 레이아웃 수정 뒤 `OutGameFlowTests`·`PauseTests`·`TextRenderingTests` 재실행 통과. 전체 실행은 하지 않았다. 테스트 전후 Galmuri 에셋 해시 동일.
+- 캡처(메모리 저장소, 1920×1080과 2560×1440): `Library/PrototypeValidation/PixelFont/`(Title·Settings와 연출·조작 키·데이터 탭·Controls·RestHud·Pause·PauseDialog·Failed). 처음 캡처에서 음량 숫자 "100"과 탭 "조작 키"가 두 줄로 넘쳐 칸 폭·여백을 고쳤고 다시 찍어 확인했다. 컷신 말풍선은 캡처하지 않았다.
+- 캡처를 위해 Game 뷰를 잠시 2560×1440으로 바꿨다가 1920×1080·1배로 되돌렸다. Game 뷰 창이 1262×914로 바뀌어 있어 1080p 1배가 창 안에 다 들어가지 않는다(사용자 창 배치).

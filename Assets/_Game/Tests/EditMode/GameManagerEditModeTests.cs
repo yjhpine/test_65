@@ -24,6 +24,10 @@ namespace ActionPlatformer.Tests
             Assert.That(prefab, Is.Not.Null);
             var document = prefab.GetComponent<UIDocument>();
             Assert.That(document.panelSettings, Is.SameAs(AssetDatabase.LoadAssetAtPath<PanelSettings>("Assets/_Game/UI/StagePanelSettings.asset")));
+            // 2026-11-12 user request: every menu, button and HUD in this panel drawn 40% smaller. The shrink lives in the
+            // reference resolution (1280x720 / 0.6); the Scale field stays 1 because a script reload in the Editor puts it back to 1.
+            Assert.That(document.panelSettings.scale, Is.EqualTo(1f));
+            Assert.That(document.panelSettings.referenceResolution, Is.EqualTo(new Vector2Int(2133, 1200)));
             // Same order as the scene Stage UI it replaces, so cutscene dialogue keeps its layering.
             Assert.That(document.sortingOrder, Is.EqualTo(100f));
             var view = prefab.GetComponent<StageFlowView>();
@@ -40,7 +44,7 @@ namespace ActionPlatformer.Tests
             var menuData = new SerializedObject(menu);
             Assert.That(menuData.FindProperty("document").objectReferenceValue, Is.SameAs(prefab.GetComponent<UIDocument>()));
             Assert.That(menuData.FindProperty("fontAsset").objectReferenceValue,
-                Is.SameAs(AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>("Assets/_Game/UI/Cinematics/Fonts/NotoSansKR-Regular-SDF.asset")));
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<UnityEngine.TextCore.Text.FontAsset>("Assets/_Game/UI/Fonts/Galmuri/Galmuri11-Bitmap.asset")));
             var managerData = new SerializedObject(prefab.GetComponent<GameManager>());
             Assert.That(managerData.FindProperty("pauseMenu").objectReferenceValue, Is.SameAs(menu));
             var controls = managerData.FindProperty("controls").objectReferenceValue as InputActionAsset;

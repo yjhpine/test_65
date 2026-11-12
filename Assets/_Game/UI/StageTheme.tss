@@ -1,6 +1,6 @@
 @import url("unity-theme://default");
 
-/* Every panel text uses the SDF Noto Sans KR asset, so it stays sharp when scaled or zoomed. */
+/* Every panel text uses the Galmuri11 pixel font from its 12px point-filtered bitmap asset; PixelText snaps sizes to whole multiples of 12 screen pixels. */
 :root {
-    -unity-font-definition: url("Cinematics/Fonts/NotoSansKR-Regular-SDF.asset");
+    -unity-font-definition: url("Fonts/Galmuri/Galmuri11-Bitmap.asset");
 }

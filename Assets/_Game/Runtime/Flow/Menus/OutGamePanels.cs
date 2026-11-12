@@ -30,7 +30,7 @@ namespace ActionPlatformer.Flow
             box.style.backgroundColor = MenuKit.Panel;
             MenuKit.Border(box, 2, MenuKit.AccentRed);
             MenuKit.Pad(box, 36, 26);
-            box.style.maxWidth = 760;
+            box.style.maxWidth = 860; // Galmuri11 runs wider than Noto Sans KR; the usual one-sentence question stays on one line.
             box.style.alignItems = Align.Center;
             title = MenuKit.Label("", 28, MenuKit.Text, "confirm-title");
             title.style.marginBottom = 12;

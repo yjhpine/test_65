@@ -12,7 +12,7 @@ namespace ActionPlatformer.Flow
         public enum ResultKind { None, Clear, FinalClear, Failed }
         public const string ResultName = "stage-result";
         [SerializeField] private UIDocument document;
-        [Tooltip("SDF font asset with Korean glyphs, so text stays sharp at any scale.")]
+        [Tooltip("UI font asset (Galmuri11 12px bitmap since 2026-11-12); text sizes snap to whole multiples of 12 screen pixels.")]
         [SerializeField] private UnityEngine.TextCore.Text.FontAsset fontAsset;
         private VisualElement stageSection;
         private Label goalHint, glitchHint, comboReady;
@@ -25,6 +25,7 @@ namespace ActionPlatformer.Flow
         public event Action RestartRequested;
         public event Action RetryRequested, NextRequested, StageSelectRequested, TitleRequested;
         public bool IsConfigured => document != null && document.panelSettings != null && result != null;
+        public UIDocument Document => document;
         public ResultKind Result { get; private set; }
         public bool IsCompletedVisible => Result == ResultKind.Clear || Result == ResultKind.FinalClear;
         public bool IsFailedVisible => Result == ResultKind.Failed;
@@ -59,7 +60,7 @@ namespace ActionPlatformer.Flow
             goalHint.style.alignSelf = Align.Center;
             goalHint.style.paddingLeft = goalHint.style.paddingRight = 24;
             goalHint.style.paddingTop = goalHint.style.paddingBottom = 12;
-            goalHint.style.fontSize = 22;
+            PixelText.SetSize(goalHint, 22);
             goalHint.style.color = Color.white;
             goalHint.style.backgroundColor = new Color(0.12f, 0.06f, 0.08f, 0.92f);
             stageSection.Add(goalHint);
@@ -69,7 +70,7 @@ namespace ActionPlatformer.Flow
             glitchHint.style.position = Position.Absolute;
             glitchHint.style.paddingLeft = glitchHint.style.paddingRight = 10;
             glitchHint.style.paddingTop = glitchHint.style.paddingBottom = 4;
-            glitchHint.style.fontSize = 16;
+            PixelText.SetSize(glitchHint, 16);
             glitchHint.style.color = new Color(1f, 0.8f, 0.8f);
             glitchHint.style.backgroundColor = new Color(0.12f, 0.06f, 0.08f, 0.85f);
             glitchHint.style.display = DisplayStyle.None;
@@ -83,12 +84,12 @@ namespace ActionPlatformer.Flow
             comboBar.style.flexDirection = FlexDirection.Row;
             comboBar.style.alignItems = Align.Center;
             var comboTitle = new Label("COMBO");
-            comboTitle.style.fontSize = 16;
+            PixelText.SetSize(comboTitle, 16);
             comboTitle.style.color = Color.white;
             comboTitle.style.marginRight = 6;
             comboBar.Add(comboTitle);
             comboReady = new Label("STRONG NEXT");
-            comboReady.style.fontSize = 16;
+            PixelText.SetSize(comboReady, 16);
             comboReady.style.color = ComboReadyColor;
             comboReady.style.marginLeft = 8;
             comboBar.Add(comboReady);

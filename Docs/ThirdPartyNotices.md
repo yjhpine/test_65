@@ -95,6 +95,16 @@ Hero Knight uses 140×140 cells, 25 PPU, pivot (0.5,57/140), Idle 11 / Run 8 / D
 - SHA-256: `69975a0ac8472717870aefeab0a4d52739308d90856b9955313b2ad5e0148d68`.
 - 2026-11-11: 같은 폰트 파일에서 SDF 폰트 에셋 2개를 만들었다(`NotoSansKR-Regular-SDF.asset` UI Toolkit용, `NotoSansKR-Regular-TMP-SDF.asset` TextMeshPro용). 폰트 파일은 바꾸지 않았고 라이선스도 같다.
 
+## Galmuri11 — game pixel font (2026-11-12)
+
+- Source: https://github.com/quiple/galmuri (release tag `v2.40.4`)
+- Original files: `https://raw.githubusercontent.com/quiple/galmuri/v2.40.4/dist/Galmuri11.ttf`, `.../dist/Galmuri11-Bold.ttf`, license `.../ofl.md`
+- Copyright: © 2019–2025 Lee Minseo (quiple); the original font copyright metadata is preserved.
+- License: SIL Open Font License 1.1. The unchanged license is included at `Assets/_Game/UI/Fonts/Galmuri/OFL.md`.
+- Local files: `Assets/_Game/UI/Fonts/Galmuri/Galmuri11.ttf`, `Galmuri11-Bold.ttf`, unmodified.
+- SHA-256: Galmuri11.ttf `2c709890595668f7bdb6df408420fda957dde0288e95b31a1cc17a2ab98b4b4f`, Galmuri11-Bold.ttf `5265b2f437fe81f0c8095b44c0173dd9a276b58a42552bf983f21c0e69e6e8af`.
+- 같은 폴더의 폰트 에셋 3개(`Galmuri11-Bitmap.asset`·`Galmuri11-Bold-Bitmap.asset` UI Toolkit용 12px 비트맵, `Galmuri11-TMP-SDF.asset` TextMeshPro용 SDF)는 위 폰트 파일에서 만들었다. 폰트 파일은 바꾸지 않았고 라이선스도 같다. Noto Sans KR은 Galmuri에 없는 글자의 대체 폰트로 남겨 두었다.
+
 ## TextMesh Pro Essential Resources (2026-11-11)
 
 - Source: Unity `com.unity.ugui` 2.0.0 package, `Package Resources/TMP Essential Resources.unitypackage`, imported unchanged into `Assets/TextMesh Pro/`.

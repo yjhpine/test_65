@@ -40,6 +40,8 @@ namespace ActionPlatformer.Cinematics
             return true;
         }
         private void OnEnable() { Bind(); Clear(); }
+        // Style-sheet sizes are drawn at whole multiples of the 12px pixel font (Flow.PixelText).
+        private void LateUpdate() { if (root != null) ActionPlatformer.Flow.PixelText.Refresh(root, true); }
         private void OnDisable() => Clear();
         public void RenderDialogue(DialoguePlayback playback, DialogueSpeaker actor, bool asBubble, bool preview)
         {

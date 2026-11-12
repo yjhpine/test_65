@@ -34,7 +34,7 @@ namespace ActionPlatformer.Flow
         public static Label Label(string text, int size, Color color, string name = null)
         {
             var label = new Label(text) { name = name };
-            label.style.fontSize = size;
+            PixelText.SetSize(label, size);
             label.style.color = color;
             label.style.whiteSpace = WhiteSpace.Normal;
             label.style.unityTextAlign = TextAnchor.MiddleCenter;
@@ -113,7 +113,7 @@ namespace ActionPlatformer.Flow
 
         public void SetDetailStyle(int size, Color color)
         {
-            detail.style.fontSize = size;
+            PixelText.SetSize(detail, size);
             detail.style.color = color;
         }
 
@@ -168,7 +168,8 @@ namespace ActionPlatformer.Flow
             bar.Add(fill);
             line.Add(bar);
             valueLabel = MenuKit.Label("100", 20, MenuKit.Text);
-            valueLabel.style.width = 48;
+            valueLabel.style.width = 64; // "100" stays on one line when the pixel font rounds up to 24 screen pixels.
+            valueLabel.style.whiteSpace = WhiteSpace.NoWrap;
             valueLabel.pickingMode = PickingMode.Ignore;
             line.Add(valueLabel);
             Add(line);

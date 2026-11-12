@@ -306,6 +306,8 @@ namespace ActionPlatformer.Flow
                 else TryPause();
             }
             LateUpdateOutGame();
+            // A resolution change re-snaps every menu and HUD text to whole multiples of the 12px pixel font.
+            if (view != null && view.Document != null) PixelText.Refresh(view.Document.rootVisualElement);
             // Read by the next frame's key: Esc also skips cutscenes, and the frame one ends still refuses.
             cutsceneBusyAtLateUpdate = CutsceneBusy(false);
         }

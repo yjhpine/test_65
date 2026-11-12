@@ -72,7 +72,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Flow.StageFlowView
   document: {fileID: 7509565144488580845}
-  fontAsset: {fileID: 11400000, guid: 9d30398c180e2884799d11bfa6f75de1, type: 2}
+  fontAsset: {fileID: 11400000, guid: c1c7196927cb752459257fcaf1c48bb4, type: 2}
 --- !u!114 &8581582089597437312
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -105,7 +105,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Flow.PauseMenuView
   document: {fileID: 7509565144488580845}
-  fontAsset: {fileID: 11400000, guid: 9d30398c180e2884799d11bfa6f75de1, type: 2}
+  fontAsset: {fileID: 11400000, guid: c1c7196927cb752459257fcaf1c48bb4, type: 2}
 --- !u!114 &4293747194312364017
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -119,4 +119,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ActionPlatformer.Runtime::ActionPlatformer.Flow.OutGameView
   document: {fileID: 7509565144488580845}
-  fontAsset: {fileID: 11400000, guid: 9d30398c180e2884799d11bfa6f75de1, type: 2}
+  fontAsset: {fileID: 11400000, guid: c1c7196927cb752459257fcaf1c48bb4, type: 2}

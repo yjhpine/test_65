@@ -1,6 +1,6 @@
 .cutscene-root {
     position: absolute; left: 0; right: 0; top: 0; bottom: 0;
-    -unity-font-definition: url("Fonts/NotoSansKR-Regular-SDF.asset");
+    -unity-font-definition: url("../Fonts/Galmuri/Galmuri11-Bitmap.asset");
     color: rgb(239, 243, 244);
 }
 .dialogue {

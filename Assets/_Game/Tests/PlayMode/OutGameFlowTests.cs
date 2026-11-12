@@ -305,7 +305,8 @@ namespace ActionPlatformer.Tests
             Assert.That(game.TryPause(), Is.True);
             game.PauseMenu.Item(PauseMenuView.TitleName).Activate();
             var dialog = game.OutGame.Dialog;
-            Assert.That(dialog.Message, Does.Contain("휴식 구역 1에서 시작합니다"));
+            Assert.That(dialog.Message, Does.StartWith("마지막 휴식 구역 이후의 진행은 저장되지 않습니다."));
+            Assert.That(dialog.Message, Does.Not.Contain("이어하기는"));
             Assert.That(game.OutGame.HandleBack(), Is.True);
             Assert.That(game.PauseMenu.IsVisible, Is.True, "취소 returns to the pause menu.");
             game.PauseMenu.Item(PauseMenuView.TitleName).Activate();
@@ -636,8 +637,8 @@ namespace ActionPlatformer.Tests
             }
         }
 
-        // Every shown text in the game UI and the cutscene UI is drawn from the SDF font asset, never a bitmap font file.
-        [UnityTest] public IEnumerator EveryShownUiTextUsesTheSdfFontAsset()
+        // Every shown text in the game UI and the cutscene UI uses the Galmuri11 bitmap asset at a whole multiple of 12 screen pixels.
+        [UnityTest] public IEnumerator EveryShownUiTextUsesThePixelFontAtWholeMultiples()
         {
             yield return LoadStage();
             game.View.ShowCombo(1, 3);
@@ -652,7 +653,10 @@ namespace ActionPlatformer.Tests
                     if (!MenuKit.IsShown(text)) continue;
                     var font = text.resolvedStyle.unityFontDefinition;
                     Assert.That(font.fontAsset, Is.Not.Null, $"'{text.text}' ({text.name}) uses a plain font file.");
-                    Assert.That(font.fontAsset.name, Is.EqualTo("NotoSansKR-Regular-SDF"));
+                    Assert.That(font.fontAsset.name, Is.EqualTo("Galmuri11-Bitmap"));
+                    float screenPixels = text.resolvedStyle.fontSize * text.scaledPixelsPerPoint;
+                    Assert.That(Mathf.Abs(screenPixels / PixelText.NativeSize - Mathf.Round(screenPixels / PixelText.NativeSize)), Is.LessThan(.01f),
+                        $"'{text.text}' is drawn at {screenPixels} screen pixels, not a whole multiple of the 12px pixel font.");
                     checkedTexts++;
                 }
             Assert.That(checkedTexts, Is.GreaterThan(10));

@@ -990,3 +990,19 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 글리치 연출(기획서 3.2): 장면 전환의 검은 덮개가 어두워지고 밝아지는 동안 청록·빨강·흰 찢김 띠가 1/30초마다 바뀌며 지나간다(`Menus/GlitchBands.cs`, 덮개 안 `loading-glitch`). 완전히 덮여 `불러오는 중`이 보일 때는 띠가 없다. 타이틀에서는 3.2초마다 0.2초 동안 메뉴 뒤 배경에 옅은 띠가 지나간다(`title-glitch`, 로고·버튼보다 뒤). 둘 다 연출 설정 `글리치 화면 왜곡`에 비례하고 0이면 꺼진다. 띠는 클릭을 받지 않는다.
 - 느린 프레임에서도 페이드가 한 프레임에 건너뛰지 않도록 페이드 한 단계는 최대 1/30초로 계산한다(`SceneTransition.MaxFadeStep`). 프레임이 매우 느리면 전환이 그만큼 길어진다.
 - 새 안내 문구의 글자('채')를 두 SDF 폰트 에셋에 추가해 411자로 맞췄다. 문구를 바꾸면 실행 중 글자가 추가돼 에셋이 바뀔 수 있으니, 그때는 같은 방법으로 미리 채운다.
+
+## 2026-11-12 — UI 40% 축소, 타이틀로 확인 문구 정리
+
+- 사용자 요청으로 게임 UI 전체를 40% 줄였다. `UI/StagePanelSettings.asset`의 기준 해상도(Scale With Screen Size)를 1280×720 → 2133×1200(÷0.6)으로 올렸다. Scale 필드는 1로 둔다 — 0.6으로 넣어 봤더니 Editor에서 스크립트를 다시 불러올 때마다 1로 돌아가고 변경 표시가 켜졌다(원인 미확정). 이 패널을 쓰는 GameManager 프리팹의 모든 구역(타이틀·설정·조작 안내·스테이지 선택·확인창·일시정지·실패/클리어 화면·로딩·스테이지 HUD·COMBO·글리치 문구)이 같은 비율로 작아진다. 개별 글자 크기·버튼 폭 값은 바꾸지 않았으니, 한 화면만 따로 키우거나 줄이려면 해당 뷰의 값을 고친다.
+- 컷신 대사·말풍선은 별도 `CutscenePanelSettings`라 바뀌지 않았다. 휴식 구역 안내판은 월드 글자(TextMeshPro)라 패널 배율과 무관하다.
+- 휴식 구역 기록이 있는 본편 스테이지에서 일시정지 `타이틀로`·게임 종료를 누를 때의 확인 문구에서 "이어하기는 휴식 구역 N에서 시작합니다."를 뺐다. 지금 문구는 "마지막 휴식 구역 이후의 진행은 저장되지 않습니다. 타이틀로 돌아가시겠습니까?"다. 타이틀의 `이어하기` 버튼 아래 `휴식 구역 N부터`와 실패 화면 `재도전` 설명은 그대로다. 새 글자 '후'를 두 SDF 폰트 에셋에 미리 넣어 412자다.
+
+## 2026-11-12 — 게임 글자를 도트 폰트 Galmuri11로
+
+- 사용자 요청으로 게임의 모든 글자를 한글 도트 폰트 Galmuri11(OFL 1.1, quiple/galmuri v2.40.4)로 바꿨다. 폰트·라이선스는 `Assets/_Game/UI/Fonts/Galmuri/`, 출처는 `Docs/ThirdPartyNotices.md`.
+- 에셋: UI Toolkit용 `Galmuri11-Bitmap.asset`과 굵은 글씨용 `Galmuri11-Bold-Bitmap.asset`(12px RASTER, 안티앨리어싱 없음, 1024 아틀라스 Point 필터), 월드 글자(TextMeshPro)용 `Galmuri11-TMP-SDF.asset`(샘플링 48·패딩 6 SDF). UI Toolkit은 TMP 에셋 파일을 직접 쓰지 못해 TextCore 에셋을 따로 만든다. 모두 Dynamic이고 현재 게임 글자 411자를 미리 넣었으며 `Clear Dynamic Data On Build`를 껐다(빌드가 미리 넣은 글자를 지우지 않게). 처음엔 UI도 SDF로 만들었다가, 정수 픽셀 실험에서 SDF는 글자 위치가 반 픽셀 어긋나면 가로획이 회색으로 번져 비트맵으로 바꿨다(SDF UI 에셋은 지웠다).
+- 연결: `UI/StageTheme.tss`와 `UI/Cinematics/Cutscene.uss`의 `-unity-font-definition`, GameManager 프리팹의 OutGameView·PauseMenuView·StageFlowView `fontAsset`, `RestArea.prefab` 안내판(TMP, 글자 높이를 예전과 같게 맞춰 fontSize 4.45). 굵은 글씨(타이틀 로고·결과 제목)는 `Galmuri11-Bitmap`의 굵기 표(700)에 연결된 Bold 에셋을 쓴다. Galmuri에 없는 글자(현재 ✓·✗, 보스 디버그 글자에만 쓰임)는 Noto Sans KR SDF로 대체된다. Noto 에셋은 지우지 않았다.
+- Galmuri가 Noto보다 넓어 확인창 최대 폭을 760 → 860으로 넓혔고, 연출 탭 안내문은 문장 사이에서 줄을 바꾼다.
+- 정수 배율(같은 날 사용자 요청): `Menus/PixelText.cs`가 UI 글자를 화면에서 12의 배수 픽셀(12·24·36…, 최소 12)로만 그린다. 코드의 글자 크기(패널 단위)는 그대로 두고 `PixelText.SetSize`로 등록하면, 현재 패널 배율(`scaledPixelsPerPoint`)에서 가장 가까운 12의 배수로 바꿔 넣는다. `MenuKit.Label`·`MenuEntry.SetDetailStyle`·StageFlowView HUD 4곳이 이것을 쓰고, 해상도가 바뀌면 GameManager LateUpdate가 다시 맞춘다. 컷신 UI는 USS 크기를 처음 볼 때 기록해 CutsceneView LateUpdate가 맞춘다. 폰트 한 픽셀이 화면 정수 픽셀이고 아틀라스가 Point 필터라 반 픽셀 어긋나도 번지지 않는다.
+- 결과 크기(1920×1080·2560×1440 모두): 본문·버튼·확인창 문장 24px(2배), 작은 안내 12px(1080p) 또는 24px(1440p 연출 안내문), 페이지 제목 36~48px, 결과 제목 48px, 로고 96px. 커진 글자에 맞춰 음량 숫자 칸 48→64(줄바꿈 금지), 설정 탭 좌우 여백 18→6으로 바꿨다. 1080p와 1440p의 글자 크기가 같아 1440p에서는 UI 상자가 글자보다 상대적으로 크다(정수 배율의 한계). 레이아웃 크기는 패널 배율을 따라 그대로 연속이다.
+- 새 UI 글자를 추가할 때는 `style.fontSize`를 직접 넣지 말고 `MenuKit.Label` 또는 `PixelText.SetSize`를 쓴다. `OutGameFlowTests.EveryShownUiTextUsesThePixelFontAtWholeMultiples`가 화면에 보이는 모든 UI 글자가 비트맵 에셋을 쓰고 12의 배수 픽셀인지 검사한다.

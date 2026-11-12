@@ -483,7 +483,7 @@ namespace ActionPlatformer.Flow
             if (stage == null) return question;
             if (stageId != null && p != null && p.IsCleared(stageId)) return "다시 플레이 중인 진행은 저장되지 않습니다. " + question;
             if (stageId != null && p != null && p.mainStage == stageId && p.mainCheckpoint >= 0)
-                return $"이어하기는 휴식 구역 {p.mainCheckpoint + 1}에서 시작합니다. 그 뒤의 진행은 저장되지 않습니다. " + question;
+                return "마지막 휴식 구역 이후의 진행은 저장되지 않습니다. " + question;
             return "현재 스테이지 내 진행은 저장되지 않습니다. " + question;
         }
 
