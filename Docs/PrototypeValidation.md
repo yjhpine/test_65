@@ -1122,3 +1122,9 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 ## 2026-11-12 — 설정 선택 줄 ◀·▶ 방향 클릭
 
 - 재컴파일 성공. PlayMode `OutGameFlowTests` 19/19(새 `ChoiceRowArrowsStepTheWayTheyPoint`: ▶ 다음·◀ 이전·처음에서 ◀는 끝으로·줄의 다른 곳은 다음, PointerUp 이벤트를 화살표에 직접 보냄). 1920×1080 캡처 `Library/PrototypeValidation/PixelFont/SettingsArrows1080.png`로 모양이 예전과 같은 것을 확인했다. 실제 마우스 클릭은 Editor 포커스 문제로 자동 확인하지 못했다.
+
+## 2026-11-12 — 아웃게임 시연 영상, 한국어 줄바꿈, 일시정지 버튼 폭
+
+- 첫 녹화 영상에서 일시정지 "현재 스테이지 재시작" 버튼이 두 줄로 넘치고 재시작 확인창 문장이 음절 중간에서 끊기는 것을 보고 고쳤다(버튼 폭 340, 한국어 줄바꿈 규칙). 1080p 캡처 `Library/PrototypeValidation/PixelFont/WrapPauseCrop.png`·`WrapRestartDialog.png`.
+- 테스트(관련 클래스만): PlayMode `PauseTests` 13/13, `OutGameFlowTests` 19/19, `CutsceneTests` 19/19, EditMode `GameManagerEditModeTests` 4/4.
+- 최종 영상 2080프레임(69.33초), 단계별 대기 시간 초과 0회. 미리보기 브라우저에서 재생되고, 16개 지점으로 이동해 각 장면이 시연 순서와 맞는 것을 확인했다(1초 키프레임 전에는 이동한 위치의 장면이 틀리게 보였다). 녹화 뒤 timeScale 1·captureDeltaTime 0·runInBackground false·씬 dirty 없음·실제 저장 파일 미변경을 확인했다.

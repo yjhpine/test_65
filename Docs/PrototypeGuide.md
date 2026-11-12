@@ -1010,3 +1010,11 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 ## 2026-11-12 — 설정 선택 줄의 ◀·▶ 방향 클릭
 
 - 사용자 요청: 화면 모드·해상도 같은 선택 줄(`ChoiceRow`)을 마우스로 누르면 어디를 눌러도 다음 항목으로만 넘어갔다. 이제 ◀를 누르면 이전, ▶를 누르면 다음 항목이다(처음·끝에서 반대쪽으로 넘어감). 화살표는 글자 양옆에 여백 10을 둔 별도 클릭 영역(`PreviousArrow`·`NextArrow`)이고, 화살표 밖의 줄을 누르거나 Enter를 누르면 지금처럼 다음 항목, 왼쪽·오른쪽 방향키는 양방향이다. 쓸 수 없는 줄의 화살표를 누르면 다른 항목처럼 이유를 표시한다.
+
+## 2026-11-12 — 아웃게임 시연 영상, 한국어 줄바꿈, 일시정지 버튼 폭
+
+- 시연 영상(교수님 시연용, 사용자 요청): `Exports/Recordings/GLITCH-OutGame-20261112/GLITCH-OutGame.mp4`(1920×1080, 30fps, 69초, H.264 Baseline·1초 키프레임, 소리 없음)와 장면 목록 `Timeline.txt`. 왼쪽 위 자막으로 단계를 설명한다: 타이틀 → 새 게임 덮어쓰기 확인 → 설정 4탭 → 조작 안내 → 이어하기(로딩·글리치 전환, 휴식 구역 1) → 일시정지 5버튼·설정·재시작/타이틀로 확인창 → 사망·실패 화면·재도전 → 클리어 화면(보스 처치 대신 클리어 처리를 바로 호출, 자막에 표시) → 클리어 후 타이틀.
+- 녹화 방법: 열린 Editor Play Mode에서 `script eval`로 코루틴을 돌려 메뉴를 코드로 고르고(`Focus`·`Activate`) `Time.captureDeltaTime = 1/30`로 한 프레임씩 진행하며, 프레임마다 `ScreenCapture.CaptureScreenshotAsTexture`를 Editor의 `UnityEditor.Media.MediaEncoder`(H.264, `H264EncoderAttributes` gopSize 30, Baseline)에 넣었다. ffmpeg는 없다. 저장 데이터는 메모리 저장소. 자막은 별도 UIDocument(StagePanelSettings 복제, Sorting Order 1000). 스크립트는 저장소 밖(일회용)이다.
+- 주의: 자막 글자가 Play Mode 중 `Galmuri11-Bitmap` 메모리 에셋에 추가되고, 이어서 다른 작업이 에셋을 저장하면 파일에 써진다. 녹화 뒤 Git 상태로 되돌리고 다시 불러온다. High 프로필 MP4는 미리보기 브라우저에서 재생이 시작되지 않아 Baseline을 쓴다.
+- 한국어 줄바꿈: 새 `UI/StageTextSettings.asset`(PanelTextSettings, `useModernHangulLineBreakingRules` 켬)을 StagePanelSettings·CutscenePanelSettings의 Text Settings에 연결했다. 긴 문장이 음절 중간이 아니라 띄어쓰기에서 줄을 바꾼다.
+- 일시정지 버튼 폭 300 → 340(24px 도트 폰트에서 "현재 스테이지 재시작"이 한 줄).

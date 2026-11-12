@@ -36,7 +36,7 @@ namespace ActionPlatformer.Flow
 
             private MenuEntry Add(string name, string text, Action action)
             {
-                var item = new MenuEntry(name, text, action, 300);
+                var item = new MenuEntry(name, text, action, 340) /* 현재 스테이지 재시작 fits on one line at the 24px pixel font */;
                 root.Add(item);
                 return Track(item);
             }
