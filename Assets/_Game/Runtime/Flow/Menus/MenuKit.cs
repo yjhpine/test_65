@@ -242,16 +242,52 @@ namespace ActionPlatformer.Flow
         private string[] options = Array.Empty<string>();
         public int Index { get; private set; }
         public event Action<int> Changed;
+        // The two arrows are click targets of their own: a click on one steps that way (2026-11-12). A click anywhere
+        // else on the row steps forward, like Enter; Left/Right keys step either way.
+        public Label PreviousArrow { get; }
+        public Label NextArrow { get; }
+        public string ValueText => valueLabel.text;
 
         public ChoiceRow(string name, string text) : base(name, text, null, 560)
         {
             style.flexDirection = FlexDirection.Row;
             style.justifyContent = Justify.SpaceBetween;
+            var value = new VisualElement { pickingMode = PickingMode.Ignore };
+            value.style.flexDirection = FlexDirection.Row;
+            value.style.alignItems = Align.Center;
+            PreviousArrow = Arrow("◀", name + "-previous", -1);
             valueLabel = MenuKit.Label("", 20, MenuKit.Accent);
             valueLabel.pickingMode = PickingMode.Ignore;
-            Add(valueLabel);
-            SetAction(() => Select(Index + 1, true));
+            valueLabel.style.whiteSpace = WhiteSpace.NoWrap;
+            NextArrow = Arrow("▶", name + "-next", 1);
+            value.Add(PreviousArrow);
+            value.Add(valueLabel);
+            value.Add(NextArrow);
+            Add(value);
+            SetAction(() => Step(1));
             RegisterCallback<NavigationMoveEvent>(OnMove);
+        }
+
+        private Label Arrow(string glyph, string arrowName, int direction)
+        {
+            var arrow = MenuKit.Label(glyph, 20, MenuKit.Accent, arrowName);
+            arrow.pickingMode = PickingMode.Position;
+            arrow.style.paddingLeft = arrow.style.paddingRight = 10; // a wider target than the glyph alone
+            arrow.RegisterCallback<PointerUpEvent>(e =>
+            {
+                if (e.button != 0) return;
+                Step(direction);
+                e.StopPropagation(); // the row's own click would step forward again
+            });
+            return arrow;
+        }
+
+        // One option left (-1) or right (+1), wrapping. An unavailable row explains why instead.
+        public void Step(int direction)
+        {
+            if (!enabledInHierarchy || !MenuKit.IsShown(this)) return;
+            if (!Available) { Activate(); return; }
+            Select(Index + direction, true);
         }
 
         public void SetOptions(string[] values, int index)
@@ -266,14 +302,14 @@ namespace ActionPlatformer.Flow
             index = ((index % options.Length) + options.Length) % options.Length;
             bool changed = index != Index;
             Index = index;
-            valueLabel.text = "◀  " + options[index] + "  ▶";
+            valueLabel.text = options[index];
             if (notify && changed) Changed?.Invoke(index);
         }
 
         private void OnMove(NavigationMoveEvent e)
         {
             if (e.direction != NavigationMoveEvent.Direction.Left && e.direction != NavigationMoveEvent.Direction.Right) return;
-            if (Available) Select(Index + (e.direction == NavigationMoveEvent.Direction.Right ? 1 : -1), true);
+            if (Available) Step(e.direction == NavigationMoveEvent.Direction.Right ? 1 : -1);
             e.StopPropagation();
             focusController?.IgnoreEvent(e);
         }

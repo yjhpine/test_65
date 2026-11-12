@@ -448,6 +448,34 @@ namespace ActionPlatformer.Tests
             finally { PresentationSettings.Reset(); }
         }
 
+        // 2026-11-12: the settings arrows step the way they point; a click elsewhere on the row steps forward, like Enter.
+        [UnityTest] public IEnumerator ChoiceRowArrowsStepTheWayTheyPoint()
+        {
+            yield return LoadTitle();
+            game.OutGame.Title.Settings.Activate();
+            var row = game.OutGame.Settings.Resolution;
+            row.SetOptions(new[] { "A", "B", "C" }, 1);
+            yield return null;
+            Assert.That(row.PreviousArrow.pickingMode, Is.EqualTo(PickingMode.Position));
+            Assert.That(row.NextArrow.pickingMode, Is.EqualTo(PickingMode.Position));
+            PointerUp(row.NextArrow);
+            Assert.That(row.Index, Is.EqualTo(2), "▶ steps right.");
+            PointerUp(row.PreviousArrow);
+            PointerUp(row.PreviousArrow);
+            Assert.That(row.Index, Is.EqualTo(0), "◀ steps left.");
+            PointerUp(row.PreviousArrow);
+            Assert.That(row.Index, Is.EqualTo(2), "◀ wraps from the first option to the last.");
+            Assert.That(row.ValueText, Is.EqualTo("C"));
+            PointerUp(row);
+            Assert.That(row.Index, Is.EqualTo(0), "A click elsewhere on the row steps forward.");
+        }
+
+        private static void PointerUp(VisualElement target)
+        {
+            var mouse = new Event { type = EventType.MouseUp, button = 0, mousePosition = target.worldBound.center };
+            using (var up = PointerUpEvent.GetPooled(mouse)) target.SendEvent(up);
+        }
+
         [UnityTest] public IEnumerator SettingsApplyAtOnceSaveSeparatelyAndResetOnlyTheirTab()
         {
             yield return LoadTitle();

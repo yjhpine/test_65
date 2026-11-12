@@ -1006,3 +1006,7 @@ Regenerate with node Tools/PixelFx/pipeline.mjs render custom/glitch-slash-1 (re
 - 정수 배율(같은 날 사용자 요청): `Menus/PixelText.cs`가 UI 글자를 화면에서 12의 배수 픽셀(12·24·36…, 최소 12)로만 그린다. 코드의 글자 크기(패널 단위)는 그대로 두고 `PixelText.SetSize`로 등록하면, 현재 패널 배율(`scaledPixelsPerPoint`)에서 가장 가까운 12의 배수로 바꿔 넣는다. `MenuKit.Label`·`MenuEntry.SetDetailStyle`·StageFlowView HUD 4곳이 이것을 쓰고, 해상도가 바뀌면 GameManager LateUpdate가 다시 맞춘다. 컷신 UI는 USS 크기를 처음 볼 때 기록해 CutsceneView LateUpdate가 맞춘다. 폰트 한 픽셀이 화면 정수 픽셀이고 아틀라스가 Point 필터라 반 픽셀 어긋나도 번지지 않는다.
 - 결과 크기(1920×1080·2560×1440 모두): 본문·버튼·확인창 문장 24px(2배), 작은 안내 12px(1080p) 또는 24px(1440p 연출 안내문), 페이지 제목 36~48px, 결과 제목 48px, 로고 96px. 커진 글자에 맞춰 음량 숫자 칸 48→64(줄바꿈 금지), 설정 탭 좌우 여백 18→6으로 바꿨다. 1080p와 1440p의 글자 크기가 같아 1440p에서는 UI 상자가 글자보다 상대적으로 크다(정수 배율의 한계). 레이아웃 크기는 패널 배율을 따라 그대로 연속이다.
 - 새 UI 글자를 추가할 때는 `style.fontSize`를 직접 넣지 말고 `MenuKit.Label` 또는 `PixelText.SetSize`를 쓴다. `OutGameFlowTests.EveryShownUiTextUsesThePixelFontAtWholeMultiples`가 화면에 보이는 모든 UI 글자가 비트맵 에셋을 쓰고 12의 배수 픽셀인지 검사한다.
+
+## 2026-11-12 — 설정 선택 줄의 ◀·▶ 방향 클릭
+
+- 사용자 요청: 화면 모드·해상도 같은 선택 줄(`ChoiceRow`)을 마우스로 누르면 어디를 눌러도 다음 항목으로만 넘어갔다. 이제 ◀를 누르면 이전, ▶를 누르면 다음 항목이다(처음·끝에서 반대쪽으로 넘어감). 화살표는 글자 양옆에 여백 10을 둔 별도 클릭 영역(`PreviousArrow`·`NextArrow`)이고, 화살표 밖의 줄을 누르거나 Enter를 누르면 지금처럼 다음 항목, 왼쪽·오른쪽 방향키는 양방향이다. 쓸 수 없는 줄의 화살표를 누르면 다른 항목처럼 이유를 표시한다.

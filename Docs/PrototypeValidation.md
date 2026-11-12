@@ -1118,3 +1118,7 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 열린 Editor에서 재컴파일 성공. 관련 클래스만 실행: EditMode `TextRenderingTests` 5/5(새 `PixelTextDrawsWholeMultiplesOfTheNativeSize`), `GameManagerEditModeTests` 4/4. PlayMode `OutGameFlowTests` 18/18(보이는 모든 UI 글자가 12의 배수 픽셀인지 검사 추가), `PauseTests` 13/13, `CutsceneTests` 19/19. 레이아웃 수정 뒤 `OutGameFlowTests`·`PauseTests`·`TextRenderingTests` 재실행 통과. 전체 실행은 하지 않았다. 테스트 전후 Galmuri 에셋 해시 동일.
 - 캡처(메모리 저장소, 1920×1080과 2560×1440): `Library/PrototypeValidation/PixelFont/`(Title·Settings와 연출·조작 키·데이터 탭·Controls·RestHud·Pause·PauseDialog·Failed). 처음 캡처에서 음량 숫자 "100"과 탭 "조작 키"가 두 줄로 넘쳐 칸 폭·여백을 고쳤고 다시 찍어 확인했다. 컷신 말풍선은 캡처하지 않았다.
 - 캡처를 위해 Game 뷰를 잠시 2560×1440으로 바꿨다가 1920×1080·1배로 되돌렸다. Game 뷰 창이 1262×914로 바뀌어 있어 1080p 1배가 창 안에 다 들어가지 않는다(사용자 창 배치).
+
+## 2026-11-12 — 설정 선택 줄 ◀·▶ 방향 클릭
+
+- 재컴파일 성공. PlayMode `OutGameFlowTests` 19/19(새 `ChoiceRowArrowsStepTheWayTheyPoint`: ▶ 다음·◀ 이전·처음에서 ◀는 끝으로·줄의 다른 곳은 다음, PointerUp 이벤트를 화살표에 직접 보냄). 1920×1080 캡처 `Library/PrototypeValidation/PixelFont/SettingsArrows1080.png`로 모양이 예전과 같은 것을 확인했다. 실제 마우스 클릭은 Editor 포커스 문제로 자동 확인하지 못했다.
