@@ -12369,7 +12369,7 @@ MonoBehaviour:
   viewCamera: {fileID: 859948185}
   leftBoundary: 0
   rightBoundary: 217
-  maxRise: 20
+  maxRise: 40
   verticalDeadZone: 4.5
   verticalSmoothTime: 0.2
   maxDrop: 12

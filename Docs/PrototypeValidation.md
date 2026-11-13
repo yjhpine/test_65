@@ -1135,3 +1135,13 @@ MovementLab Play Mode에서 IPlayerInputSource를 통한 입력으로 추가 확
 - 테스트(관련 클래스만): EditMode `OutGameRulesTests` 19/19(카탈로그 2개·빌드 순서 검사, 놓쳤던 GameManager 폰트 검사를 Galmuri로 수정), `GameManagerEditModeTests` 4/4. PlayMode `OutGameFlowTests` 20/20(새 `ClearingStageOneOpensStageTwoAndTheLastClearIsFinal`·`StageSelectShowsLockedOpenAndClearedStages`, 저장 재시도 검사는 stage1 클리어 기록으로), `StageFlowTests` 15/15(재시작 버튼에 포커스를 준 뒤 Submit — 스테이지 2가 생기자 포커스된 `다음 스테이지`가 눌려 실패했었다, 카탈로그를 메모리에서 1개로 되돌리면 통과함을 확인), `RestCycleTests` 20/20, `PauseTests` 13/13, `BossArenaTests` 4/4. `FinalWaveCutsceneTests` 4/5는 단독 실행 시의 기존 fixedDeltaTime 1 tick 문제. 전체 실행은 하지 않았다.
 - `OutGameRulesTests.GameManagerPrefabWiresTheOutGameLayer`는 도트 폰트 교체(`bd85fe75`) 때 이 클래스를 돌리지 않아 Noto를 기대한 채 실패하고 있었다. 이번에 고쳤다.
 - 시연 영상을 스테이지 선택·스테이지 2 포함 88초판(2653프레임, 대기 시간 초과 0)으로 다시 찍었다. 미리보기에서 재생되고 16개 지점이 순서대로 맞으며, 결과 화면 위 스테이지 목록이 겹치지 않는다.
+
+## 2026-11-13 — 카메라 위쪽 여유 (상한 40, 높은 땅 구도, 공중 따라잡기)
+
+- 이 프로젝트 Editor가 닫혀 있어 창 없는 배치 모드(`-batchmode -runTests`, 낮은 우선순위)로 실행했다.
+- 첫 실행(`StageCameraVerticalTests`+`BossArenaTests`): 보스 구역 4/4 통과, 카메라 3개 실패.
+  - 따라잡기·높은 땅 두 실패: 테스트가 플레이어를 공중으로 옮긴 첫 프레임에 접지 값(물리 단계에서만 갱신)이 이전의 '서 있음'으로 남아, 카메라가 공중 높이를 땅으로 기억했다. 같은 일이 실제 순간이동 직후에도 생길 수 있어서, 높이 변화 없이 0.06초 서 있어야 땅으로 인정하도록 고쳤다.
+  - 배경 실패: 배치 모드는 카메라가 그리지 않아 시차 배경이 움직이지 않았다. 검사 직전에 `camera.Render()`를 부르자 실행이 멈춘 뒤 결과 없이 끝났다(종료 코드 127). 그래서 레이어의 위치 계산(`ApplyCameraPosition`)을 테스트가 직접 부르게 바꿨다.
+- 마지막 실행(카메라 클래스만): `StageCameraVerticalTests` 3/3 통과(54초, `Library/PrototypeValidation/CameraRise/PlayMode.xml`). 상한 40(카메라 +40)에서도 세 배경 레이어가 화면 위아래를 덮는다. 보스 구역 테스트는 고친 뒤 다시 돌리지 않았다(바뀐 땅 인정 조건은 아래쪽 경로와 무관).
+- 실제 Play Mode 조작 확인은 하지 않았다. 배치 실행이 지운 ProjectSettings의 `SENTIS_ANALYTICS_ENABLED`는 Git으로 되돌렸다.
+
